@@ -133,11 +133,7 @@ function DashboardPage() {
                   Cerrar Sesión
                 </Button>
 
-                <Link to="/users">
-                  <Button variant="link" size="sm" className="w-full mt-0">
-                    Ver Usuarios
-                  </Button>
-                </Link>
+                
               </CardContent>
             </Card>
           </div>
