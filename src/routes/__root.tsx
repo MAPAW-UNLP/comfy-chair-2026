@@ -24,8 +24,7 @@ const RootLayoutContent = () => {
 
   // Links que siempre deben mostrarse cuando el usuario está autenticado
   const commonAuthLinks = [
-    { to: '/notifications', label: 'Notificaciones' },
-    { to: '/dashboard', label: 'Panel' },
+    { to: '/notifications', label: 'Notificaciones' }
   ];
 
   // normalizar rol
@@ -48,6 +47,9 @@ const RootLayoutContent = () => {
     ],
     admin: [
       { to: '/conference/view', label: 'Conferencias' },
+    ],
+    users: [
+      { to: '/users', label: 'Ver usuarios'}
     ]
   };
 
@@ -65,8 +67,9 @@ const RootLayoutContent = () => {
     authLinks = [
       { to: '/dashboard', label: 'Inicio' },
       { to: '/reviewer/', label: 'Revisor' },
+      { to: '/users', label: 'Ver usuarios'},
       { to: '/conference/view', label: 'Conferencias' },
-      { to: '/article/view', label: 'Articulos' },
+      { to: '/article/select', label: 'Articulos' },
       { to: '/chairs/select-session', label: 'Chair' },
       { to: '/reviewer/bidding', label: 'Bidding' },
       ...commonAuthLinks,
