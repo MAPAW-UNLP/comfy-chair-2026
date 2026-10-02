@@ -172,7 +172,6 @@ export default function BiddingPage() {
     setSaving((s) => ({ ...s, [articleId]: true }));
     try {
       await saveBid({
-        reviewer: reviewerId,
         article: articleId,
         value: backendChoice,
       });
