@@ -1,16 +1,27 @@
 import { useEffect, useState, useMemo } from "react";
-import { getAllArticles, type Article } from "@/services/articleServices";
+import { useQuery } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
+import { toast } from "sonner";
 import {
-  getBidsByReviewer,
-  saveBid,
-  type BiddingPreference,
-} from "@/services/biddingServices";
+  getArticleBySessionId,
+  getArticlesByConferenceId,
+} from "@/services/articleServices";
+import { getMyBids, saveBid } from "@/services/biddingServices";
+import { getSessionsByConference } from "@/services/sessionServices";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useCountdown } from "@/utils/useCountdown";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRole } from "@/contexts/RoleContext";
 
 type InteresLocal = "interesado" | "quizas" | "no" | "no_select";
 
@@ -50,13 +61,17 @@ function mapLocalToChoice(
   return "No_select";
 }
 
+function errorDelBackend(e: unknown, porDefecto: string): string {
+  return (
+    (isAxiosError<{ error?: string }>(e) && e.response?.data?.error) ||
+    porDefecto
+  );
+}
+
 export default function BiddingPage() {
-  const [articulos, setArticulos] = useState<Article[]>([]);
-  const [bids, setBids] = useState<BiddingPreference[]>([]);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [seleccion, setSeleccion] = useState<Record<number, InteresLocal>>({});
   const [saving, setSaving] = useState<Record<number, boolean>>({});
-  const [error, setError] = useState<string | null>(null);
 
   // 🔢 paginación
   const [page, setPage] = useState(1);
@@ -65,6 +80,52 @@ export default function BiddingPage() {
   const navigate = useNavigate();
   const auth = useAuth();
   const reviewerId = auth.user ? Number(auth.user.id) : null;
+
+  const search = useSearch({ from: "/_auth/reviewer/bidding" });
+  const { selectedRole } = useRole();
+  const conferenceId =
+    search.conferenceId ??
+    (selectedRole?.role === "revisor" ? selectedRole.conferenceId : undefined);
+  const sessionId = search.sessionId;
+
+  const articlesQuery = useQuery({
+    queryKey: ["reviewer", "articles", conferenceId, sessionId],
+    queryFn: () =>
+      sessionId
+        ? getArticleBySessionId(sessionId)
+        : getArticlesByConferenceId(conferenceId!),
+    enabled: !!conferenceId,
+  });
+  const bidsQuery = useQuery({
+    queryKey: ["reviewer", "bids", conferenceId, sessionId],
+    queryFn: () => getMyBids({ conferenceId, sessionId }),
+    enabled: !!conferenceId,
+  });
+  const sessionsQuery = useQuery({
+    queryKey: ["reviewer", "sessions", conferenceId],
+    queryFn: () => getSessionsByConference(conferenceId!),
+    enabled: !!conferenceId,
+  });
+
+  const articulos = useMemo(
+    () => articlesQuery.data ?? [],
+    [articlesQuery.data]
+  );
+  const sesiones = sessionsQuery.data ?? [];
+  const bidPorArticulo = useMemo(
+    () => new Map((bidsQuery.data ?? []).map((b) => [b.article, b.choice])),
+    [bidsQuery.data]
+  );
+  const interesDe = (articleId: number): InteresLocal =>
+    seleccion[articleId] ?? mapChoiceToLocal(bidPorArticulo.get(articleId));
+  const isLoadingData = articlesQuery.isLoading || bidsQuery.isLoading;
+  const loadError =
+    articlesQuery.error ?? bidsQuery.error ?? sessionsQuery.error;
+  const conferenceName =
+    sesiones[0]?.conference?.title ??
+    (selectedRole?.conferenceId === conferenceId
+      ? selectedRole?.conferenceName
+      : undefined);
 
   // ================== LÓGICA DE FECHAS (.env) ==================
   const biddingStartDate = BIDDING_START ? new Date(BIDDING_START) : null;
@@ -91,42 +152,18 @@ export default function BiddingPage() {
   const isEditable = isOpen && !!reviewerId;
   // ============================================================
 
-  // Carga inicial (artículos + bids del revisor, si está logueado)
   useEffect(() => {
-    (async () => {
-      try {
-        const arts = await getAllArticles();
-
-        let userBids: BiddingPreference[] = [];
-        if (reviewerId) {
-          userBids = await getBidsByReviewer(reviewerId);
-        }
-
-        setArticulos(arts);
-        setBids(userBids);
-
-        // Inicializar TODAS las selecciones en no_select
-        const initSel: Record<number, InteresLocal> = {};
-        arts.forEach((a) => {
-          initSel[a.id] = "no_select";
-        });
-
-        // Sobrescribir con lo que venga de la API
-        userBids.forEach((b) => {
-          initSel[b.article] = mapChoiceToLocal(b.choice);
-        });
-
-        setSeleccion(initSel);
-      } catch {
-        setError("No se pudieron cargar los artículos.");
-      }
-    })();
-  }, [reviewerId]);
+    if (loadError) {
+      toast.error(
+        errorDelBackend(loadError, "No se pudieron cargar los artículos.")
+      );
+    }
+  }, [loadError]);
 
   // Si cambia la cantidad de artículos o el pageSize, volver a página 1
   useEffect(() => {
     setPage(1);
-  }, [articulos.length, pageSize]);
+  }, [articulos, pageSize]);
 
   // Si el bidding no está abierto, colapsar todo
   useEffect(() => {
@@ -159,7 +196,7 @@ export default function BiddingPage() {
     // Solo se puede editar si hay revisor logueado y el período está abierto
     if (!isEditable || !reviewerId) return;
 
-    const current = seleccion[articleId] ?? "no_select";
+    const current = interesDe(articleId);
 
     // toggle: misma opción -> No_select
     const nextLocal: InteresLocal = current === value ? "no_select" : value;
@@ -176,17 +213,13 @@ export default function BiddingPage() {
         value: backendChoice,
       });
     } catch (e) {
-      console.error("Error al guardar bid:", e);
+      toast.error(errorDelBackend(e, "No se pudo guardar el bid."));
       // rollback
       setSeleccion((s) => ({ ...s, [articleId]: current }));
     } finally {
       setSaving((s) => ({ ...s, [articleId]: false }));
     }
   };
-
-  if (error) {
-    return <p className="p-4 text-red-600">{error}</p>;
-  }
 
   // Auth en carga
   if (auth.isLoading) {
@@ -211,14 +244,19 @@ export default function BiddingPage() {
         <div className="mt-8 space-y-3">
           <Button
             className="w-full py-3 text-base"
-            onClick={() => navigate({ to: "/login" })}
+            onClick={() =>
+              navigate({
+                to: "/login",
+                search: { redirect: undefined, registered: undefined },
+              })
+            }
           >
             Ir a Iniciar Sesión
           </Button>
           <Button
             variant="outline"
             className="w-full py-3 text-base"
-            onClick={() => navigate({ to: "/" })}
+            onClick={() => navigate({ to: "/reviewer" })}
           >
             Volver al inicio
           </Button>
@@ -241,7 +279,7 @@ export default function BiddingPage() {
         </p>
         <Button
           className="mt-8 w-full py-6 text-base"
-          onClick={() => navigate({ to: "/" })}
+          onClick={() => navigate({ to: "/reviewer" })}
         >
           Volver al inicio
         </Button>
@@ -263,7 +301,7 @@ export default function BiddingPage() {
         </p>
         <Button
           className="mt-8 w-full py-6 text-base"
-          onClick={() => navigate({ to: "/" })}
+          onClick={() => navigate({ to: "/reviewer" })}
         >
           Volver al inicio
         </Button>
@@ -293,15 +331,81 @@ export default function BiddingPage() {
     );
   }
 
+  if (!conferenceId) {
+    return (
+      <div className="mx-auto w-full max-w-md px-4 py-20 text-center">
+        <h1 className="mb-4 text-2xl font-semibold text-slate-800">
+          Elegí una conferencia
+        </h1>
+        <Button
+          className="mt-8 w-full py-6 text-base"
+          onClick={() => navigate({ to: "/reviewer" })}
+        >
+          Volver al inicio
+        </Button>
+      </div>
+    );
+  }
+
+  if (isLoadingData) {
+    return (
+      <div className="mx-auto w-full max-w-md px-4 py-20 text-center">
+        <p className="text-slate-600">Cargando artículos…</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <p className="p-4 text-red-600">
+        {errorDelBackend(loadError, "No se pudieron cargar los artículos.")}
+      </p>
+    );
+  }
+
   // ================== VISTA NORMAL (BIDDING ABIERTO) ==================
 
   return (
     <div className="mx-auto w-full max-w-xl px-4 py-6">
       <h1 className="text-2xl font-semibold">Bidding</h1>
+      {conferenceName && (
+        <p className="mt-1 text-base font-medium">{conferenceName}</p>
+      )}
       <p className="mt-1 text-sm text-slate-600">
         Período: <strong>{formatDMY(BIDDING_START)}</strong> →{" "}
         <strong>{formatDMY(BIDDING_END)}</strong>
       </p>
+
+      <Select
+        value={sessionId ? String(sessionId) : "todas"}
+        onValueChange={(v) =>
+          navigate({
+            to: "/reviewer/bidding",
+            search: {
+              conferenceId,
+              sessionId: v === "todas" ? undefined : Number(v),
+            },
+          })
+        }
+      >
+        <SelectTrigger className="mt-4 w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="todas">Todas las sesiones</SelectItem>
+          {sesiones.map((s) => (
+            <SelectItem key={s.id} value={String(s.id)}>
+              {s.title}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {articulos.length === 0 && (
+        <p className="mt-6 text-center text-slate-600">
+          Esta conferencia no tiene artículos para ofertar
+        </p>
+      )}
 
       {/* Controles de paginado (top) */}
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -381,7 +485,7 @@ export default function BiddingPage() {
       <div id="bidding-list-top" className="mt-6 space-y-6">
         {currentItems.map((a) => {
           const isOpenCard = !!expanded[a.id];
-          const interes = seleccion[a.id] ?? "no_select";
+          const interes = interesDe(a.id);
 
           return (
             <article
@@ -498,7 +602,7 @@ export default function BiddingPage() {
       <div className="sticky bottom-4 mt-8">
         <Button
           className="w-full py-6 text-base hover:bg-gray-600"
-          onClick={() => navigate({ to: "/" })}
+          onClick={() => navigate({ to: "/reviewer" })}
         >
           Salir
         </Button>
