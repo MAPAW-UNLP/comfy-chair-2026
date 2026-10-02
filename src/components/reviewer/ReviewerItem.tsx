@@ -17,8 +17,8 @@ interface RevisorProps {
   onRemove?: () => void | Promise<void>
 }
 
-const interestMap: Record<string, string> = {
-  interesed: "Interesado",
+const interestMap: Record<NonNullable<ReviewerInfo["interest"]>, string> = {
+  interesado: "Interesado",
   quizas: "Quizás",
   no_interesado: "No interesado",
   ninguno: "No indicó",
