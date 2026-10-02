@@ -18,6 +18,7 @@ import Statistics from './Statistics';
 import Breadcrumb from '../ui/Breadcrumb';
 import { getArticlesByConferenceId, type Article } from '@/services/articleServices';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRole } from '@/contexts/RoleContext';
 
 export function formatearFecha(fecha: string): string {
   const [year, month, day] = fecha.split('-');
@@ -35,6 +36,7 @@ function AConference() {
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [articles, setArticles] = useState<Article[]>([]);
   const {user}= useAuth()
+  const { selectedRole } = useRole();
 
   const irEditarConferencia = () => {
     navigate({ to: `/conference/edit/${conferencia.id}` });
@@ -121,6 +123,18 @@ function AConference() {
           Desde {formatearFecha(conferencia.start_date!)} a{' '}
           {formatearFecha(conferencia.end_date!)}
         </p>
+        {selectedRole?.role === 'revisor' &&
+          selectedRole.conferenceId === conferencia.id && (
+            <Button
+              size={'sm'}
+              className="w-fit cursor-pointer"
+              onClick={() =>
+                navigate({ to: '/reviewer/bidding', search: { conferenceId: conferencia.id } })
+              }
+            >
+              Bidding de la conferencia
+            </Button>
+          )}
       </div>
 
       <div className="flex flex-col bg-card rounded shadow border border-gray-200 p-5 w-full">
