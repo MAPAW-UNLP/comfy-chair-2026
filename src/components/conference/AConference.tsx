@@ -5,6 +5,7 @@ import { Button } from '../ui/button';
 import { useNavigate } from '@tanstack/react-router';
 import { getAllUsers, type User } from '@/services/userServices';
 import AltaSession from './SessionCreate';
+import ArticleCreateFromConference from '../article/ArticleCreateFromConference';
 import { getSessionsByConference } from '@/services/sessionServices';
 import type { Session } from '@/services/sessionServices';
 import SessionCard from './SessionCard';
@@ -71,6 +72,15 @@ function AConference() {
       console.error('Error al cargar los artículos:', error);
     }
   };
+
+  const refrescarConferencia = () => {
+    fetchSessions();
+    fetchArticles();
+  };
+
+  const hasActiveSessions = sessions.some(
+    (session) => session.deadline !== undefined && new Date(session.deadline) > new Date()
+  );
 
   useEffect(() => {
     let isCancelled = false;
@@ -180,16 +190,42 @@ function AConference() {
             <div className="flex flex-col gap-5">
               <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
                 <h2 className="text-1xl font-bold">Sesiones disponibles</h2>
-                <AltaSession
-                  conference={conferencia}
-                  onSessionCreated={fetchSessions}
-                  trigger={
-                    <Button size={'sm'} className="cursor-pointer">
-                      <Plus />
-                      Nueva sesión
-                    </Button>
-                  }
-                />
+                <div className="flex flex-col items-end gap-1">
+                  <div className="flex gap-2">
+                    <AltaSession
+                      conference={conferencia}
+                      onSessionCreated={fetchSessions}
+                      trigger={
+                        <Button size={'sm'} className="cursor-pointer">
+                          <Plus />
+                          Nueva sesión
+                        </Button>
+                      }
+                    />
+                    {hasActiveSessions ? (
+                      <ArticleCreateFromConference
+                        conference={conferencia}
+                        onFinished={refrescarConferencia}
+                        trigger={
+                          <Button size={'sm'} className="cursor-pointer">
+                            <Plus />
+                            Nuevo submission
+                          </Button>
+                        }
+                      />
+                    ) : (
+                      <Button size={'sm'} disabled>
+                        <Plus />
+                        Nuevo submission
+                      </Button>
+                    )}
+                  </div>
+                  {!loadingSessions && !hasActiveSessions && (
+                    <p className="text-xs text-muted-foreground">
+                      No hay sesiones vigentes para recibir submissions
+                    </p>
+                  )}
+                </div>
               </div>
               <SearchBar
                 datos={sessions}

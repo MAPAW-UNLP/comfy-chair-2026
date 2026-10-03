@@ -28,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { type User } from "@/services/userServices";
 import { type Conference } from '@/components/conference/ConferenceApp';
 import { type Session, getSessionsByConferenceGrupo1 } from "@/services/sessionServices";
-import { type Article, type ArticleNew, type ArticleUpdate, createArticle, updateArticle } from "@/services/articleServices";
+import { type Article, type ArticleNew, type ArticleUpdate, ApiError, createArticle, updateArticle } from "@/services/articleServices";
 
 // Lo que espera recibir el componente
 type ArticleFormProps = {
@@ -37,10 +37,25 @@ type ArticleFormProps = {
   editMode? : boolean;
   article? : Article;
   userId : number
+  fixedConferenceId? : number;
+  onSuccess? : () => void;
+  onCancel? : () => void;
+  onNotFound? : () => void;
+};
+
+// Campos que el backend devuelve en los errores 400 y su equivalente en el form
+const backendFieldMap: Partial<Record<string, keyof ArticleFormData>> = {
+  title: "title",
+  abstract: "abstract",
+  main_file: "file",
+  source_file: "sourcesFile",
+  authors_ids: "authors",
+  corresponding_author_id: "correspondingAuthor",
+  session_id: "session",
 };
 
 //Cuerpo del Componente
-const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode, article, userId }) => {
+const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode, article, userId, fixedConferenceId, onSuccess, onCancel, onNotFound }) => {
 
   // Navegacion
   const navigate = useNavigate();
@@ -60,7 +75,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const [title, setTitle] = useState<string>(""); // Título del artículo
   const [abstract, setAbstract] = useState<string>(""); // Abstract del artículo
   const [articleType, setArticleType] = useState<string>("regular"); // Tipo de artículo
-  const [selectedConference, setSelectedConference] = useState< number | null>(null); // Conferencia seleccionada
+  const [selectedConference, setSelectedConference] = useState< number | null>(fixedConferenceId ?? null); // Conferencia seleccionada
   const [selectedSession, setSelectedSession] = useState<string | null>(null); // Sesión seleccionada
   const [authors, setAuthors] = useState<User[]>([]); // Autores seleccionados
   const [correspondingAuthor, setCorrespondingAuthor] = useState<string>(""); // Autor de notificación
@@ -108,8 +123,45 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   // Manejo del boton de cancelación
   //------------------------------------------------------------
   const handleCancel = () => {
-    navigateBack();
+    onCancel ? onCancel() : navigateBack();
   }
+
+  //------------------------------------------------------------
+  // Manejo de errores del alta
+  //------------------------------------------------------------
+  const handleCreateError = (error: unknown) => {
+
+    if (!(error instanceof ApiError)) {
+      setError((error as Error).message);
+      setShowErrorAlert(true);
+      return;
+    }
+
+    if (error.status === 400) {
+      const fieldErrors: Partial<ArticleFormData> = {};
+      const generalErrors: string[] = [];
+
+      Object.entries(error.errors).forEach(([key, messages]) => {
+        const field = backendFieldMap[key];
+        if (field) fieldErrors[field] = messages.join(" ");
+        else generalErrors.push(...messages);
+      });
+
+      setErrors(fieldErrors);
+      if (generalErrors.length > 0) {
+        setError(generalErrors.join(" "));
+        setShowErrorAlert(true);
+      }
+    } else if (error.status === 403) {
+      toast.error("No tenés permisos para crear un submission en esta conferencia");
+    } else if (error.status === 404) {
+      toast.error("La conferencia o la sesión ya no existe");
+      onNotFound?.();
+    } else {
+      setError(error.message);
+      setShowErrorAlert(true);
+    }
+  };
 
   //------------------------------------------------------------
   // Manejo del boton de submit
@@ -168,13 +220,17 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       console.log("Article Submit: ", response);
 
       toast.success('Artículo subido correctamente !', { duration: 5000 });
-      navigateBack();
+      onSuccess ? onSuccess() : navigateBack();
 
     } catch (error) {
 
       console.error("Error al subir el artículo: ", error);
-      setError((error as Error).message);
-      setShowErrorAlert(true);
+      if (fixedConferenceId !== undefined) {
+        handleCreateError(error);
+      } else {
+        setError((error as Error).message);
+        setShowErrorAlert(true);
+      }
 
     } finally {
       setLoading(false);
@@ -343,7 +399,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
         {/* Combobox de Conferencia */}
         <div className="flex-1 flex flex-col gap-2">
           <Label htmlFor="conferencia">Conferencia {errors.conference && <p className="text-destructive">{errors.conference}</p>}</Label>
-          <ConferenceCombobox value={selectedConference} onValueChange={setSelectedConference} conferences={conferences} disabled={editMode} />
+          <ConferenceCombobox value={selectedConference} onValueChange={setSelectedConference} conferences={conferences} disabled={editMode || fixedConferenceId !== undefined} />
         </div>
 
         {/* Select de Sesiones */}
@@ -532,7 +588,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
       {/* Botones inferiores */}
       <div className="flex flex-row gap-2">
-        {editMode && (
+        {(editMode || onCancel) && (
           <Button variant="outline" onClick={handleCancel} className="flex-1 bg-zinc-500 text-white" disabled={loading}>
             Cancelar
           </Button>
