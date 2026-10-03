@@ -5,7 +5,6 @@ import { Button } from '../ui/button';
 import { useNavigate } from '@tanstack/react-router';
 import { getAllUsers, type User } from '@/services/userServices';
 import AltaSession from './SessionCreate';
-import ArticleCreateFromConference from '../article/ArticleCreateFromConference';
 import { getSessionsByConference } from '@/services/sessionServices';
 import type { Session } from '@/services/sessionServices';
 import SessionCard from './SessionCard';
@@ -73,9 +72,8 @@ function AConference() {
     }
   };
 
-  const refrescarConferencia = () => {
-    fetchSessions();
-    fetchArticles();
+  const irNuevoSubmission = () => {
+    navigate({ to: '/article/create', search: { conferenceId: conferencia.id } });
   };
 
   const hasActiveSessions = sessions.some(
@@ -202,23 +200,15 @@ function AConference() {
                         </Button>
                       }
                     />
-                    {hasActiveSessions ? (
-                      <ArticleCreateFromConference
-                        conference={conferencia}
-                        onFinished={refrescarConferencia}
-                        trigger={
-                          <Button size={'sm'} className="cursor-pointer">
-                            <Plus />
-                            Nuevo submission
-                          </Button>
-                        }
-                      />
-                    ) : (
-                      <Button size={'sm'} disabled>
-                        <Plus />
-                        Nuevo submission
-                      </Button>
-                    )}
+                    <Button
+                      size={'sm'}
+                      className="cursor-pointer"
+                      disabled={!hasActiveSessions}
+                      onClick={irNuevoSubmission}
+                    >
+                      <Plus />
+                      Nuevo submission
+                    </Button>
                   </div>
                   {!loadingSessions && !hasActiveSessions && (
                     <p className="text-xs text-muted-foreground">

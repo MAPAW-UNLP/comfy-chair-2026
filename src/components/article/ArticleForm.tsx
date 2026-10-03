@@ -38,9 +38,6 @@ type ArticleFormProps = {
   article? : Article;
   userId : number
   fixedConferenceId? : number;
-  onSuccess? : () => void;
-  onCancel? : () => void;
-  onNotFound? : () => void;
 };
 
 // Campos que el backend devuelve en los errores 400 y su equivalente en el form
@@ -55,7 +52,7 @@ const backendFieldMap: Partial<Record<string, keyof ArticleFormData>> = {
 };
 
 //Cuerpo del Componente
-const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode, article, userId, fixedConferenceId, onSuccess, onCancel, onNotFound }) => {
+const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode, article, userId, fixedConferenceId }) => {
 
   // Navegacion
   const navigate = useNavigate();
@@ -123,7 +120,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   // Manejo del boton de cancelación
   //------------------------------------------------------------
   const handleCancel = () => {
-    onCancel ? onCancel() : navigateBack();
+    navigateBack();
   }
 
   //------------------------------------------------------------
@@ -156,7 +153,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       toast.error("No tenés permisos para crear un submission en esta conferencia");
     } else if (error.status === 404) {
       toast.error("La conferencia o la sesión ya no existe");
-      onNotFound?.();
+      navigate({ to: `/conference/${fixedConferenceId}` });
     } else {
       setError(error.message);
       setShowErrorAlert(true);
@@ -220,7 +217,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       console.log("Article Submit: ", response);
 
       toast.success('Artículo subido correctamente !', { duration: 5000 });
-      onSuccess ? onSuccess() : navigateBack();
+      navigateBack();
 
     } catch (error) {
 
@@ -588,7 +585,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
       {/* Botones inferiores */}
       <div className="flex flex-row gap-2">
-        {(editMode || onCancel) && (
+        {editMode && (
           <Button variant="outline" onClick={handleCancel} className="flex-1 bg-zinc-500 text-white" disabled={loading}>
             Cancelar
           </Button>
