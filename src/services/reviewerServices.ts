@@ -52,16 +52,97 @@ export type Type = "regular" | "poster";
 
 // Helper para traer assignments / artículos asignados al revisor,
 // opcionalmente filtrando por conference id.
-export async function fetchAssignedArticles({ conferenceId }: { conferenceId?: number } = {}) {
-  const q = conferenceId ? `?conference=${encodeURIComponent(String(conferenceId))}` : "";
-  const res = await fetch(`/api/reviewer/assignments/${q}`, {
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
+//export async function fetchAssignedArticles({ conferenceId }: { conferenceId?: number } = {}) {
+  //const q = conferenceId ? `?conference=${encodeURIComponent(String(conferenceId))}` : "";
+  //const res = await fetch(`/api/reviewer/assignments/${q}`, {
+    //headers: { "Content-Type": "application/json" },
+    //credentials: "include",
+  //});
+  //if (!res.ok) {
+    //throw new Error(`Error fetching assignments: ${res.status}`);
+  //}
+  //return res.json();
+//}
+
+//------------------------------------------------------------
+// Asignaciones del revisor por conferencia
+// Backend: GET /api/reviewer/assignments/?conference_id=&session_id=
+//------------------------------------------------------------
+export type ReviewStatus = 'pending' | 'draft' | 'published';
+ 
+export interface Period {
+  start: string | null; // ISO 8601 UTC
+  end: string | null; // ISO 8601 UTC
+  is_open: boolean; // lo calcula el backend; el front solo lo muestra
+}
+ 
+export interface AssignmentArticle {
+  id: number;
+  title: string;
+  type: string;
+  // Otros grupos pueden agregar estados nuevos: no se asume una lista cerrada.
+  status: string;
+}
+ 
+export interface AssignmentSession {
+  id: number;
+  title: string;
+}
+ 
+export interface AssignmentConference {
+  id: number;
+  title: string;
+}
+ 
+export interface ReviewerAssignment {
+  article: AssignmentArticle;
+  session: AssignmentSession | null; // null si el artículo no tiene sesión
+  conference: AssignmentConference | null;
+  review_id: number | null; // null si todavía no hay review
+  review_status: ReviewStatus;
+  review_period: Period;
+}
+ 
+export interface SessionProgress {
+  session_id: number;
+  title: string;
+  total: number;
+  published: number;
+}
+ 
+export interface AssignmentsStats {
+  total: number;
+  published: number;
+  draft: number;
+  pending: number;
+  by_session: SessionProgress[];
+}
+ 
+export interface AssignmentsResponse {
+  results: ReviewerAssignment[];
+  stats: AssignmentsStats;
+}
+ 
+export interface AssignmentsFilters {
+  conferenceId?: number;
+  sessionId?: number;
+}
+ 
+/**
+ * Artículos asignados al revisor logueado, con el estado de su review y
+ * estadísticas, en un solo request. El revisor sale del token (no se manda).
+ * Los filtros son opcionales; axios no envía los parámetros undefined.
+ * Si el backend falla, el error se propaga: este servicio no devuelve datos
+ * de reemplazo.
+ */
+export async function getMyAssignments({
+  conferenceId,
+  sessionId,
+}: AssignmentsFilters = {}): Promise<AssignmentsResponse> {
+  const { data } = await api.get<AssignmentsResponse>('/api/reviewer/assignments/', {
+    params: { conference_id: conferenceId, session_id: sessionId },
   });
-  if (!res.ok) {
-    throw new Error(`Error fetching assignments: ${res.status}`);
-  }
-  return res.json();
+  return data;
 }
 
 function isFilledReview(r: Partial<Review> | null | undefined) {
