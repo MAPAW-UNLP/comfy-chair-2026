@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import Statistics from './Statistics';
 import Breadcrumb from '../ui/Breadcrumb';
 import { getArticlesByConferenceId, type Article } from '@/services/articleServices';
+import { isAdmin } from '@/lib/permissions';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function formatearFecha(fecha: string): string {
@@ -190,16 +191,18 @@ function AConference() {
                 <h2 className="text-1xl font-bold">Sesiones disponibles</h2>
                 <div className="flex flex-col items-end gap-1">
                   <div className="flex gap-2">
-                    <AltaSession
-                      conference={conferencia}
-                      onSessionCreated={fetchSessions}
-                      trigger={
-                        <Button size={'sm'} className="cursor-pointer">
-                          <Plus />
-                          Nueva sesión
-                        </Button>
-                      }
-                    />
+                    {!isAdmin(user?.role) && (
+                      <AltaSession
+                        conference={conferencia}
+                        onSessionCreated={fetchSessions}
+                        trigger={
+                          <Button size={'sm'} className="cursor-pointer">
+                            <Plus />
+                            Nueva sesión
+                          </Button>
+                        }
+                      />
+                    )}
                     <Button
                       size={'sm'}
                       className="cursor-pointer"

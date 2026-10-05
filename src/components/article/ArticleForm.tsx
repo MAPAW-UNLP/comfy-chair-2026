@@ -192,7 +192,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
     // Validar que el usuario logueado esté entre los autores
     if (!authors.some(a => a.id === userId)) {
-      toast.error("Debes incluirte como autor del artículo.");
+      toast.error("Debes incluirte como autor del submission.");
       return;
     }
 
@@ -216,7 +216,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       const response = await createArticle(article);
       console.log("Article Submit: ", response);
 
-      toast.success('Artículo subido correctamente !', { duration: 5000 });
+      toast.success('Submission subido correctamente !', { duration: 5000 });
       navigateBack();
 
     } catch (error) {
@@ -268,7 +268,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
     // Validar que el usuario logueado esté entre los autores
     if (!authors.some(a => a.id === userId)) {
-      toast.error("Debes incluirte como autor del artículo.");
+      toast.error("Debes incluirte como autor del submission.");
       return;
     }
 
@@ -302,7 +302,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       const response = await updateArticle(article.id, updated);
       console.log('Article Update: ', response);
       
-      toast.success('Artículo actualizado correctamente !', { duration: 5000 });
+      toast.success('Submission actualizado correctamente !', { duration: 5000 });
       navigateBack();
 
     } catch (error) {
@@ -385,7 +385,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
       {/* Titulo del Form */}
       <h2 className="text-lg font-bold italic text-slate-500 text-center">
-        {!editMode ? "Alta de Artículo" : "Editar Artículo"}
+        {!editMode ? "Alta de Submission" : "Editar Submission"}
       </h2>
 
       <hr className="bg-slate-100" />
@@ -432,7 +432,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       {/* Campo de Título */}
       <div className="flex-1 flex flex-col gap-2">
         <Label htmlFor="titulo">Título {errors.title && <p className="text-destructive">{errors.title}</p>}</Label>
-        <Input type="text" id="title" placeholder="Título del artículo..." maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)}/>
+        <Input type="text" id="title" placeholder="Título del submission..." maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)}/>
       </div>
       
       {/* Campo de Abstract */}
@@ -462,7 +462,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
         {/* Archivo principal */}
         <div className="flex-1 grid items-start gap-2">
           <Label htmlFor="DetalleRegular">
-            Artículo {errors.file && <p className="text-destructive">{errors.file}</p>}
+            Submission {errors.file && <p className="text-destructive">{errors.file}</p>}
           </Label>
           <input type="file" ref={mainFileRef} onChange={handleMainFileChange} className="hidden" />
           <Button
@@ -546,7 +546,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
       {/* Combobox de autores */}
       <div className="flex-1 flex flex-col gap-2">
-        <Label htmlFor="autor">Autores del Artículo {errors.authors && <p className="text-destructive">{errors.authors}</p>}</Label>
+        <Label htmlFor="autor">Autores del Submission {errors.authors && <p className="text-destructive">{errors.authors}</p>}</Label>
         <UserCombobox onValueChange={handleAgregarAutor} backgroundWhite={true} users={availableUsers} />
       </div>
 
@@ -603,7 +603,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
             Error
           </AlertTitle>
           <AlertDescription>
-              Hubo un error al subir el artículo {error}
+              Hubo un error al subir el submission {error}
           </AlertDescription>
         </Alert>
       )}
