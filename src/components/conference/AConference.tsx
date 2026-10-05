@@ -18,6 +18,7 @@ import Statistics from './Statistics';
 import Breadcrumb from '../ui/Breadcrumb';
 import { getArticlesByConferenceId, type Article } from '@/services/articleServices';
 import { useAuth } from '@/contexts/AuthContext';
+import { canManageSessions } from './sessionPermissions';
 
 export function formatearFecha(fecha: string): string {
   const [year, month, day] = fecha.split('-');
@@ -180,16 +181,18 @@ function AConference() {
             <div className="flex flex-col gap-5">
               <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
                 <h2 className="text-1xl font-bold">Sesiones disponibles</h2>
-                <AltaSession
-                  conference={conferencia}
-                  onSessionCreated={fetchSessions}
-                  trigger={
-                    <Button size={'sm'} className="cursor-pointer">
-                      <Plus />
-                      Nueva sesión
-                    </Button>
-                  }
-                />
+                {canManageSessions(user, conferencia) && (
+                  <AltaSession
+                    conference={conferencia}
+                    onSessionCreated={fetchSessions}
+                    trigger={
+                      <Button size={'sm'} className="cursor-pointer">
+                        <Plus />
+                        Nueva sesión
+                      </Button>
+                    }
+                  />
+                )}
               </div>
               <SearchBar
                 datos={sessions}
