@@ -4,33 +4,20 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { RoleProvider, useRole } from '@/contexts/RoleContext';
 
 import { Armchair, Menu, X } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 
 // Componente interno que usa el contexto de autenticación
 const RootLayoutContent = () => {
   const location = useLocation();
-  // Estado para controlar si el menú lateral móvil está abierto o cerrado
   const [isOpen, setIsOpen] = useState(false);
   
-  // Obtener el estado de autenticación
   const { user } = useAuth();
-
-  // Obtener rol seleccionado (si existe)
   const { selectedRole } = useRole();
 
-  // Lista de páginas principales de la aplicación (común para todos)
-  const commonLinks: { to: string; label: string }[] = [];
-
-  // Links que siempre deben mostrarse cuando el usuario está autenticado
-  const commonAuthLinks = [
-    { to: '/notifications', label: 'Notificaciones' }
-  ];
-
-  // normalizar rol
   const roleKey = String(selectedRole?.role ?? "").toLowerCase().trim();
 
-  // Mapa de rutas por rol (mantiene la cobertura de main + la selección por rol de HEAD)
+  // Mapa estático fuera del render/efectos para evitar recreaciones e inmutabilidad
   const roleRoutes: Record<string, { to: string; label: string }[]> = {
     revisor: [
       { to: '/reviewer/', label: 'Revisor' },
@@ -53,40 +40,40 @@ const RootLayoutContent = () => {
     ]
   };
 
-  // Si no hay rol seleccionado: mostrar lo mismo que main (inicio + accesos), pero sin perder
-  // el comportamiento de HEAD (Panel/Notificaciones)
-  let authLinks: { to: string; label: string }[] = [];
+  // Calcular la lista final de links con useMemo para prevenir duplicaciones o empujes múltiples
+  const links = useMemo(() => {
+    // Si no está autenticado
+    if (!user) {
+      return [
+        { to: '/login', label: 'Ingresar' },
+        { to: '/register', label: 'Registrarse' },
+      ];
+    }
 
-  if (!user) {
-    authLinks = [
-      { to: '/login', label: 'Ingresar' },
-      { to: '/register', label: 'Registrarse' },
+    const commonAuthLinks = [
+      { to: '/notifications', label: 'Notificaciones' }
     ];
-  } else if (!roleKey) {
-    // main tenía un menú "completo" sin depender de rol
-    authLinks = [
-      { to: '/dashboard', label: 'Inicio' },
-      { to: '/reviewer/', label: 'Revisor' },
-      { to: '/users', label: 'Ver usuarios'},
-      { to: '/conference/view', label: 'Conferencias' },
-      { to: '/article/select', label: 'Articulos' },
-      { to: '/chairs/select-session', label: 'Chair' },
-      { to: '/reviewer/bidding', label: 'Bidding' },
-      ...commonAuthLinks,
-    ];
-  } else {
+
+    // Si está autenticado pero NO tiene un rol seleccionado aún
+    if (!roleKey) {
+      return [
+        { to: '/dashboard', label: 'Inicio' },
+        { to: '/reviewer/', label: 'Revisor' },
+        { to: '/users', label: 'Usuarios'},
+        { to: '/conference/view', label: 'Conferencias' },
+        { to: '/article/select', label: 'Articulos' },
+        { to: '/chairs/select-session', label: 'Chair' },
+        { to: '/reviewer/bidding', label: 'Bidding' },
+        ...commonAuthLinks,
+      ];
+    }
+
+    // Si tiene un rol seleccionado
     const roleSpecific = roleRoutes[roleKey] ?? [];
-    authLinks = [...roleSpecific, ...commonAuthLinks];
-  }
+    return [...roleSpecific, ...commonAuthLinks];
+  }, [user, roleKey]);
 
-  // Combinar todos los enlaces
-  const links = [...commonLinks, ...authLinks];
-
-  // Navegación escritorio
-  const pathname =
-    typeof window !== 'undefined' && window.location && window.location.pathname
-      ? window.location.pathname
-      : '/';
+  // Normalización de rutas para el active state
   const normalize = (p: string) => (p ? p.replace(/\/+$/, '') || '/' : '/');
   const current = normalize(location?.pathname ?? '/');
 
@@ -96,16 +83,20 @@ const RootLayoutContent = () => {
       {/* Navbar superior */}
       <header className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
 
-        {/* Navegación visible solo en pantallas medianas en adelante */}
+        {/* Navegación visible en pantallas grandes */}
         <nav className="hidden xl:flex gap-2 order-1 xl:order-1">
           {links.map((link) => (
-            <Link key={link.to} to={link.to} className="px-3 py-1 rounded-md hover:bg-gray-400 [&.active]:bg-slate-400 [&.active]:text-white">
+            <Link 
+              key={link.to} 
+              to={link.to} 
+              className="px-3 py-1 rounded-md hover:bg-gray-400 [&.active]:bg-slate-400 [&.active]:text-white"
+            >
               {link.label}
             </Link>
           ))}
         </nav>
 
-        {/* Nombre de la app + ícono, ahora enlaza al landing page */}
+        {/* Brand Link */}
         <Link
           to="/"
           className="font-bold text-lg order-2 xl:order-2 ml-auto flex items-center gap-2 hover:underline focus:outline-none focus:ring-2 focus:ring-slate-400"
@@ -114,30 +105,26 @@ const RootLayoutContent = () => {
           <Armchair />
         </Link>
 
-        {/* Botón colapsable (solo se muestra en móvil) */}
-        <button onClick={() => setIsOpen(true)} className="xl:hidden p-1 rounded hover:bg-gray-700 order-0"> {/*abre el sidebar móvil*/}
+        {/* Botón menú móvil */}
+        <button onClick={() => setIsOpen(true)} className="xl:hidden p-1 rounded hover:bg-gray-700 order-0">
           <Menu />
         </button>
 
       </header>
 
-      {/* Cuerpo principal de la aplicación */}
+      {/* Cuerpo principal */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* Sidebar móvil (se desliza desde la izquierda) */}
+        {/* Sidebar móvil */}
         <aside className={`fixed z-20 top-0 left-0 h-full bg-slate-900 text-white w-64 transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'} xl:hidden`}>
 
-          {/* Encabezado del menú móvil */}
           <div className="flex items-center justify-between p-4">
             <span className="font-bold text-lg">Menu</span>
-            
-            {/* Botón para cerrar el menú */}
             <button onClick={() => setIsOpen(false)}>
               <X />
             </button>
           </div>
 
-          {/* Lista de enlaces de navegación (en columna) */}
           <nav className="flex flex-col mt-4 gap-2">
             {links.map((link) => {
               const isActive = normalize(link.to) === current;
@@ -158,24 +145,21 @@ const RootLayoutContent = () => {
 
         </aside>
 
-        {/* Área principal donde se renderizan las páginas hijas */}
+        {/* Contenido principal */}
         <main className="flex-1 overflow-auto">
-          <Outlet /> {/* Outlet es el "espacio" donde TanStack Router inyecta la página actual */}
+          <Outlet />
         </main>
 
       </div>
 
-      {/* Herramientas de desarrollo del router (solo útiles en dev) */}
       <TanStackRouterDevtools />
-
-      {/* Componente global de notificaciones tipo toast */}
       <Toaster position='top-right' />
 
     </div>
   );
 };
 
-// Definición del componente principal (layout raíz) con los providers
+// Layout principal
 const RootLayout = () => {
   return (
     <AuthProvider>
@@ -186,5 +170,4 @@ const RootLayout = () => {
   );
 };
 
-// Exportamos la ruta raíz del enrutador, usando este layout como componente principal
 export const Route = createRootRoute({ component: RootLayout });
