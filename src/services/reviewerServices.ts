@@ -310,3 +310,16 @@ export async function getMyReviewerConferences(): Promise<ReviewerConference[]> 
   const { data } = await api.get<{ results: ReviewerConference[] }>('/api/reviewer/conferences/');
   return data.results;
 }
+
+//------------------------------------------------------------
+// GRUPO 1: acceso al formulario de revisión
+//------------------------------------------------------------
+/**
+ * Verifica que el usuario logueado tenga una asignación vigente sobre el artículo.
+ * Backend: GET /api/reviewer/articles/{articleId}/assignment/
+ *  - 200 → puede revisar
+ *  - 403 → no está asignado; 404 → el artículo no existe (el error se propaga)
+ */
+export async function checkReviewAssignment(articleId: number): Promise<void> {
+  await api.get(`/api/reviewer/articles/${articleId}/assignment/`);
+}
