@@ -54,7 +54,7 @@ const RootLayoutContent = () => {
       { to: '/notifications', label: 'Notificaciones' }
     ];
 
-    // Si está autenticado pero NO tiene un rol seleccionado aún
+    // Si está autenticado pero todavia no selecionó un rol, mostrar todas las rutas posibles
     if (!roleKey) {
       return [
         { to: '/dashboard', label: 'Inicio' },
