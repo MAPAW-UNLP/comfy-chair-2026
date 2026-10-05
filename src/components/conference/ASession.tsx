@@ -52,9 +52,15 @@ function ASession() {
   };
 
   const onDelete = async () => {
-    await deleteSession(String(session!.id), user!.id);
-    toast.warning('Sesión eliminada');
-    navigate({ to: `/conference/${session!.conference?.id}` });
+    try {
+      await deleteSession(String(session!.id), user!.id);
+      toast.warning('Sesión eliminada');
+      navigate({ to: `/conference/${session!.conference?.id}` });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Error al eliminar la sesión'
+      );
+    }
   };
 
   useEffect(() => {
