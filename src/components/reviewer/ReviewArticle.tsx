@@ -1,7 +1,12 @@
 // src/features/reviewer/ReviewArticle.tsx
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Lock } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
 import { getArticleById } from "@/services/articleServices";
@@ -12,6 +17,7 @@ import {
   updatePublishedReview,
   publishReview,
   type Review as ReviewDTO,
+  type PublicReview,
 } from "@/services/reviewerServices";
 import api from "@/services/api";
 
@@ -48,12 +54,17 @@ function hrefFrom(path?: string | null) {
   return path.startsWith("http") ? path : `${API_BASE}${path}`;
 }
 
-export default function ReviewArticle() {
+export interface ReviewArticleProps {
+  articleId?: number;
+}
+
+export default function ReviewArticle(props?: ReviewArticleProps) {
   const navigate = useNavigate();
-  const { articleId: articleIdParam } = useParams({
+  const routeParams = useParams({
     from: "/_auth/reviewer/review/$articleId",
+    shouldThrow: false,
   });
-  const articleId = Number(articleIdParam);
+  const articleId = props?.articleId ?? Number(routeParams?.articleId);
 
   const { user } = useAuth();
 
@@ -70,12 +81,13 @@ export default function ReviewArticle() {
   const [review, setReview] = useState<ReviewDTO | null>(null);
   const [opinion, setOpinion] = useState("");
   const [score, setScore] = useState<string>("");
+  const [chairComments, setChairComments] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null); // solo la última edición (frontend)
 
-  // 🔹 Revisión de otros revisores
-  const [peerReviews, setPeerReviews] = useState<ReviewDTO[]>([]);
+  // 🔹 Revisión de otros revisores (sin chair_comments)
+  const [peerReviews, setPeerReviews] = useState<PublicReview[]>([]);
   const [loadingPeers, setLoadingPeers] = useState(false);
 
   const otherReviews = useMemo(
@@ -175,6 +187,7 @@ export default function ReviewArticle() {
         if (r) {
           setOpinion(r.opinion ?? "");
           setScore(String(r.score ?? ""));
+          setChairComments(r.chair_comments ?? "");
         }
       } catch (e) {
         console.error("Error cargando artículo/revisión:", e);
@@ -202,11 +215,13 @@ export default function ReviewArticle() {
         if (!alive) return;
 
         // Soportamos varias formas de respuesta: {reviews: []}, [] o {results: []}
-        const raw = (res.data && (res.data.reviews ?? res.data)) ?? [];
+        type ReviewsResponse = { reviews?: PublicReview[]; results?: PublicReview[] };
+        const data = res.data as ReviewsResponse | PublicReview[] | undefined;
+        const raw = (data && !Array.isArray(data) && data.reviews) ?? data;
         if (Array.isArray(raw)) {
-          setPeerReviews(raw as ReviewDTO[]);
-        } else if (Array.isArray((res.data as any)?.results)) {
-          setPeerReviews((res.data as any).results as ReviewDTO[]);
+          setPeerReviews(raw as PublicReview[]);
+        } else if (data && !Array.isArray(data) && Array.isArray(data.results)) {
+          setPeerReviews(data.results);
         } else {
           setPeerReviews([]);
         }
@@ -226,11 +241,11 @@ export default function ReviewArticle() {
   // ---- Acciones ----
   const ensureFields = () => {
     if (!opinion.trim() || score === "") {
-      alert("Completá la opinión y la puntuación.");
+      toast.error("Completá la opinión y la puntuación.");
       return false;
     }
     if (!Number.isFinite(reviewerId)) {
-      alert("No se pudo identificar al revisor. Iniciá sesión nuevamente.");
+      toast.error("No se pudo identificar al revisor. Iniciá sesión nuevamente.");
       return false;
     }
     return true;
@@ -239,6 +254,7 @@ export default function ReviewArticle() {
   const buildPayload = () => ({
     opinion: opinion.trim(),
     score: Number(score),
+    chair_comments: chairComments.trim(),
   });
 
   // Guardar como borrador (NO publica, queda local al revisor)
@@ -282,14 +298,18 @@ export default function ReviewArticle() {
         })
       );
 
+      toast.success("Borrador guardado con éxito.");
       // Volver al índice con scroll al artículo
       navigate({
         to: "/reviewer",
         search: { selected: String(articleId) },
       });
-    } catch (e) {
+    } catch (e: unknown) {
       console.error("Error al guardar borrador:", e);
-      alert("Ocurrió un error al guardar el borrador.");
+      const err = e as { response?: { data?: { error?: string } } };
+      toast.error(
+        err?.response?.data?.error ?? "Ocurrió un error al guardar el borrador."
+      );
     } finally {
       setSaving(false);
     }
@@ -343,16 +363,23 @@ export default function ReviewArticle() {
         })
       );
 
+      toast.success(
+        wasAlreadyPublished
+          ? "Revisión actualizada con éxito."
+          : "Revisión enviada con éxito."
+      );
+
       // Volver al índice resaltando este artículo
       navigate({
         to: "/reviewer",
         search: { selected: String(articleId) },
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Error al enviar la revisión:", e);
-      console.error("Detalle backend:", e?.response?.data);
-      alert(
-        e?.response?.data?.error ??
+      const err = e as { response?: { data?: { error?: string } } };
+      console.error("Detalle backend:", err?.response?.data);
+      toast.error(
+        err?.response?.data?.error ??
           "Ocurrió un error al enviar la revisión."
       );
     } finally {
@@ -513,6 +540,37 @@ export default function ReviewArticle() {
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Bloque de comentarios confidenciales para chairs */}
+        <div className="rounded-2xl bg-slate-50/70 p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900/40 dark:ring-slate-700 space-y-3">
+          <div className="flex items-center justify-between">
+            <label
+              htmlFor="chair-comments"
+              className="block text-sm font-medium text-slate-700 dark:text-slate-200"
+            >
+              Comentarios confidenciales para los chairs
+            </label>
+            <Badge variant="secondary" className="gap-1 text-xs">
+              <Lock className="size-3" /> Confidencial
+            </Badge>
+          </div>
+
+          <Alert className="border-amber-200 bg-amber-50/50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-200">
+            <Lock className="size-4" />
+            <AlertDescription className="text-xs">
+              Confidencial: Solo visible para los chairs de la sesión. Los autores no verán este comentario.
+            </AlertDescription>
+          </Alert>
+
+          <Textarea
+            id="chair-comments"
+            rows={4}
+            value={chairComments}
+            onChange={(e) => setChairComments(e.target.value)}
+            placeholder="Escribí aquí comentarios internos para los chairs (opcional)…"
+            className="border-slate-300 bg-white focus-visible:ring-sky-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          />
         </div>
 
         <div className="flex flex-wrap gap-3 pt-1">

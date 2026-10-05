@@ -3,20 +3,26 @@ import api from '@/services/api';
 //------------------------------------------------------------
 // GRUPO 1: Requerido para cargas las reviws por artículo
 //------------------------------------------------------------
-export interface ReviewsByArticleId {
-  articleId: number;
-  count: number;
-  reviews: Review[];
-}
-
 export interface Review {
   id: number;
   article: number;
   reviewer: number;
   opinion: string;
   score: number;
+  chair_comments: string;
   is_published?: boolean;
   is_edited?: boolean;
+}
+
+export type PublicReview = Omit<Review, "chair_comments">;
+
+//------------------------------------------------------------
+// GRUPO 1: Requerido para cargas las reviws por artículo
+//------------------------------------------------------------
+export interface ReviewsByArticleId {
+  articleId: number;
+  count: number;
+  reviews: PublicReview[];
 }
 
 export interface ReviewerInfo {
@@ -34,6 +40,7 @@ export interface ReviewVersion {
   created_at?: string | null;
   score?: number | null;
   opinion?: string | null;
+  chair_comments?: string | null;
 }
 
 export type CreateReviewPayload = {
@@ -41,11 +48,13 @@ export type CreateReviewPayload = {
   reviewer: number;
   opinion: string;
   score: number;
+  chair_comments?: string;
 };
 
 export type UpdateReviewPayload = {
   opinion?: string;
   score?: number;
+  chair_comments?: string;
 };
 
 export type Type = "regular" | "poster";
