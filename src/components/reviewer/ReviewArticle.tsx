@@ -3,6 +3,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import { isAxiosError } from "axios";
 
 import { getArticleById } from "@/services/articleServices";
 import {
@@ -226,11 +228,11 @@ export default function ReviewArticle() {
   // ---- Acciones ----
   const ensureFields = () => {
     if (!opinion.trim() || score === "") {
-      alert("Completá la opinión y la puntuación.");
+      toast.error("Completá la opinión y la puntuación.");
       return false;
     }
     if (!Number.isFinite(reviewerId)) {
-      alert("No se pudo identificar al revisor. Iniciá sesión nuevamente.");
+      toast.error("No se pudo identificar al revisor. Iniciá sesión nuevamente.");
       return false;
     }
     return true;
@@ -289,7 +291,13 @@ export default function ReviewArticle() {
       });
     } catch (e) {
       console.error("Error al guardar borrador:", e);
-      alert("Ocurrió un error al guardar el borrador.");
+      // Muestra el motivo del backend (ej. "No estás asignado para revisar este artículo")
+      const backendError = isAxiosError(e) ? e.response?.data?.error : undefined;
+      toast.error(
+        typeof backendError === "string"
+          ? backendError
+          : "Ocurrió un error al guardar el borrador."
+      );
     } finally {
       setSaving(false);
     }
@@ -351,7 +359,7 @@ export default function ReviewArticle() {
     } catch (e: any) {
       console.error("Error al enviar la revisión:", e);
       console.error("Detalle backend:", e?.response?.data);
-      alert(
+      toast.error(
         e?.response?.data?.error ??
           "Ocurrió un error al enviar la revisión."
       );
