@@ -6,7 +6,6 @@ import React, {
   useCallback,
 } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { PendingInvitationsButton } from "@/components/reviewer/invitations/PendingInvitationsButton";
 
 import { getAllArticles, type Article } from "@/services/articleServices";
 import { getBidsByReviewer } from "@/services/biddingServices";
@@ -446,15 +445,12 @@ export default function ReviewsIndex() {
     <div className="mx-auto w-full max-w-md px-4 py-6 md:max-w-2xl">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Bienvenido, Revisor</h1>
-        <div className="flex flex-col items-stretch gap-2">
-          <Button
-            onClick={() => navigate({ to: "/reviewer/history" })}
-            className="bg-slate-700 hover:bg-slate-600 text-white font-medium"
-          >
-            Ver historial
-          </Button>
-          <PendingInvitationsButton />
-        </div>
+        <Button
+          onClick={() => navigate({ to: "/reviewer/history" })}
+          className="bg-slate-700 hover:bg-slate-600 text-white font-medium"
+        >
+          Ver historial
+        </Button>
       </div>
 
       {phase === "review" ? (

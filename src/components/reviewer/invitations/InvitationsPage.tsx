@@ -1,8 +1,8 @@
 // GRUPO 1: página de invitaciones del revisor (/reviewer/invitations)
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import { ArrowLeft, RotateCw } from 'lucide-react';
+import { useNavigate, useSearch } from '@tanstack/react-router';
+import { RotateCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,11 +33,6 @@ export default function InvitationsPage() {
 
   return (
     <div className="container mx-auto max-w-3xl p-4 sm:p-6">
-      <Button asChild variant="ghost" size="icon" className="mb-2 -ml-2">
-        <Link to="/reviewer" aria-label="Volver a Revisor" title="Volver a Revisor">
-          <ArrowLeft />
-        </Link>
-      </Button>
 
       <div className="mb-6">
         <h1 className="mb-1 text-2xl font-bold sm:text-3xl">Invitaciones</h1>

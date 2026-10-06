@@ -30,10 +30,11 @@ export function ReviewAccessGuard({ articleId, children }: Props) {
     return <AccessMessage title="El artículo no existe" />;
   }
   if (errorStatus === 403) {
+    // El back dice el motivo: no estar asignado o ser autor del artículo
     return (
       <AccessMessage
-        title="No estás asignado para revisar este artículo"
-        description="Solo los revisores asignados por el chair pueden ver y enviar la revisión de un artículo."
+        title={getApiErrorMessage(error)}
+        description="Solo los revisores asignados por el chair, que no sean autores del artículo, pueden ver y enviar su revisión."
       />
     );
   }

@@ -311,6 +311,25 @@ export async function getMyReviewerConferences(): Promise<ReviewerConference[]> 
   return data.results;
 }
 
+/** Notificación que corresponde a una invitación (para aceptar/rechazar desde Notificaciones) */
+export interface InvitationNotificationLink {
+  notification: number;
+  invitation: number;
+  status: InvitationStatus;
+  conference_title: string;
+}
+
+/**
+ * Qué notificaciones del usuario son de invitaciones y el estado de cada una.
+ * Backend: GET /api/reviewer/invitation-notifications/
+ */
+export async function getMyInvitationNotifications(): Promise<InvitationNotificationLink[]> {
+  const { data } = await api.get<{ results: InvitationNotificationLink[] }>(
+    '/api/reviewer/invitation-notifications/'
+  );
+  return data.results;
+}
+
 //------------------------------------------------------------
 // GRUPO 1: acceso al formulario de revisión
 //------------------------------------------------------------

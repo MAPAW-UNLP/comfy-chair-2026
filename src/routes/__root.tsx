@@ -6,6 +6,7 @@ import { RoleProvider, useRole } from '@/contexts/RoleContext';
 import { Armchair, Menu, X } from 'lucide-react';
 import React, { useState } from 'react';
 import { Toaster } from '@/components/ui/sonner';
+import { InvitationsNavLabel } from '@/components/reviewer/invitations/InvitationsNavLabel';
 
 // Componente interno que usa el contexto de autenticación
 const RootLayoutContent = () => {
@@ -20,7 +21,8 @@ const RootLayoutContent = () => {
   const { selectedRole } = useRole();
 
   // Lista de páginas principales de la aplicación (común para todos)
-  const commonLinks: { to: string; label: string }[] = [];
+  // (label admite un componente: GRUPO 1 lo usa para el contador de invitaciones)
+  const commonLinks: { to: string; label: React.ReactNode }[] = [];
 
   // Links que siempre deben mostrarse cuando el usuario está autenticado
   const commonAuthLinks = [
@@ -32,9 +34,10 @@ const RootLayoutContent = () => {
   const roleKey = String(selectedRole?.role ?? "").toLowerCase().trim();
 
   // Mapa de rutas por rol (mantiene la cobertura de main + la selección por rol de HEAD)
-  const roleRoutes: Record<string, { to: string; label: string }[]> = {
+  const roleRoutes: Record<string, { to: string; label: React.ReactNode }[]> = {
     revisor: [
       { to: '/reviewer/', label: 'Revisor' },
+      { to: '/reviewer/invitations', label: <InvitationsNavLabel /> }, // GRUPO 1
       { to: '/reviewer/bidding', label: 'Bidding' },
       { to: '/reviewer/history', label: 'Historial' },
     ],
@@ -53,7 +56,7 @@ const RootLayoutContent = () => {
 
   // Si no hay rol seleccionado: mostrar lo mismo que main (inicio + accesos), pero sin perder
   // el comportamiento de HEAD (Panel/Notificaciones)
-  let authLinks: { to: string; label: string }[] = [];
+  let authLinks: { to: string; label: React.ReactNode }[] = [];
 
   if (!user) {
     authLinks = [
@@ -65,6 +68,7 @@ const RootLayoutContent = () => {
     authLinks = [
       { to: '/dashboard', label: 'Inicio' },
       { to: '/reviewer/', label: 'Revisor' },
+      { to: '/reviewer/invitations', label: <InvitationsNavLabel /> }, // GRUPO 1
       { to: '/conference/view', label: 'Conferencias' },
       { to: '/article/view', label: 'Articulos' },
       { to: '/chairs/select-session', label: 'Chair' },
