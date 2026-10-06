@@ -6,19 +6,14 @@ import React, {
   useCallback,
 } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 
-import { getAllArticles, type Article } from "@/services/articleServices";
-import { getBidsByReviewer } from "@/services/biddingServices";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
 import { useCountdown } from "@/utils/useCountdown";
 import {
-  fetchAssignedArticles,
-  type AssignedArticle,
-} from "@/services/assignmentsServices";
-import {
-  hasPublishedReview,
-  getOwnReviewByArticle,
+  getMyAssignments,
+  type ReviewerAssignment,
 } from "@/services/reviewerServices";
 import { Button } from "../ui/button";
 
@@ -125,6 +120,13 @@ const STATUS_UI = {
   },
 } as const;
 
+// El backend informa "published"; esta pantalla lo muestra como "completed".
+const STATUS_FROM_API: Record<ReviewerAssignment["review_status"], ReviewStatus> = {
+  pending: "pending",
+  draft: "draft",
+  published: "completed",
+};
+
 /* -------------- ArticleCard con badge + botón alineados -------------- */
 
 function ArticleCard({
@@ -177,7 +179,6 @@ function ArticleCard({
 export default function ReviewsIndex() {
   const navigate = useNavigate();
   const auth = useAuth();
-  const reviewerId = Number(auth.user?.id ?? 1);
   const { selectedRole } = useRole();
 
   // normalizar rol y obtener conferenceId si el rol seleccionado es reviewer/revisor
@@ -188,207 +189,51 @@ export default function ReviewsIndex() {
 
   const phase = getPhase(new Date());
 
-  const biddingCountdown = useCountdown(BIDDING_END || undefined);
   const reviewCountdown = useCountdown(REVIEW_END || undefined);
 
-  const biddingDhm = `${pad(biddingCountdown.days)}:${pad(
-    biddingCountdown.hours
-  )}:${pad(biddingCountdown.minutes)}`;
   const reviewDhm = `${pad(reviewCountdown.days)}:${pad(
     reviewCountdown.hours
   )}:${pad(reviewCountdown.minutes)}`;
 
-  const [articulos, setArticulos] = useState<Article[]>([]);
-  const [articulosLoaded, setArticulosLoaded] = useState(false);
-  const [bids, setBids] = useState<{ article: number; choice?: string }[]>([]);
-  const [err, setErr] = useState<string | null>(null);
+  /* ---- Carga de datos: un solo request al backend ---- */
 
-  const [assigned, setAssigned] = useState<AssignedArticle[] | null>(null);
-  const [loadingAssigned, setLoadingAssigned] = useState(false);
-  const [reviewedMap, setReviewedMap] = useState<Record<number, boolean>>({});
+  // Las asignaciones se piden solo con usuario, fase de revisión y conferencia
+  // elegida. Al cambiar la conferencia cambia la queryKey y se vuelve a pedir.
+  // El revisor lo identifica el backend por el token: no se manda su id.
+  const queryEnabled =
+    !!auth.user && phase === "review" && selectedConferenceId != null;
 
-  const total = articulos.length;
-  const completados = useMemo(
-    () => bids.filter((b) => !!(b.choice && String(b.choice).trim())).length,
-    [bids]
+  const {
+    data: assignmentsData,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["reviewer", "assignments", selectedConferenceId],
+    queryFn: () => getMyAssignments({ conferenceId: selectedConferenceId }),
+    enabled: queryEnabled,
+    // Al volver desde el formulario de revisión siempre se actualiza el estado.
+    refetchOnMount: "always",
+  });
+
+  const loading = queryEnabled && isLoading;
+
+  const data: UiRow[] = useMemo(
+    () =>
+      (assignmentsData?.results ?? []).map((r) => ({
+        id: r.article.id,
+        title: r.article.title,
+        status: STATUS_FROM_API[r.review_status],
+      })),
+    [assignmentsData]
   );
 
-  /* ---- Carga de datos ---- */
+  const reviewedCount = assignmentsData?.stats.published ?? 0;
+  const assignedCount = assignmentsData?.stats.total ?? 0;
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const arts = await getAllArticles();
-        const userBids = auth.user ? await getBidsByReviewer(reviewerId) : [];
-        setArticulos(arts);
-        setBids(userBids);
-        // marcar que ya cargamos los artículos (aunque sean 0)
-        setArticulosLoaded(true);
-        setErr(null);
-      } catch {
-        setErr("No se pudieron cargar los datos.");
-        setArticulosLoaded(true); // evitar bloquear otros efectos en caso de error
-      }
-    })();
-  }, [auth.user, reviewerId]);
+  /* ------------------- Resaltado del artículo al volver del formulario ------------------- */
 
-
-  /**
-   * Intenta obtener el id de la conferencia desde un Article (session -> conference).
-   * Devuelve null si no se puede determinar.
-   */
-  function getArticleConferenceId(a: Article): number | null {
-    // @ts-ignore
-    const session = a?.session;
-    if (!session) return null;
-
-    // session puede venir como id (number/string) o como objeto
-    if (typeof session === "number" || typeof session === "string") {
-      // si session es solo un id no tenemos la info de conference aquí
-      return null;
-    }
-
-    // session es objeto: buscar conference como id, string, o como objeto con id
-    // @ts-ignore
-    const conf = session.conference ?? session.conference_id ?? session.conferenceId ?? null;
-    if (!conf) return null;
-
-    if (typeof conf === "number") return conf;
-    if (typeof conf === "string" && /^\d+$/.test(conf)) return Number(conf);
-
-    // conf puede ser objeto { id: X, ... }
-    if (typeof conf === "object" && conf !== null) {
-      const id = conf.id ?? conf.pk ?? conf.conference_id ?? null;
-      if (typeof id === "number") return id;
-      if (typeof id === "string" && /^\d+$/.test(id)) return Number(id);
-    }
-
-    return null;
-  }
-
-  const lastFetchKey = React.useRef<string | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-
-    (async () => {
-      // Esperar que la lista de artículos esté cargada para poder filtrar por sesión->conferencia
-      if (!articulosLoaded) return;
-
-      // Si el rol es revisor pero aún no tenemos conferenceId, no hagas la petición
-      if (isReviewerRole && (selectedConferenceId === undefined || selectedConferenceId === null))
-        return;
-
-      // Construimos una "clave" para evitar refetches redundantes (misma conferencia / mismo reviewer / misma fase)
-      const fetchKey = `${String(selectedConferenceId ?? "all")}:${String(reviewerId)}:${phase}`;
-      if (lastFetchKey.current === fetchKey) return;
-      lastFetchKey.current = fetchKey;
-
-      // Si no estamos en fase / user -> limpiar y salir
-      if (phase !== "review" || !auth.user) {
-        if (alive) {
-          setAssigned(null);
-          setData([]);
-          setReviewedMap({});
-          setLoading(false);
-        }
-        return;
-      }
-
-      setLoading(true);
-
-      try {
-        // 1) traer asignaciones (backend puede filtrar por conferenceId)
-        const rows = await fetchAssignedArticles(reviewerId, selectedConferenceId);
-
-        // 2) filtrar por conferencia usando la metadata de articulos.session -> conference
-        let filtered = rows;
-        if (selectedConferenceId && articulos.length > 0) {
-          const articMap = new Map<number, Article>();
-          for (const a of articulos) articMap.set(a.id, a);
-
-          const tmp = rows.filter((r) => {
-            const aid = Number(r.id);
-            const art = articMap.get(aid);
-            if (!art) return false;
-            const confId = getArticleConferenceId(art);
-            if (confId === null) return false;
-            return Number(confId) === Number(selectedConferenceId);
-          });
-
-          // si queda vacío por inconsistencia, fallback a rows (evita mostrar vacío por error del mapper)
-          if (tmp.length > 0) filtered = tmp;
-        }
-
-        // 3) calcular estado y reviewedMap en paralelo (Promise.all)
-        const enriched = await Promise.all(
-          filtered.map(async (a) => {
-            const own = await getOwnReviewByArticle(a.id, reviewerId);
-            const status: ReviewStatus = own?.is_published
-              ? "completed"
-              : own
-              ? "draft"
-              : "pending";
-            return {
-              id: a.id,
-              title: a.title,
-              status,
-              ownPublished: Boolean(own?.is_published),
-            };
-          })
-        );
-
-        if (!alive) return;
-
-        // 4) actualizar estados de una sola vez para evitar re-renders intermedios
-        setAssigned(filtered);
-        setData(enriched.map((e) => ({ id: e.id, title: e.title, status: e.status })));
-        const map: Record<number, boolean> = {};
-        enriched.forEach((e) => (map[e.id] = e.ownPublished));
-        setReviewedMap(map);
-      } catch (e) {
-        setAssigned([]);
-        setData([]);
-        setReviewedMap({});
-        // eslint-disable-next-line no-console
-        console.error("Error cargando artículos asignados:", e);
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [articulosLoaded, reviewerId, phase, selectedConferenceId, auth.user]);
-
-  const reviewedCount = useMemo(
-    () => Object.values(reviewedMap).filter(Boolean).length,
-    [reviewedMap]
-  );
-
-  /* ------------------- Datos para el listado en fase de review ------------------- */
-
-  const [data, setData] = useState<UiRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [flashId, setFlashId] = useState<number | null>(null);
-
-  // Estado por artículo basado en TU review
-  const computeStatusFor = useCallback(
-    async (articleId: number): Promise<ReviewStatus> => {
-      try {
-        const own = await getOwnReviewByArticle(articleId, reviewerId);
-
-        if (own?.is_published) return "completed"; // tu review enviada
-        if (own) return "draft";                   // tenés borrador
-        return "pending";                          // no empezaste nada
-      } catch {
-        return "pending";
-      }
-    },
-    [reviewerId]
-  );
 
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
@@ -422,6 +267,11 @@ export default function ReviewsIndex() {
 
   const content = useMemo(() => {
     if (loading) return <p className="text-slate-600">Cargando…</p>;
+    // Si falla la carga se muestra el error: nunca una lista de reemplazo.
+    if (isError)
+      return (
+        <p className="text-rose-700">No se pudieron cargar tus artículos.</p>
+      );
     if (!data.length) return <p className="text-slate-600">Sin asignar aún…</p>;
 
     return (
@@ -437,7 +287,7 @@ export default function ReviewsIndex() {
         ))}
       </div>
     );
-  }, [data, loading, handleAction, selectedId, flashId]);
+  }, [data, loading, isError, handleAction, selectedId, flashId]);
 
   /* ============================ Render principal ============================ */
 
@@ -474,7 +324,7 @@ export default function ReviewsIndex() {
             <SoftCard>
               <div className="flex h-full flex-col items-center justify-center">
                 <div className="text-3xl font-semibold tracking-tight">
-                  {reviewedCount}/{assigned?.length ?? 0}
+                  {reviewedCount}/{assignedCount}
                 </div>
                 <div className="mt-1 text-sm text-slate-600">
                   Artículos revisados
