@@ -13,9 +13,10 @@ import { useRole } from "@/contexts/RoleContext";
 import { useCountdown } from "@/utils/useCountdown";
 import {
   getMyAssignments,
-  type ReviewerAssignment,
+  type ReviewStatus,
 } from "@/services/reviewerServices";
 import { Button } from "../ui/button";
+import { Progress } from "../ui/progress";
 
 /* ====================== ENV + helpers de fechas ====================== */
 
@@ -82,14 +83,18 @@ function SoftCard(props: {
   );
 }
 
-/* ====================== Bloque de artículos asignados ====================== */
+// Porcentaje para el Progress. Con total = 0 devuelve 0 (evita dividir por cero).
+function toPercent(published: number, total: number): number {
+  return total > 0 ? Math.round((published / total) * 100) : 0;
+}
 
-type ReviewStatus = "pending" | "draft" | "completed";
+/* ====================== Bloque de artículos asignados ====================== */
 
 interface UiRow {
   id: number;
   title: string;
   status: ReviewStatus;
+  sessionId: number | null;
 }
 
 interface ArticleCardProps {
@@ -99,6 +104,7 @@ interface ArticleCardProps {
   flashing?: boolean;
 }
 
+// Las claves coinciden con review_status del backend.
 const STATUS_UI = {
   pending: {
     label: "Pendiente",
@@ -112,20 +118,13 @@ const STATUS_UI = {
       "text-amber-700 bg-amber-50 ring-1 ring-amber-200 dark:text-amber-200 dark:bg-amber-900/30 dark:ring-amber-800",
     cta: "Editar borrador" as const,
   },
-  completed: {
-    label: "Completado",
+  published: {
+    label: "Enviada",
     badgeClass:
       "text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 dark:text-emerald-200 dark:bg-emerald-900/30 dark:ring-emerald-800",
-    cta: "Ver revisiones" as const,
+    cta: "Ver/editar revisión" as const,
   },
 } as const;
-
-// El backend informa "published"; esta pantalla lo muestra como "completed".
-const STATUS_FROM_API: Record<ReviewerAssignment["review_status"], ReviewStatus> = {
-  pending: "pending",
-  draft: "draft",
-  published: "completed",
-};
 
 /* -------------- ArticleCard con badge + botón alineados -------------- */
 
@@ -153,7 +152,7 @@ function ArticleCard({
       </h3>
 
       {/* FILA: estado + botón */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span
           className={
             "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium " +
@@ -171,6 +170,57 @@ function ArticleCard({
         </Button>
       </div>
     </div>
+  );
+}
+
+/* ----------------------- Progreso por sesión ----------------------- */
+
+interface SessionSection {
+  key: string;
+  title: string;
+  total: number;
+  published: number;
+  rows: UiRow[];
+}
+
+function SessionBlock(props: {
+  section: SessionSection;
+  onAction: (article: UiRow) => void;
+  selectedId: number | null;
+  flashId: number | null;
+}) {
+  const { section, onAction, selectedId, flashId } = props;
+
+  return (
+    <section className="space-y-3">
+      <div>
+        <div className="mb-2 flex items-baseline justify-between gap-3">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            {section.title}
+          </h3>
+          <span className="shrink-0 text-sm text-slate-600 dark:text-slate-300">
+            {section.published}/{section.total} enviadas
+          </span>
+        </div>
+        <Progress
+          value={toPercent(section.published, section.total)}
+          className="h-2"
+          aria-label={`Progreso de ${section.title}`}
+        />
+      </div>
+
+      <div className="space-y-3">
+        {section.rows.map((a) => (
+          <ArticleCard
+            key={a.id}
+            article={a}
+            onAction={onAction}
+            selected={selectedId === a.id}
+            flashing={flashId === a.id}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -222,13 +272,60 @@ export default function ReviewsIndex() {
       (assignmentsData?.results ?? []).map((r) => ({
         id: r.article.id,
         title: r.article.title,
-        status: STATUS_FROM_API[r.review_status],
+        status: r.review_status,
+        sessionId: r.session?.id ?? null,
       })),
     [assignmentsData]
   );
 
-  const reviewedCount = assignmentsData?.stats.published ?? 0;
-  const assignedCount = assignmentsData?.stats.total ?? 0;
+  // Contadores globales: salen tal cual de stats, sin recalcular en el cliente.
+  const stats = assignmentsData?.stats;
+  const publishedCount = stats?.published ?? 0;
+  const totalCount = stats?.total ?? 0;
+  const draftCount = stats?.draft ?? 0;
+  const pendingCount = stats?.pending ?? 0;
+
+  // Una sección por cada entrada de stats.by_session. Los artículos sin sesión
+  // (o con una sesión que by_session no informa) van a un bloque "Sin sesión"
+  // al final. Ese bloque no tiene entrada en stats, así que es el único
+  // contador que se calcula acá.
+  const sections: SessionSection[] = useMemo(() => {
+    if (!stats) return [];
+
+    const known = new Set(stats.by_session.map((s) => s.session_id));
+    const grouped = new Map<number, UiRow[]>();
+    const orphans: UiRow[] = [];
+
+    for (const row of data) {
+      if (row.sessionId != null && known.has(row.sessionId)) {
+        const list = grouped.get(row.sessionId) ?? [];
+        list.push(row);
+        grouped.set(row.sessionId, list);
+      } else {
+        orphans.push(row);
+      }
+    }
+
+    const result: SessionSection[] = stats.by_session.map((s) => ({
+      key: `session-${s.session_id}`,
+      title: s.title,
+      total: s.total,
+      published: s.published,
+      rows: grouped.get(s.session_id) ?? [],
+    }));
+
+    if (orphans.length > 0) {
+      result.push({
+        key: "no-session",
+        title: "Sin sesión",
+        total: orphans.length,
+        published: orphans.filter((r) => r.status === "published").length,
+        rows: orphans,
+      });
+    }
+
+    return result;
+  }, [stats, data]);
 
   /* ------------------- Resaltado del artículo al volver del formulario ------------------- */
 
@@ -275,19 +372,19 @@ export default function ReviewsIndex() {
     if (!data.length) return <p className="text-slate-600">Sin asignar aún…</p>;
 
     return (
-      <div className="space-y-3">
-        {data.map((a) => (
-          <ArticleCard
-            key={a.id}
-            article={a}
+      <div className="space-y-8">
+        {sections.map((section) => (
+          <SessionBlock
+            key={section.key}
+            section={section}
             onAction={handleAction}
-            selected={selectedId === a.id}
-            flashing={flashId === a.id}
+            selectedId={selectedId}
+            flashId={flashId}
           />
         ))}
       </div>
     );
-  }, [data, loading, isError, handleAction, selectedId, flashId]);
+  }, [data, sections, loading, isError, handleAction, selectedId, flashId]);
 
   /* ============================ Render principal ============================ */
 
@@ -305,7 +402,7 @@ export default function ReviewsIndex() {
 
       {phase === "review" ? (
         <>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* No clickable */}
             <SoftCard>
               <div className="flex h-full flex-col items-center justify-center">
@@ -321,13 +418,25 @@ export default function ReviewsIndex() {
               </div>
             </SoftCard>
 
+            {/* Resumen de la conferencia */}
             <SoftCard>
-              <div className="flex h-full flex-col items-center justify-center">
-                <div className="text-3xl font-semibold tracking-tight">
-                  {reviewedCount}/{assignedCount}
+              <div className="flex h-full flex-col justify-center gap-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <div className="text-3xl font-semibold tracking-tight">
+                    {publishedCount}/{totalCount}
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    Revisiones enviadas
+                  </div>
                 </div>
-                <div className="mt-1 text-sm text-slate-600">
-                  Artículos revisados
+                <Progress
+                  value={toPercent(publishedCount, totalCount)}
+                  className="h-2"
+                  aria-label="Progreso de la conferencia"
+                />
+                <div className="flex items-center justify-between text-sm text-slate-600">
+                  <span>Pendientes: {pendingCount}</span>
+                  <span>Borradores: {draftCount}</span>
                 </div>
               </div>
             </SoftCard>
