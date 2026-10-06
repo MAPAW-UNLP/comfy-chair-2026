@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getAuthorConferences, type AuthorConferenceStatus } from '@/services/conferenceServices';
 import AuthorConferenceCard from './AuthorConferenceCard';
 
-function AuthorConferencesPage() {
+function AuthorConferencesSection() {
   const [selectedTab, setSelectedTab] = useState<AuthorConferenceStatus>('active');
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -55,7 +56,7 @@ function AuthorConferencesPage() {
     return (
       <>
         {isFetching && <p role="status" className="text-sm text-muted-foreground">Actualizando conferencias...</p>}
-        <div className="grid w-full gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {conferences.map((conference) => (
             <AuthorConferenceCard key={conference.id} conference={conference} />
           ))}
@@ -65,40 +66,43 @@ function AuthorConferencesPage() {
   };
 
   return (
-    <div className="flex flex-col items-center gap-5 mt-3 px-5 w-full">
-      <h1 className="text-3xl font-bold">Conferencias (autor)</h1>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>Todas las conferencias</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-5">
+        <div className="relative w-full">
+          <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            aria-label="Buscar conferencias"
+            placeholder="Buscar por título o descripción..."
+            className="pl-9"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+          />
+        </div>
 
-      <div className="relative w-full">
-        <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          type="search"
-          aria-label="Buscar conferencias"
-          placeholder="Buscar por título o descripción..."
-          className="pl-9"
-          value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
-        />
-      </div>
+        <Tabs
+          value={selectedTab}
+          onValueChange={(value) => setSelectedTab(value as AuthorConferenceStatus)}
+          className="w-full items-center gap-5"
+        >
+          <TabsList className="h-9 shadow">
+            <TabsTrigger value="active" className="cursor-pointer px-3 py-1.5 text-sm data-[state=active]:font-bold">
+              Activas
+            </TabsTrigger>
+            <TabsTrigger value="finished" className="cursor-pointer px-3 py-1.5 text-sm data-[state=active]:font-bold">
+              Terminadas
+            </TabsTrigger>
+          </TabsList>
 
-      <Tabs
-        value={selectedTab}
-        onValueChange={(value) => setSelectedTab(value as AuthorConferenceStatus)}
-        className="w-full items-center gap-5"
-      >
-        <TabsList className="py-5 shadow">
-          <TabsTrigger value="active" className="cursor-pointer p-4 text-lg data-[state=active]:font-bold">
-            Activas
-          </TabsTrigger>
-          <TabsTrigger value="finished" className="cursor-pointer p-4 text-lg data-[state=active]:font-bold">
-            Terminadas
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="active" className="w-full">{renderConferences()}</TabsContent>
-        <TabsContent value="finished" className="w-full">{renderConferences()}</TabsContent>
-      </Tabs>
-    </div>
+          <TabsContent value="active" className="w-full">{renderConferences()}</TabsContent>
+          <TabsContent value="finished" className="w-full">{renderConferences()}</TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
   );
 }
 
-export default AuthorConferencesPage;
+export default AuthorConferencesSection;
