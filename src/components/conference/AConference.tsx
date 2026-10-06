@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import Statistics from './Statistics';
 import Breadcrumb from '../ui/Breadcrumb';
 import { getArticlesByConferenceId, type Article } from '@/services/articleServices';
+import { isAdmin } from '@/lib/permissions';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function formatearFecha(fecha: string): string {
@@ -71,6 +72,14 @@ function AConference() {
       console.error('Error al cargar los artículos:', error);
     }
   };
+
+  const irNuevoSubmission = () => {
+    navigate({ to: '/article/create', search: { conferenceId: conferencia.id } });
+  };
+
+  const hasActiveSessions = sessions.some(
+    (session) => session.deadline !== undefined && new Date(session.deadline) > new Date()
+  );
 
   useEffect(() => {
     let isCancelled = false;
@@ -180,16 +189,36 @@ function AConference() {
             <div className="flex flex-col gap-5">
               <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
                 <h2 className="text-1xl font-bold">Sesiones disponibles</h2>
-                <AltaSession
-                  conference={conferencia}
-                  onSessionCreated={fetchSessions}
-                  trigger={
-                    <Button size={'sm'} className="cursor-pointer">
+                <div className="flex flex-col items-end gap-1">
+                  <div className="flex gap-2">
+                    {!isAdmin(user?.role) && (
+                      <AltaSession
+                        conference={conferencia}
+                        onSessionCreated={fetchSessions}
+                        trigger={
+                          <Button size={'sm'} className="cursor-pointer">
+                            <Plus />
+                            Nueva sesión
+                          </Button>
+                        }
+                      />
+                    )}
+                    <Button
+                      size={'sm'}
+                      className="cursor-pointer"
+                      disabled={!hasActiveSessions}
+                      onClick={irNuevoSubmission}
+                    >
                       <Plus />
-                      Nueva sesión
+                      Nuevo submission
                     </Button>
-                  }
-                />
+                  </div>
+                  {!loadingSessions && !hasActiveSessions && (
+                    <p className="text-xs text-muted-foreground">
+                      No hay sesiones vigentes para recibir submissions
+                    </p>
+                  )}
+                </div>
               </div>
               <SearchBar
                 datos={sessions}

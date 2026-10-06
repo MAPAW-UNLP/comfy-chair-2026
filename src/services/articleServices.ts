@@ -26,6 +26,18 @@ export interface Article {
   session: Session | null;
 }
 
+export class ApiError extends Error {
+  status: number;
+  errors: Record<string, string[]>;
+
+  constructor(message: string, status: number, errors: Record<string, string[]> = {}) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.errors = errors;
+  }
+}
+
 export interface ArticleNew {
   title: string;
   main_file: File;
@@ -112,7 +124,7 @@ export async function createArticle(newArticle: ArticleNew) {
 
   } catch (err: any) {
     if (err.response?.data) {
-      throw new Error(JSON.stringify(err.response.data));
+      throw new ApiError(JSON.stringify(err.response.data), err.response.status, err.response.data.errors);
     }
     throw err;
   }

@@ -18,14 +18,22 @@ import ArticleForm from '@/components/article/ArticleForm';
 import { useFetchUsers } from '@/hooks/Grupo1/useFetchUsers';
 import { useFetchConferences } from '@/hooks/Grupo1/useFetchConferences';
 
+type SearchParams = {
+  conferenceId?: number;
+};
+
 export const Route = createFileRoute('/_auth/article/create')({
   component: RouteComponent,
+  validateSearch: (search: Record<string, unknown>): SearchParams => ({
+    conferenceId: search.conferenceId ? Number(search.conferenceId) : undefined,
+  }),
 })
 
 function RouteComponent() {
 
   // Usuario Actual
   const { user } = useRouteContext({ from: '/_auth/article/create' });
+  const { conferenceId } = Route.useSearch();
 
   // Hooks
   const { userList, loadingUsers } = useFetchUsers();
@@ -47,7 +55,7 @@ function RouteComponent() {
   return (
     <div className="flex flex-wrap gap-4 mx-4 my-4 justify-center">
       {/* Le envío al form la lista de conferencias y la lista de usuarios */}
-      <ArticleForm conferences={conferenceList} users={userList} userId={Number(user.id)} />
+      <ArticleForm conferences={conferenceList} users={userList} userId={Number(user.id)} fixedConferenceId={conferenceId} />
     </div>
   );
 
