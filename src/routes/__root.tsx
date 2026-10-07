@@ -82,7 +82,7 @@ const RootLayoutContent = () => {
 
       {/* Navbar superior */}
       <header className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
-
+        
         {/* Navegación visible en pantallas grandes */}
         <nav className="hidden xl:flex gap-2 order-1 xl:order-1">
           {links.map((link) => (

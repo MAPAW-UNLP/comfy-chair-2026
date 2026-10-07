@@ -137,11 +137,12 @@ const ArticleDetail : React.FC<ArticleDetailProps> = ({ article }) => {
         </div>
       </div>
 
-      {/* Card de Reviews si el artículo está aceptado o rechazado */}
+      {/* Card de Reviews si el artículo está aceptado o rechazado 
+      No tiene sentido mostrar esto
       {(article.status === "accepted" || article.status === "rejected") && !loadingReviews && reviews && (
         <ReviewBox reviews={reviews} />
       )}
-
+        */}
     </div>
   );
 };

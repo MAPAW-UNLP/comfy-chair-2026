@@ -13,6 +13,21 @@ export type Type = "regular" | "poster";
 
 export type Status = "reception" | "bidding" | "assignment" | "review" | "selection" | "accepted" | "rejected";
 
+export type EventTypeChoices = 
+  | "draft_created" 
+  | "submitted" 
+  | "reviewer_assigned" 
+  | "review_received" 
+  | "final_verdict";
+
+  export type VerdictStatus = "accepted" | "rejected";
+  
+
+export interface ArticleHistoryItem {
+  event_type: EventTypeChoices;
+  created_at: string; 
+  verdict?: VerdictStatus; // Presente solo si event_type es 'final_verdict'
+}
 export interface Article {
   id: number;
   title: string;
@@ -48,6 +63,15 @@ export interface ArticleUpdate {
   authors?: number[];
   corresponding_author?: number | null;
   session?: number | null;
+}
+
+export interface ArticleHistory {
+    event_type: EventTypeChoices;
+    metadata: Record<string, unknown>;
+    created_at: Date;
+    article: Article;
+    created_by: User | null;
+    reviewed_by: User | null;
 }
 
 function normalizeArticleShape(raw: any): Article {
@@ -239,3 +263,19 @@ export const getAllArticles = async (): Promise<Article[]> => {
   const response = await api.get('/api/article');
   return response.data;
 };
+
+//Usado por el grupo 4 en el sprint 1. Se utilizar para el historial de los articulos
+export async function getArticleHistory(articleId: number): Promise<ArticleHistoryItem[]> {
+  try {
+    const res = await api.get<ArticleHistoryItem[]>(`/api/article/${articleId}/history/`);
+    if (!res.status || res.status >= 400) {
+      throw new Error("Error al obtener el historial del artículo");
+    }
+    return res.data;
+  } catch (err: any) {
+    if (err.response?.data) {
+      throw new Error(JSON.stringify(err.response.data));
+    }
+    throw err;
+  }
+}
