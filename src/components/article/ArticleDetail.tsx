@@ -13,6 +13,8 @@ import { getReviewsByArticle } from '@/services/reviewerServices';
 import type { ReviewsByArticleId } from '@/services/reviewerServices';
 import type { Article, Status, Type } from "@/services/articleServices";
 import { downloadMainFile, downloadSourceFile } from "@/services/articleServices";
+import { Clock } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 
 // Lo que espera recibir el componente
 export interface ArticleDetailProps {
@@ -45,6 +47,7 @@ const ArticleDetail : React.FC<ArticleDetailProps> = ({ article }) => {
   // Estado y carga de reviews
   const [reviews, setReviews] = useState<ReviewsByArticleId>();
   const [loadingReviews, setLoadingReviews] = useState<boolean>(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     let mounted = true;
@@ -67,6 +70,10 @@ const ArticleDetail : React.FC<ArticleDetailProps> = ({ article }) => {
     return () => { mounted = false };
   }, [article.id, article.status]);
 
+  const irArticleHistoryPage = () => {
+    navigate({ to: `/article/history/${article.id}` });
+  }
+
   //------------------------------------------------------------
   // Renderizado del componente
   //------------------------------------------------------------
@@ -76,12 +83,20 @@ const ArticleDetail : React.FC<ArticleDetailProps> = ({ article }) => {
       {/* Card con los detalles del articulo */}
       <div className="bg-white shadow-lg rounded-2xl p-6 w-full">
         <div className="text-start flex flex-col gap-2">
-
-          {/* Titulo de la card */}
-          <h2 className="text-lg font-bold italic text-slate-500 text-center">
-            Detalle del Articulo
-          </h2>
-
+          <div className="flex justify-between items-center gap-2">
+            
+            {/* Titulo de la card */}
+            <h2 className="text-lg font-bold italic text-slate-500 text-center">
+              Detalle del Articulo
+            </h2>
+            <button
+            onClick={irArticleHistoryPage}
+            className="p-1 rounded hover:bg-gray-200 transition-colors"
+            title="Ver historial del artículo"
+          >
+            <Clock className="w-4 h-4 cursor-pointer" />
+          </button>
+          </div>
           <hr className="bg-slate-100" />
 
           {/* Detalles del Artículo */}

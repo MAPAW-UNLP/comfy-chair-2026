@@ -7,6 +7,7 @@ import { getCommonUsers, type User } from '@/services/userServices';
 import { UserCombobox } from '../combobox/UserCombobox';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
+import type { FILES_ACCEPTED_CHOICES } from './ConferenceApp';
 
 function esFechaValida(fecha1: string, fecha2: string) {
   const f1 = new Date(fecha1);
@@ -17,7 +18,7 @@ function esFechaValida(fecha1: string, fecha2: string) {
 
 function parseDateSinOffset(fecha: string): Date {
   const [year, month, day] = fecha.split('-').map(Number);
-  return new Date(year, month - 1, day); // mes empieza en 0
+  return new Date(year, month - 1, day);
 }
 
 type ConferenceFormProps = {
@@ -37,6 +38,8 @@ function ConferenceForm({
     start_date: '',
     end_date: '',
     blind_kind: 'single blind',
+    count_sources: 1,
+    files_accepted: ['pdf'],
   });
   const [chairs, setChairs] = useState<User[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -54,6 +57,7 @@ function ConferenceForm({
 
     handleSubmit(conferencia, chairs);
   };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -79,19 +83,31 @@ function ConferenceForm({
     setChairs(chairs.filter((ch) => ch.id !== userId));
   };
 
+  const actualizarCountSources = (count: number) => {
+    setConferencia((prev) => ({ ...prev, count_sources: count }));
+  };
+
+  const actualizarFilesAccepted = (files: FILES_ACCEPTED_CHOICES[]) => {
+    setConferencia((prev) => ({ ...prev, files_accepted: files }));
+  };
+
   useEffect(() => {
     setConferencia((prev) => ({
       ...prev,
       start_date: start_date
         ? start_date.toISOString().split('T')[0]
-        : undefined,
-      end_date: end_date ? end_date.toISOString().split('T')[0] : undefined,
+        : '',
+      end_date: end_date ? end_date.toISOString().split('T')[0] : '',
     }));
   }, [start_date, end_date]);
 
   useEffect(() => {
     if (valorConferencia) {
-      setConferencia(valorConferencia);
+      setConferencia({
+        ...valorConferencia,
+        count_sources: valorConferencia.count_sources ?? 1,
+        files_accepted: valorConferencia.files_accepted ?? ['pdf'],
+      });
       if (valorConferencia.start_date)
         setStartDate(parseDateSinOffset(valorConferencia.start_date));
       if (valorConferencia.end_date)
@@ -170,25 +186,25 @@ function ConferenceForm({
             </div>
           </div>
 
-          <div className='flex flex-col gap-2'>
+          <div className="flex flex-col gap-2">
             <label htmlFor="start_date">Fecha de inicio</label>
             <CustomCalendar date={start_date} setDate={setStartDate} />
           </div>
 
-          <div className='flex flex-col gap-2'>
+          <div className="flex flex-col gap-2">
             <label htmlFor="end_date">Fecha de cierre</label>
             <CustomCalendar date={end_date} setDate={setEndDate} />
           </div>
         </div>
 
-        {valorConferencia ? (
-          <ConferenceView
-            valorVisualizacion={valorConferencia.blind_kind}
-            actualizarVista={actualizarVista}
-          />
-        ) : (
-          <ConferenceView actualizarVista={actualizarVista} />
-        )}
+        <ConferenceView
+          valorVisualizacion={conferencia.blind_kind}
+          valorCountSources={conferencia.count_sources}
+          valorFilesAccepted={conferencia.files_accepted}
+          actualizarVista={actualizarVista}
+          actualizarCountSources={actualizarCountSources}
+          actualizarFilesAccepted={actualizarFilesAccepted}
+        />
       </div>
 
       <div className="flex justify-end gap-2">

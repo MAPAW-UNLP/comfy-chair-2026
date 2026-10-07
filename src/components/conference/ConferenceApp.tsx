@@ -11,7 +11,8 @@ import { Route } from '@/routes/_auth/conference/view';
 import { useEffect, useState } from 'react';
 import { SearchBar } from './ConferenceSearch';
 
-type VISTA_CHOICES = 'single blind' | 'double blind' | 'completo';
+type VISTA_CHOICES = 'single blind' | 'double blind';
+export type FILES_ACCEPTED_CHOICES = 'pdf' | 'docx' | 'txt';
 
 export type Conference = {
   id: number;
@@ -21,6 +22,8 @@ export type Conference = {
   end_date?: string;
   blind_kind: VISTA_CHOICES;
   chairs?: number[];
+  count_sources: number;
+  files_accepted: FILES_ACCEPTED_CHOICES[];
 };
 
 function ConferenceApp() {
