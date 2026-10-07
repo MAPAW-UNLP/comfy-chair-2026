@@ -1,4 +1,5 @@
 import api from '@/services/api';
+import { isAxiosError } from 'axios';
 
 //------------------------------------------------------------
 // GRUPO 1: Requerido para cargas las reviws por artículo
@@ -422,4 +423,72 @@ export async function getMyInvitationNotifications(): Promise<InvitationNotifica
  */
 export async function checkReviewAssignment(articleId: number): Promise<void> {
   await api.get(`/api/reviewer/articles/${articleId}/assignment/`);
+}
+
+//export async function getMyReviewHistory(
+//  reviewerId: number,
+//  conferenceId: number
+//) {
+//  const { data } = await api.get(
+//    `/api/reviews/reviewer/`,
+//    {7
+//      params: {
+//        reviewer_id: reviewerId,
+//        conference_id: conferenceId,
+//      },
+//    }
+//  );
+//
+//  return data;
+//}
+
+export interface ReviewerReviewHistoryItem {
+  id: number;
+  article: number;
+  reviewer: number;
+  opinion: string;
+  score: number;
+  created_at?: string;
+  updated_at?: string;
+  is_published?: boolean;
+  is_edited?: boolean;
+}
+
+export async function getMyReviewHistory(
+  reviewerId: number,
+  conferenceId: number
+): Promise<ReviewerReviewHistoryItem[]> {
+  const { data } = await api.get<ReviewerReviewHistoryItem[]>(
+    `/api/reviews/reviewer/`,
+    {
+      params: {
+        reviewer_id: reviewerId,
+        conference_id: conferenceId,
+      },
+    }
+  );
+
+  return data;
+}
+
+export function getBackendErrorMessage(error: unknown): string | null {
+  if (!isAxiosError(error)) {
+    return null;
+  }
+
+  const data = error.response?.data;
+
+  if (typeof data?.error === "string") {
+    return data.error;
+  }
+
+  if (typeof data?.detail === "string") {
+    return data.detail;
+  }
+
+  if (typeof data?.message === "string") {
+    return data.message;
+  }
+
+  return null;
 }

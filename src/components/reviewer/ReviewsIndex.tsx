@@ -19,6 +19,7 @@ import {
 } from "@/services/reviewerServices";
 import { Button } from "../ui/button";
 import { Progress } from "../ui/progress";
+import ReviewerConferenceSwitcher from "./ReviewerConferenceSwitcher";
 
 /* ====================== ENV + helpers de fechas ====================== */
 
@@ -514,6 +515,9 @@ export default function ReviewsIndex() {
     <div className="mx-auto w-full max-w-md px-4 py-6 md:max-w-2xl">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Bienvenido, Revisor</h1>
+        <div className="mt-2">
+          <ReviewerConferenceSwitcher />
+        </div>
         <Button
           onClick={() => navigate({ to: "/reviewer/history" })}
           className="bg-slate-700 hover:bg-slate-600 text-white font-medium"
