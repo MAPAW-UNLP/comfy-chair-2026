@@ -7,6 +7,8 @@ import React, {
 } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
+import { toast } from "sonner";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
@@ -86,6 +88,54 @@ function SoftCard(props: {
 // Porcentaje para la barra. Con total 0 devuelve 0 (evita dividir por cero).
 const percent = (done: number, total: number) =>
   total > 0 ? Math.round((done / total) * 100) : 0;
+
+const LOAD_ERROR_TITLE = "No se pudieron cargar tus artículos.";
+
+// Mensaje que manda el backend en { "error": "..." }. null si no hay uno
+// (por ejemplo, si el backend está apagado o respondió con una página de error).
+function backendErrorMessage(err: unknown): string | null {
+  if (isAxiosError(err)) {
+    const msg = (err.response?.data as { error?: unknown } | undefined)?.error;
+    if (typeof msg === "string" && msg.trim()) return msg;
+  }
+  return null;
+}
+
+// Tarjeta para los estados de la lista: sin conferencia, sin asignaciones y error.
+function StateCard(props: {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  tone?: "default" | "error";
+}) {
+  const titleColor = props.tone === "error" ? "text-rose-700" : "text-slate-800";
+  return (
+    <div className="rounded-2xl bg-slate-50 px-6 py-8 text-center shadow-sm ring-1 ring-black/5">
+      <p className={`text-base font-semibold ${titleColor}`}>{props.title}</p>
+      {props.description && (
+        <p className="mt-1 text-sm text-slate-500">{props.description}</p>
+      )}
+      {props.action && (
+        <div className="mt-4 flex justify-center">{props.action}</div>
+      )}
+    </div>
+  );
+}
+
+// Esqueleto de carga (no existe el componente ui/skeleton).
+function ListSkeleton() {
+  return (
+    <div role="status" className="space-y-3">
+      <span className="sr-only">Cargando artículos…</span>
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="h-28 animate-pulse rounded-2xl bg-slate-200/70"
+        />
+      ))}
+    </div>
+  );
+}
 
 /* ====================== Bloque de artículos asignados ====================== */
 
@@ -252,6 +302,7 @@ export default function ReviewsIndex() {
   const isReviewerRole =
     roleKey === "reviewer" || roleKey === "revisor" || roleKey.startsWith("rev");
   const selectedConferenceId = isReviewerRole ? selectedRole?.conferenceId : undefined;
+  const conferenceName = isReviewerRole ? selectedRole?.conferenceName : undefined;
 
   const phase = getPhase(new Date());
 
@@ -272,7 +323,10 @@ export default function ReviewsIndex() {
   const {
     data: assignmentsData,
     isLoading,
+    isFetching,
     isError,
+    error,
+    refetch,
   } = useQuery({
     queryKey: ["reviewer", "assignments", selectedConferenceId],
     queryFn: () => getMyAssignments({ conferenceId: selectedConferenceId }),
@@ -282,6 +336,11 @@ export default function ReviewsIndex() {
   });
 
   const loading = queryEnabled && isLoading;
+
+  // Un toast por cada fallo de carga (React Query ya agotó sus reintentos).
+  useEffect(() => {
+    if (isError) toast.error(backendErrorMessage(error) ?? LOAD_ERROR_TITLE);
+  }, [isError, error]);
 
   // Lista plana: se usa para saber si hay algo que mostrar.
   const data: UiRow[] = useMemo(
@@ -357,14 +416,57 @@ export default function ReviewsIndex() {
   );
 
   const content = useMemo(() => {
-    if (loading) return <p className="text-slate-600">Cargando…</p>;
-    // Si falla la carga se muestra el error: nunca una lista de reemplazo.
+    // 1) Sin conferencia elegida: todavía no hay nada que pedir.
+    if (selectedConferenceId == null)
+      return (
+        <StateCard
+          title="Elegí una conferencia para ver tus artículos."
+          description="Seleccioná tu rol de revisor en una conferencia desde tu panel."
+          action={
+            <Button
+              onClick={() => navigate({ to: "/dashboard" })}
+              className="bg-slate-900 text-white font-medium hover:bg-slate-800"
+            >
+              Ir a mi panel
+            </Button>
+          }
+        />
+      );
+
+    // 2) Cargando.
+    if (loading) return <ListSkeleton />;
+
+    // 3) Error de carga: nunca se muestra una lista de reemplazo.
     if (isError)
       return (
-        <p className="text-rose-700">No se pudieron cargar tus artículos.</p>
+        <StateCard
+          tone="error"
+          title={LOAD_ERROR_TITLE}
+          description={backendErrorMessage(error) ?? undefined}
+          action={
+            <Button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="bg-slate-900 text-white font-medium hover:bg-slate-800"
+            >
+              {isFetching ? "Reintentando…" : "Reintentar"}
+            </Button>
+          }
+        />
       );
-    if (!data.length) return <p className="text-slate-600">Sin asignar aún…</p>;
 
+    // 4) Conferencia elegida pero sin artículos asignados.
+    if (!data.length)
+      return (
+        <StateCard
+          title={`Todavía no tenés artículos asignados${
+            conferenceName ? ` en ${conferenceName}` : ""
+          }.`}
+          description="Cuando el chair te asigne artículos, van a aparecer acá."
+        />
+      );
+
+    // 5) Lista agrupada por sesión.
     return (
       <div className="space-y-8">
         {groups.sessions.map((g) => (
@@ -390,7 +492,21 @@ export default function ReviewsIndex() {
         )}
       </div>
     );
-  }, [data, groups, loading, isError, handleAction, selectedId, flashId]);
+  }, [
+    selectedConferenceId,
+    conferenceName,
+    data,
+    groups,
+    loading,
+    isError,
+    isFetching,
+    error,
+    refetch,
+    navigate,
+    handleAction,
+    selectedId,
+    flashId,
+  ]);
 
   /* ============================ Render principal ============================ */
 
