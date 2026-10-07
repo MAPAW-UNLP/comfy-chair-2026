@@ -67,18 +67,7 @@ export function ConferenceView({
               </Field>
             </FieldLabel>
 
-            <FieldLabel htmlFor="completo" className="cursor-pointer">
-              <Field orientation="horizontal">
-                <FieldContent>
-                  <FieldTitle>Completo</FieldTitle>
-                  <FieldDescription>
-                    Tanto el revisor como el autor verán quienes
-                    escribieron/revisaron los artículos.
-                  </FieldDescription>
-                </FieldContent>
-                <RadioGroupItem value="completo" id="completo" />
-              </Field>
-            </FieldLabel>
+            
           </RadioGroup>
         </FieldSet>
       </FieldGroup>
