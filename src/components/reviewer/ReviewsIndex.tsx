@@ -16,6 +16,7 @@ import {
   type ReviewerAssignment,
 } from "@/services/reviewerServices";
 import { Button } from "../ui/button";
+import { Progress } from "../ui/progress";
 
 /* ====================== ENV + helpers de fechas ====================== */
 
@@ -82,6 +83,10 @@ function SoftCard(props: {
   );
 }
 
+// Porcentaje para la barra. Con total 0 devuelve 0 (evita dividir por cero).
+const percent = (done: number, total: number) =>
+  total > 0 ? Math.round((done / total) * 100) : 0;
+
 /* ====================== Bloque de artículos asignados ====================== */
 
 type ReviewStatus = "pending" | "draft" | "completed";
@@ -126,6 +131,12 @@ const STATUS_FROM_API: Record<ReviewerAssignment["review_status"], ReviewStatus>
   draft: "draft",
   published: "completed",
 };
+
+const toRow = (r: ReviewerAssignment): UiRow => ({
+  id: r.article.id,
+  title: r.article.title,
+  status: STATUS_FROM_API[r.review_status],
+});
 
 /* -------------- ArticleCard con badge + botón alineados -------------- */
 
@@ -174,6 +185,61 @@ function ArticleCard({
   );
 }
 
+/* -------------- Sección de una sesión: título, progreso y tarjetas -------------- */
+
+interface SessionSectionProps {
+  title: string;
+  // Sin "progress" no se dibuja la barra (grupo de artículos sin sesión).
+  progress?: { published: number; total: number };
+  rows: UiRow[];
+  onAction: (article: UiRow) => void;
+  selectedId: number | null;
+  flashId: number | null;
+}
+
+function SessionSection({
+  title,
+  progress,
+  rows,
+  onAction,
+  selectedId,
+  flashId,
+}: SessionSectionProps) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          {title}
+        </h3>
+        {progress && (
+          <span className="shrink-0 text-sm text-slate-600">
+            {progress.published}/{progress.total} revisados
+          </span>
+        )}
+      </div>
+
+      {progress && (
+        <Progress
+          value={percent(progress.published, progress.total)}
+          aria-label={`Progreso de ${title}`}
+        />
+      )}
+
+      <div className="space-y-3">
+        {rows.map((a) => (
+          <ArticleCard
+            key={a.id}
+            article={a}
+            onAction={onAction}
+            selected={selectedId === a.id}
+            flashing={flashId === a.id}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /* =============================== Componente =============================== */
 
 export default function ReviewsIndex() {
@@ -217,18 +283,43 @@ export default function ReviewsIndex() {
 
   const loading = queryEnabled && isLoading;
 
+  // Lista plana: se usa para saber si hay algo que mostrar.
   const data: UiRow[] = useMemo(
-    () =>
-      (assignmentsData?.results ?? []).map((r) => ({
-        id: r.article.id,
-        title: r.article.title,
-        status: STATUS_FROM_API[r.review_status],
-      })),
+    () => (assignmentsData?.results ?? []).map(toRow),
     [assignmentsData]
   );
 
+  // Agrupa las tarjetas por sesión. Los totales de cada barra vienen del
+  // backend (stats.by_session); acá solo se reparten los artículos.
+  const groups = useMemo(() => {
+    const bySession = new Map<number, UiRow[]>();
+    const withoutSession: UiRow[] = [];
+
+    for (const r of assignmentsData?.results ?? []) {
+      if (!r.session) {
+        withoutSession.push(toRow(r));
+        continue;
+      }
+      const list = bySession.get(r.session.id) ?? [];
+      list.push(toRow(r));
+      bySession.set(r.session.id, list);
+    }
+
+    const sessions = (assignmentsData?.stats.by_session ?? []).map((s) => ({
+      id: s.session_id,
+      title: s.title,
+      published: s.published,
+      total: s.total,
+      rows: bySession.get(s.session_id) ?? [],
+    }));
+
+    return { sessions, withoutSession };
+  }, [assignmentsData]);
+
   const reviewedCount = assignmentsData?.stats.published ?? 0;
   const assignedCount = assignmentsData?.stats.total ?? 0;
+  const pendingCount = assignmentsData?.stats.pending ?? 0;
+  const draftCount = assignmentsData?.stats.draft ?? 0;
 
   /* ------------------- Resaltado del artículo al volver del formulario ------------------- */
 
@@ -275,19 +366,31 @@ export default function ReviewsIndex() {
     if (!data.length) return <p className="text-slate-600">Sin asignar aún…</p>;
 
     return (
-      <div className="space-y-3">
-        {data.map((a) => (
-          <ArticleCard
-            key={a.id}
-            article={a}
+      <div className="space-y-8">
+        {groups.sessions.map((g) => (
+          <SessionSection
+            key={g.id}
+            title={g.title}
+            progress={{ published: g.published, total: g.total }}
+            rows={g.rows}
             onAction={handleAction}
-            selected={selectedId === a.id}
-            flashing={flashId === a.id}
+            selectedId={selectedId}
+            flashId={flashId}
           />
         ))}
+
+        {groups.withoutSession.length > 0 && (
+          <SessionSection
+            title="Sin sesión"
+            rows={groups.withoutSession}
+            onAction={handleAction}
+            selectedId={selectedId}
+            flashId={flashId}
+          />
+        )}
       </div>
     );
-  }, [data, loading, isError, handleAction, selectedId, flashId]);
+  }, [data, groups, loading, isError, handleAction, selectedId, flashId]);
 
   /* ============================ Render principal ============================ */
 
@@ -328,6 +431,14 @@ export default function ReviewsIndex() {
                 </div>
                 <div className="mt-1 text-sm text-slate-600">
                   Artículos revisados
+                </div>
+                <Progress
+                  className="mt-3"
+                  value={percent(reviewedCount, assignedCount)}
+                  aria-label="Progreso de la conferencia"
+                />
+                <div className="mt-2 text-center text-xs text-slate-500">
+                  Pendientes: {pendingCount} · Borradores: {draftCount}
                 </div>
               </div>
             </SoftCard>
