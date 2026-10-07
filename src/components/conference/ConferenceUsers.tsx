@@ -99,6 +99,24 @@ function getRoleIcon(role: string) {
   }
 }
 
+function RoleBadges({ roles }: { roles: string[] }) {
+  return (
+    <>
+      {roles.map((role) => (
+        <span
+          key={role}
+          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium ${getRoleClassName(
+            role
+          )}`}
+        >
+          {getRoleIcon(role)}
+          {getRoleLabel(role)}
+        </span>
+      ))}
+    </>
+  );
+}
+
 function getInitials(fullName: string): string {
   const parts = fullName
     .trim()
@@ -273,7 +291,7 @@ export default function ConferenceUsers({
           )}
         </div>
 
-        <p className="text-sm text-muted-foreground">
+        <p className="hidden text-sm text-muted-foreground sm:block">
            Usuarios que participan en esta conferencia.
         </p>
       </div>
@@ -305,7 +323,7 @@ export default function ConferenceUsers({
           </button>
         )}
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
         {ROLES.map((role) => {
           const active = selectedRole === role.value;
           return (
@@ -318,7 +336,7 @@ export default function ConferenceUsers({
                 setSelectedRole(role.value)
               }
               aria-pressed={active}
-              className="min-h-9 cursor-pointer"
+              className="min-h-9 shrink-0 cursor-pointer"
             >
               <span>{role.label}</span>
               <span
@@ -436,8 +454,12 @@ export default function ConferenceUsers({
                         </a>
                       )}
 
+                      <div className="flex flex-wrap gap-1 sm:hidden">
+                        <RoleBadges roles={user.roles} />
+                      </div>
+
                       {user.affiliation && (
-                        <div className="flex items-start gap-2 text-sm text-slate-500">
+                        <div className="hidden items-start gap-2 text-sm text-slate-500 sm:flex">
                           <Building2 size={14} className="shrink-0" />
 
                           <span className="break-words">
@@ -447,7 +469,7 @@ export default function ConferenceUsers({
                       )}
 
                       {user.roles.length > 1 && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                           <span>
                             Tiene {user.roles.length} roles en esta conferencia
@@ -457,18 +479,8 @@ export default function ConferenceUsers({
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 flex-wrap justify-end gap-2 pt-1">
-                    {user.roles.map((role) => (
-                      <span
-                        key={role}
-                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium ${getRoleClassName(
-                          role
-                        )}`}
-                      >
-                        {getRoleIcon(role)}
-                        {getRoleLabel(role)}
-                      </span>
-                    ))}
+                  <div className="hidden shrink-0 flex-wrap justify-end gap-2 pt-1 sm:flex">
+                    <RoleBadges roles={user.roles} />
                   </div>
                 </div>
               ))}
