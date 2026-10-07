@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { useState, useMemo } from 'react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertCircle, Info, Check } from 'lucide-react'
+import { InvitationNotificationActions } from '@/components/reviewer/invitations/InvitationNotificationActions'
 
 export const Route = createFileRoute('/_auth/notifications')({
   component: RouteComponent,
@@ -194,6 +195,8 @@ function NotificationCard({ notification, onMarkAsRead, isMarking }: Notificatio
             Artículo ID: {notification.article}
           </p>
         )}
+        {/* GRUPO 1: aceptar/rechazar si la notificación es de una invitación a revisar */}
+        <InvitationNotificationActions notificationId={notification.id} />
       </div>
     </Card>
   )

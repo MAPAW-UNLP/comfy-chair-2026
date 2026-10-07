@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { isAxiosError } from "axios";
 
 import { getArticleById } from "@/services/articleServices";
 import {
@@ -306,9 +307,12 @@ export default function ReviewArticle(props?: ReviewArticleProps) {
       });
     } catch (e: unknown) {
       console.error("Error al guardar borrador:", e);
-      const err = e as { response?: { data?: { error?: string } } };
+      // Muestra el motivo del backend (ej. "No estás asignado para revisar este artículo")
+      const backendError = isAxiosError(e) ? e.response?.data?.error : undefined;
       toast.error(
-        err?.response?.data?.error ?? "Ocurrió un error al guardar el borrador."
+        typeof backendError === "string"
+          ? backendError
+          : "Ocurrió un error al guardar el borrador."
       );
     } finally {
       setSaving(false);
@@ -376,11 +380,12 @@ export default function ReviewArticle(props?: ReviewArticleProps) {
       });
     } catch (e: unknown) {
       console.error("Error al enviar la revisión:", e);
-      const err = e as { response?: { data?: { error?: string } } };
-      console.error("Detalle backend:", err?.response?.data);
+      const backendError = isAxiosError(e) ? e.response?.data?.error : undefined;
+      console.error("Detalle backend:", isAxiosError(e) ? e.response?.data : undefined);
       toast.error(
-        err?.response?.data?.error ??
-          "Ocurrió un error al enviar la revisión."
+        typeof backendError === "string"
+          ? backendError
+          : "Ocurrió un error al enviar la revisión."
       );
     } finally {
       setSaving(false);
