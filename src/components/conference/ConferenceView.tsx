@@ -1,31 +1,50 @@
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldSet, FieldTitle } from '@/components/ui/field';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useEffect, useState } from 'react';
+import { NumberField, NumberFieldDecrement, NumberFieldGroup, NumberFieldIncrement, NumberFieldInput, NumberFieldScrubArea } from '@/components/ui/number-field';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '../ui/select';
+import { X } from 'lucide-react';
+import type { FILES_ACCEPTED_CHOICES } from './ConferenceApp';
 
-type VISTA_CHOICES = 'single blind' | 'double blind' | 'completo';
+type VISTA_CHOICES = 'single blind' | 'double blind';
 
 type ConferenceViewProp = {
-  valorVisualizacion?: VISTA_CHOICES;
+  valorVisualizacion: VISTA_CHOICES;
+  valorCountSources?: number;
+  valorFilesAccepted?: FILES_ACCEPTED_CHOICES[];
   actualizarVista: (v: VISTA_CHOICES) => void;
+  actualizarCountSources: (count: number) => void;
+  actualizarFilesAccepted: (files: FILES_ACCEPTED_CHOICES[]) => void;
 };
 
 export function ConferenceView({
   valorVisualizacion,
+  valorCountSources = 1,
+  valorFilesAccepted = ['pdf'],
   actualizarVista,
+  actualizarCountSources,
+  actualizarFilesAccepted,
 }: ConferenceViewProp) {
-  const [valorSeleccionado, setValorSeleccionado] =
-    useState<VISTA_CHOICES>('single blind');
+  const formatosPermitidos = [
+    { value: 'pdf', label: 'PDF' },
+    { value: 'docx', label: 'DOCX' },
+    { value: 'txt', label: 'TXT' },
+  ];
 
-  useEffect(() => {
-    actualizarVista(valorSeleccionado);
-  }, [valorSeleccionado]);
+  // Garantizamos que siempre sea un array para evitar errores de .map()
+  const files = valorFilesAccepted ?? ['pdf'];
 
-  useEffect(() => {
-    if (valorVisualizacion) setValorSeleccionado(valorVisualizacion);
-  }, [valorVisualizacion]);
+  const handleSelectFormat = (val: FILES_ACCEPTED_CHOICES) => {
+    if (!files.includes(val)) {
+      actualizarFilesAccepted([...files, val]);
+    }
+  };
+
+  const handleRemoveFormat = (formatToRemove: FILES_ACCEPTED_CHOICES) => {
+    actualizarFilesAccepted(files.filter((f) => f !== formatToRemove));
+  };
 
   return (
-    <div className="lg:w-1/2">
+    <div className="lg:w-1/2 flex flex-col gap-5">
       <FieldGroup>
         <FieldSet>
           <FieldLabel
@@ -38,8 +57,8 @@ export function ConferenceView({
             Seleccione la visualización de los artículos.
           </FieldDescription>
           <RadioGroup
-            value={valorSeleccionado}
-            onValueChange={(v) => setValorSeleccionado(v as VISTA_CHOICES)}
+            value={valorVisualizacion}
+            onValueChange={(v) => actualizarVista(v as VISTA_CHOICES)}
           >
             <FieldLabel htmlFor="single blind" className="cursor-pointer">
               <Field orientation="horizontal">
@@ -66,10 +85,68 @@ export function ConferenceView({
                 <RadioGroupItem value="double blind" id="double blind" />
               </Field>
             </FieldLabel>
-
-            
           </RadioGroup>
         </FieldSet>
+
+        <Field>
+          <NumberField
+            value={valorCountSources}
+            min={0}
+            max={5}
+            size="sm"
+            onValueChange={(value) => actualizarCountSources(value ?? 0)}
+          >
+            <NumberFieldScrubArea label="Cantidad de fuentes permitidas" />
+            <NumberFieldGroup>
+              <NumberFieldDecrement />
+              <NumberFieldInput />
+              <NumberFieldIncrement />
+            </NumberFieldGroup>
+          </NumberField>
+        </Field>
+
+        <Field className="min-h-[120px]">
+          <FieldLabel>Formatos permitidos</FieldLabel>
+          <Select
+            value=""
+            onValueChange={(v) => handleSelectFormat(v as FILES_ACCEPTED_CHOICES)}
+          >
+            <SelectTrigger >
+              <SelectValue placeholder="Agregar formato..." />
+            </SelectTrigger>
+            <SelectContent align='start' className="w-full">
+              <SelectGroup>
+                <SelectLabel>Formatos permitidos</SelectLabel>
+                {formatosPermitidos.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+
+          {/* Badges de formatos seleccionados con fallback a arreglo vacío si viene undefined */}
+          <div className="flex flex-wrap gap-2 mt-2">
+            {files.map((fmt) => (
+              <div
+                key={fmt}
+                className="flex items-center gap-1.5 bg-gray-100 border border-gray-200 px-3 py-1 rounded-lg text-sm shadow-sm"
+              >
+                <span className="uppercase font-medium text-slate-700">
+                  {fmt}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveFormat(fmt)}
+                  className="text-gray-400 hover:text-red-500 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </Field>
       </FieldGroup>
     </div>
   );
