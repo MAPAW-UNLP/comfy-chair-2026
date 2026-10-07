@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "@tanstack/react-router"
 import { ReviewerItem } from "./ReviewerItem"
+import { useAuth } from "@/contexts/AuthContext"
 import {
   getReviewersByArticle,
   assignReviewerToArticle,
@@ -28,7 +29,7 @@ type CompleteReviewerInfo = Omit<ReviewerInfo, "email" | "interest"> & {
 
 export const ReviewerApp = () => {
   const { id } = useParams({ from: "/_auth/article/assign/$id" })
-
+  const { user } = useAuth()
   const [reviewers, setReviewers] = useState<CompleteReviewerInfo[]>([])
   const [article, setArticle] = useState<Article | null>(null)
   const [assignedCount, setAssignedCount] = useState<number>(0)
@@ -100,7 +101,7 @@ export const ReviewerApp = () => {
       return false
     }
     try {
-      await assignReviewerToArticle(reviewerId, Number(id))
+      await assignReviewerToArticle(reviewerId, Number(id), user.id)
       setReviewers((prev) =>
         prev.map((r) => (r.id === reviewerId ? { ...r, assigned: true } : r))
       )

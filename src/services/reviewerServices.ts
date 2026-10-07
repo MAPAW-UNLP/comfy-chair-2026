@@ -177,11 +177,12 @@ export const getReviewersByArticle = async (
   return response.data;
 };
 
-export const assignReviewerToArticle = async (reviewerId: number, articleId: number) => {
+export const assignReviewerToArticle = async (reviewerId: number, articleId: number, assigned_by: number) => {
   const response = await api.post('/api/chair/new/', {
     reviewer: reviewerId,
     article: articleId,
     reviewed: false,
+    assigned_by: assigned_by,
   })
   return response.data
 }
