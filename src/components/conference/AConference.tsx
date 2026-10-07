@@ -18,6 +18,7 @@ import Statistics from './Statistics';
 import Breadcrumb from '../ui/Breadcrumb';
 import { getArticlesByConferenceId, type Article } from '@/services/articleServices';
 import { useAuth } from '@/contexts/AuthContext';
+import ConferenceUsers from './ConferenceUsers';
 import { canManageSessions } from './sessionPermissions';
 
 export function formatearFecha(fecha: string): string {
@@ -36,6 +37,11 @@ function AConference() {
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [articles, setArticles] = useState<Article[]>([]);
   const {user}= useAuth()
+
+  const [verUsuarios, setVerUsuarios] = useState<boolean>(false);
+  const esAdmin = user?.role === 'admin';
+  const esChair = user?.id !== undefined && conferencia.chairs?.includes(user.id);
+  const puedeVerUsuarios = esAdmin || esChair;
 
   const irEditarConferencia = () => {
     navigate({ to: `/conference/edit/${conferencia.id}` });
@@ -135,10 +141,15 @@ function AConference() {
 
       <div className="flex justify-center items-center my-3">
         <Tabs
-          value={verEstadisticas ? 'estadisticas' : 'sesiones'}
-          onValueChange={(v) => setVerEstadisticas(v === 'estadisticas')}
-          className="flex items-center"
-        >
+            value={verUsuarios ? 'usuarios': verEstadisticas ? 'estadisticas' : 'sesiones'}
+            onValueChange={(v) => { setVerUsuarios(v === 'usuarios');
+            setVerEstadisticas(v === 'estadisticas');
+            }}
+            className="flex items-center"
+          //value={verEstadisticas ? 'estadisticas' : 'sesiones'}
+          //onValueChange={(v) => setVerEstadisticas(v === 'estadisticas')}
+          //className="flex items-center"
+          >
           <TabsList className="py-5 shadow">
             <TabsTrigger
               value="sesiones"
@@ -152,12 +163,22 @@ function AConference() {
             >
               Estadísticas
             </TabsTrigger>
+            {puedeVerUsuarios && (
+              <TabsTrigger
+                value="usuarios"
+                className="cursor-pointer data-[state=active]:font-bold p-4 text-lg"
+                >
+                Usuarios
+              </TabsTrigger>
+            )}
           </TabsList>
         </Tabs>
       </div>
 
       <div className="flex flex-col bg-card rounded shadow border border-gray-200 p-5 w-full gap-8">
-        {verEstadisticas ? (
+        {verUsuarios ? ( <ConferenceUsers conferenceId={Number(conferencia.id)} />
+      ) 
+        : verEstadisticas ? (
           <Statistics 
             fromConference={true}
             totalSessions={sessions.length}
