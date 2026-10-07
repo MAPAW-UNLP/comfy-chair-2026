@@ -11,6 +11,20 @@ import { toast } from 'sonner';
 // Tipos
 type SelectionMethod = 'corte_fijo' | 'mejores';
 
+function parseDateSinOffset(dateString?: string): Date | undefined {
+  if (!dateString) return undefined;
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatDateForApi(date?: Date): string | undefined {
+  if (!date) return undefined;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export type SessionFormData = {
   title: string;
   deadline: Date | undefined;
@@ -19,6 +33,10 @@ export type SessionFormData = {
   percentage?: number | undefined; // Para corte fijo
   threshold?: number | undefined; // Para mejores
   chairs: User[]; // Lista de chairs
+  submission_start?: string;
+  submission_end?: string;
+  review_start?: string;
+  review_end?: string;
 };
 
 type SessionFormProps = {
@@ -56,6 +74,10 @@ export default function SessionForm({
     initialData?.threshold?.toString() || '-1'
   );
   const [chairs, setChairs] = useState<User[]>(initialData?.chairs || []);
+  const [submissionStart, setSubmissionStart] = useState<Date | undefined>(parseDateSinOffset(initialData?.submission_start));
+  const [submissionEnd, setSubmissionEnd] = useState<Date | undefined>(parseDateSinOffset(initialData?.submission_end));
+  const [reviewStart, setReviewStart] = useState<Date | undefined>(parseDateSinOffset(initialData?.review_start));
+  const [reviewEnd, setReviewEnd] = useState<Date | undefined>(parseDateSinOffset(initialData?.review_end));
   const [users, setUsers] = useState<User[]>([]);
 
   // Cargar usuarios al montar el componente
@@ -103,7 +125,21 @@ export default function SessionForm({
       capacity: capacityNum,
       selectionMethod,
       chairs,
+      submission_start: formatDateForApi(submissionStart),
+      submission_end: formatDateForApi(submissionEnd),
+      review_start: formatDateForApi(reviewStart),
+      review_end: formatDateForApi(reviewEnd),
     };
+
+    for (const [start, end, label] of [
+      [formatDateForApi(submissionStart), formatDateForApi(submissionEnd), 'envío'],
+      [formatDateForApi(reviewStart), formatDateForApi(reviewEnd), 'revisión'],
+    ] as const) {
+      if (start && end && end < start) {
+        toast.error(`La fecha de cierre de ${label} no puede ser anterior al inicio.`);
+        return;
+      }
+    }
 
     // Agregar el campo correspondiente según el método de selección
     if (selectionMethod === 'corte_fijo') {
@@ -143,6 +179,30 @@ export default function SessionForm({
               required
             />
           </div>
+
+          <fieldset className="flex flex-col gap-3 rounded border p-3">
+            <legend className="px-1 font-semibold">
+              Ventana de envío de artículos <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
+            </legend>
+            <label className="flex flex-col gap-1 text-sm">Inicio
+              <CustomCalendar date={submissionStart} setDate={setSubmissionStart} conference={conference} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">Cierre
+              <CustomCalendar date={submissionEnd} setDate={setSubmissionEnd} conference={conference} />
+            </label>
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-3 rounded border p-3">
+            <legend className="px-1 font-semibold">
+              Ventana de revisión de artículos <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
+            </legend>
+            <label className="flex flex-col gap-1 text-sm">Inicio
+              <CustomCalendar date={reviewStart} setDate={setReviewStart} conference={conference} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">Cierre
+              <CustomCalendar date={reviewEnd} setDate={setReviewEnd} conference={conference} />
+            </label>
+          </fieldset>
 
           {/* Deadline */}
           <div className="flex flex-col gap-2">
