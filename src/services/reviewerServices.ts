@@ -304,3 +304,122 @@ export const getReviewsByArticle = async (articleId: number): Promise<ReviewsByA
     return { articleId, count: 0, reviews: [] };
   }
 };
+
+//------------------------------------------------------------
+// GRUPO 1: Invitaciones a revisar (invitación al comité de una conferencia)
+// Los errores (400, 403, 404, 409) no se capturan: se propagan a quien llama.
+// El 401 lo maneja el interceptor de api.
+//------------------------------------------------------------
+export type InvitationStatus = 'pending' | 'accepted' | 'rejected' | 'expired';
+
+export type BlindKind = 'single blind' | 'double blind' | 'completo';
+
+export interface Invitation {
+  id: number;
+  status: InvitationStatus;
+  conference: { id: number; title: string };
+  invited_by: { id: number; full_name: string } | null;
+  sent_at: string;
+  expires_at: string | null; // null = no vence
+  responded_at: string | null;
+  rejection_reason: string; // "" si no se rechazó o se rechazó sin motivo
+}
+
+export interface InvitationDetail extends Omit<Invitation, 'conference'> {
+  conference: {
+    id: number;
+    title: string;
+    description: string;
+    start_date: string;
+    end_date: string;
+    blind_kind: BlindKind;
+  };
+}
+
+export interface ReviewerConference {
+  id: number;
+  title: string;
+  has_assignments: boolean;
+}
+
+/**
+ * Invitaciones del usuario logueado, opcionalmente filtradas por estado.
+ * Backend: GET /api/reviewer/invitations/?status=
+ */
+export async function getMyInvitations(status?: InvitationStatus): Promise<Invitation[]> {
+  const { data } = await api.get<{ results: Invitation[] }>('/api/reviewer/invitations/', {
+    params: status ? { status } : undefined,
+  });
+  return data.results;
+}
+
+/**
+ * Detalle de una invitación del usuario logueado.
+ * Backend: GET /api/reviewer/invitations/{id}/
+ */
+export async function getInvitation(id: number): Promise<InvitationDetail> {
+  const { data } = await api.get<InvitationDetail>(`/api/reviewer/invitations/${id}/`);
+  return data;
+}
+
+/**
+ * Acepta una invitación. Devuelve la invitación actualizada.
+ * Backend: POST /api/reviewer/invitations/{id}/accept/
+ */
+export async function acceptInvitation(id: number): Promise<InvitationDetail> {
+  const { data } = await api.post<InvitationDetail>(`/api/reviewer/invitations/${id}/accept/`);
+  return data;
+}
+
+/**
+ * Rechaza una invitación, con motivo opcional. Devuelve la invitación actualizada.
+ * Backend: POST /api/reviewer/invitations/{id}/reject/
+ */
+export async function rejectInvitation(id: number, reason?: string): Promise<InvitationDetail> {
+  const { data } = await api.post<InvitationDetail>(
+    `/api/reviewer/invitations/${id}/reject/`,
+    reason ? { reason } : {}
+  );
+  return data;
+}
+
+/**
+ * Conferencias donde el usuario es revisor (invitación aceptada o con asignaciones).
+ * Backend: GET /api/reviewer/conferences/
+ */
+export async function getMyReviewerConferences(): Promise<ReviewerConference[]> {
+  const { data } = await api.get<{ results: ReviewerConference[] }>('/api/reviewer/conferences/');
+  return data.results;
+}
+
+/** Notificación que corresponde a una invitación (para aceptar/rechazar desde Notificaciones) */
+export interface InvitationNotificationLink {
+  notification: number;
+  invitation: number;
+  status: InvitationStatus;
+  conference_title: string;
+}
+
+/**
+ * Qué notificaciones del usuario son de invitaciones y el estado de cada una.
+ * Backend: GET /api/reviewer/invitation-notifications/
+ */
+export async function getMyInvitationNotifications(): Promise<InvitationNotificationLink[]> {
+  const { data } = await api.get<{ results: InvitationNotificationLink[] }>(
+    '/api/reviewer/invitation-notifications/'
+  );
+  return data.results;
+}
+
+//------------------------------------------------------------
+// GRUPO 1: acceso al formulario de revisión
+//------------------------------------------------------------
+/**
+ * Verifica que el usuario logueado tenga una asignación vigente sobre el artículo.
+ * Backend: GET /api/reviewer/articles/{articleId}/assignment/
+ *  - 200 → puede revisar
+ *  - 403 → no está asignado; 404 → el artículo no existe (el error se propaga)
+ */
+export async function checkReviewAssignment(articleId: number): Promise<void> {
+  await api.get(`/api/reviewer/articles/${articleId}/assignment/`);
+}
