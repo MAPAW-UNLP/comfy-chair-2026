@@ -69,7 +69,7 @@ const RootLayoutContent = () => {
       { to: '/article/view', label: 'Articulos' },
       { to: '/chairs/select-session', label: 'Chair' },
       { to: '/reviewer/bidding', label: 'Bidding' },
-      ...commonAuthLinks,
+      ...commonAuthLinks.filter(({ to }) => to !== '/dashboard'),
     ];
   } else {
     const roleSpecific = roleRoutes[roleKey] ?? [];

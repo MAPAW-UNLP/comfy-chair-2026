@@ -6,6 +6,7 @@ import { useRole } from '@/contexts/RoleContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import AuthorConferencesSection from '@/components/author/AuthorConferencesSection'
 import { getUserFullData, type ProcessedConference } from '@/services/userServices'
 
 export const Route = createFileRoute('/_auth/dashboard/')({
@@ -143,7 +144,7 @@ function DashboardPage() {
           </div>
 
           {/* Conferences Section */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Mis Conferencias</CardTitle>
@@ -226,6 +227,7 @@ function DashboardPage() {
                 )}
               </CardContent>
             </Card>
+            <AuthorConferencesSection />
           </div>
         </div>
       </div>
