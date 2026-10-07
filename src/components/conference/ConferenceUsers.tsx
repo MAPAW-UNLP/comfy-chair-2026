@@ -286,12 +286,12 @@ export default function ConferenceUsers({
         />
         <Input
           id="conference-user-search"
-          aria-label="Buscar usuarios"
+          aria-label="Buscar usuarios por nombre o correo electrónico"
           value={search}
           onChange={(event) =>
             setSearch(event.target.value)
           }
-          placeholder="Buscar por nombre..."
+          placeholder="Buscar por nombre o correo electrónico..."
           className="pl-10 pr-10"
         />
         {search && (
@@ -407,65 +407,68 @@ export default function ConferenceUsers({
               {paginatedUsers.map((user) => (
                 <div
                   key={user.id}
-                  className="flex items-start gap-4 py-3"
+                  className="flex items-start justify-between gap-4 py-3"
                 >
-                  <div
-                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border text-sm font-semibold shadow-sm ${getUserAvatarClassName(
-                      user.id
-                    )}`}
-                  >
-                    {getInitials(user.full_name)}
-                  </div>
+                  <div className="flex min-w-0 flex-1 items-start gap-4">
+                    <div
+                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border text-sm font-semibold shadow-sm ${getUserAvatarClassName(
+                        user.id
+                      )}`}
+                    >
+                      {getInitials(user.full_name)}
+                    </div>
 
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
                       <span className="font-semibold">
                         {user.full_name}
                       </span>
-                      {user.roles.map((role) => (
-                        <span
-                          key={role}
-                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium ${getRoleClassName(
-                            role
-                          )}`}
+
+                      {user.email && (
+                        <a
+                          href={`mailto:${user.email}`}
+                          className="flex min-w-0 items-center gap-2 text-sm text-slate-500 transition-colors hover:text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
-                          {getRoleIcon(role)}
-                          {getRoleLabel(role)}
-                        </span>
-                      ))}
+                          <Mail size={14} className="shrink-0" />
+
+                          <span className="truncate">
+                            {user.email}
+                          </span>
+                        </a>
+                      )}
+
+                      {user.affiliation && (
+                        <div className="flex items-start gap-2 text-sm text-slate-500">
+                          <Building2 size={14} className="shrink-0" />
+
+                          <span className="break-words">
+                            {user.affiliation}
+                          </span>
+                        </div>
+                      )}
+
+                      {user.roles.length > 1 && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          <span>
+                            Tiene {user.roles.length} roles en esta conferencia
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    {user.email && (
-                      <a
-                        href={`mailto:${user.email}`}
-                        className="flex min-w-0 items-center gap-2 text-sm text-slate-500 transition-colors hover:text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  </div>
+
+                  <div className="flex shrink-0 flex-wrap justify-end gap-2 pt-1">
+                    {user.roles.map((role) => (
+                      <span
+                        key={role}
+                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium ${getRoleClassName(
+                          role
+                        )}`}
                       >
-                        <Mail size={14} className="shrink-0" />
-
-                        <span className="truncate">
-                          {user.email}
-                        </span>
-                      </a>
-                    )}
-
-                    {user.affiliation && (
-                      <div className="flex items-start gap-2 text-sm text-slate-500">
-                        <Building2 size={14} className="shrink-0" />
-
-                        <span className="break-words">
-                          {user.affiliation}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Más de un rol */}
-                    {user.roles.length > 1 && (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                              <span>
-                                    Tiene {user.roles.length} roles en esta conferencia
-                              </span>
-                          </div>
-                    )}
+                        {getRoleIcon(role)}
+                        {getRoleLabel(role)}
+                      </span>
+                    ))}
                   </div>
                 </div>
               ))}
