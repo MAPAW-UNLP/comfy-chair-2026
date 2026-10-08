@@ -17,7 +17,7 @@ type ConferenceViewProp = {
 
 export function ConferenceView({
   valorVisualizacion,
-  valorCountSources = 1,
+  valorCountSources = 0,
   valorFilesAccepted = ['pdf'],
   actualizarVista,
   actualizarCountSources,
@@ -99,8 +99,8 @@ export function ConferenceView({
             <SelectContent align="start" className="w-full">
               <SelectGroup>
                 <SelectLabel>Cantidad de fuentes</SelectLabel>
-                <SelectItem value="1">Una sola fuente</SelectItem>
-                <SelectItem value="0">Muchas fuentes</SelectItem>
+                <SelectItem value="0">Una sola fuente</SelectItem>
+                <SelectItem value="1">Muchas fuentes</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
