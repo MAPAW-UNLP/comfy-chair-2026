@@ -111,31 +111,28 @@ export const getArticlesByConferenceId = async (conferenceId: number): Promise<A
 // GRUPO 1 - Alta de Articulos
 //------------------------------------------------------------
 export async function createArticle(newArticle: ArticleNew) {
-  const formData = new FormData();
-  formData.append("title", newArticle.title);
-  formData.append("main_file", newArticle.main_file);
-  if (newArticle.source_file?.length) {
-    newArticle.source_file.forEach((file) => {
-      formData.append("source_file", file);
-    });
-  } 
-  formData.append("status", newArticle.status || "reception");
-  formData.append("type", newArticle.type || "");
-  formData.append("abstract", newArticle.abstract || "");
-  formData.append("corresponding_author_id", newArticle.corresponding_author?.toString() || "");
-  formData.append("session_id", newArticle.session?.toString() || "");
-
-  newArticle.authors.forEach((authorId) => {
-    formData.append("authors_ids", authorId.toString());
-  });
+  // 1. Armamos el payload en formato JSON con la estructura exacta recibida
+  const payload = {
+    article: {
+      title: newArticle.title,
+      abstract: newArticle.abstract || "",
+      corresponding_author: newArticle.corresponding_author,
+    },
+    sources: newArticle.source_file?.map((file) => ({
+      file_path: `media/articles/${file.name}`, // Ajusta la ruta base según requiera el backend
+      filename: file.name,
+    })) || [],
+  };
 
   try {
-    const res = await api.post(`/api/article/`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+    console.log("Enviando JSON del artículo:", payload);
+
+    // 2. Realizamos la petición POST enviando el objeto con Header application/json
+    const res = await api.post(`/api/article/`, payload, {
+      headers: { "Content-Type": "application/json" },
     });
 
     return normalizeArticleShape(res.data);
-
   } catch (err: any) {
     if (err.response?.data) {
       throw new Error(JSON.stringify(err.response.data));
