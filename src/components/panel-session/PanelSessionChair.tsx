@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
 import { useNavigate, Link } from "@tanstack/react-router"
-import { Users, FileSearch, ClipboardCheck } from "lucide-react"
+import { Users, FileSearch, ClipboardCheck, UserSearch } from "lucide-react"
 import { getSession, type Session } from "@/services/sessionServices";
+
 
 export function PanelSessionChair() {
   const navigate = useNavigate()
@@ -76,6 +77,17 @@ export function PanelSessionChair() {
           <ClipboardCheck size={70} className="mb-4 text-gray-700" />
           <p className="text-xl font-semibold text-gray-800">
             Seleccionar Corte de Sesión
+          </p>
+        </Link>
+
+        {/* Revisores de la Sesión */}
+        <Link
+          to="/chairs/reviewers"
+          className="bg-white shadow-lg rounded-xl p-6 flex flex-col items-center hover:shadow-2xl hover:bg-gray-50 transition border border-gray-300"
+        >
+          <UserSearch size={70} className="mb-4 text-gray-700" />
+          <p className="text-xl font-semibold text-gray-800">
+            Revisores de la Sesión
           </p>
         </Link>
       </div>
