@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react';
 import { SearchBar } from './ConferenceSearch';
 
 type VISTA_CHOICES = 'single blind' | 'double blind';
-export type FILES_ACCEPTED_CHOICES = 'pdf' | 'docx' | 'txt';
+export type ALLOWED_FILES_CHOICES = 'pdf' | 'docx' | 'txt';
 
 export type Conference = {
   id: number;
@@ -22,8 +22,8 @@ export type Conference = {
   end_date?: string;
   blind_kind: VISTA_CHOICES;
   chairs?: number[];
-  count_sources: number;
-  files_accepted: FILES_ACCEPTED_CHOICES[];
+  sources_multiple: boolean;
+  allowed_files: ALLOWED_FILES_CHOICES[];
 };
 
 function ConferenceApp() {

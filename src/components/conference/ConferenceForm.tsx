@@ -7,7 +7,7 @@ import { getCommonUsers, type User } from '@/services/userServices';
 import { UserCombobox } from '../combobox/UserCombobox';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
-import type { FILES_ACCEPTED_CHOICES } from './ConferenceApp';
+import type { ALLOWED_FILES_CHOICES } from './ConferenceApp';
 
 function esFechaValida(fecha1: string, fecha2: string) {
   const f1 = new Date(fecha1);
@@ -38,8 +38,8 @@ function ConferenceForm({
     start_date: '',
     end_date: '',
     blind_kind: 'single blind',
-    count_sources: 1,
-    files_accepted: ['pdf'],
+    sources_multiple: false,
+    allowed_files: ['pdf'],
   });
   const [chairs, setChairs] = useState<User[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -83,12 +83,12 @@ function ConferenceForm({
     setChairs(chairs.filter((ch) => ch.id !== userId));
   };
 
-  const actualizarCountSources = (count: number) => {
-    setConferencia((prev) => ({ ...prev, count_sources: count }));
+  const actualizarSourcesMultiple = (count: boolean) => {
+    setConferencia((prev) => ({ ...prev, sources_multiple: count }));
   };
 
-  const actualizarFilesAccepted = (files: FILES_ACCEPTED_CHOICES[]) => {
-    setConferencia((prev) => ({ ...prev, files_accepted: files }));
+  const actualizarAllowedFiles = (files: ALLOWED_FILES_CHOICES[]) => {
+    setConferencia((prev) => ({ ...prev, allowed_files: files }));
   };
 
   useEffect(() => {
@@ -105,8 +105,8 @@ function ConferenceForm({
     if (valorConferencia) {
       setConferencia({
         ...valorConferencia,
-        count_sources: valorConferencia.count_sources ?? 1,
-        files_accepted: valorConferencia.files_accepted ?? ['pdf'],
+        sources_multiple: valorConferencia.sources_multiple ?? 1,
+        allowed_files: valorConferencia.allowed_files ?? ['pdf'],
       });
       if (valorConferencia.start_date)
         setStartDate(parseDateSinOffset(valorConferencia.start_date));
@@ -199,11 +199,11 @@ function ConferenceForm({
 
         <ConferenceView
           valorVisualizacion={conferencia.blind_kind}
-          valorCountSources={conferencia.count_sources}
-          valorFilesAccepted={conferencia.files_accepted}
+          valorSourcesMultiple={conferencia.sources_multiple}
+          valorAllowedFiles={conferencia.allowed_files}
           actualizarVista={actualizarVista}
-          actualizarCountSources={actualizarCountSources}
-          actualizarFilesAccepted={actualizarFilesAccepted}
+          actualizarSourcesMultiple={actualizarSourcesMultiple}
+          actualizarAllowedFiles={actualizarAllowedFiles}
         />
       </div>
 
