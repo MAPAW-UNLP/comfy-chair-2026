@@ -99,8 +99,8 @@ export function ConferenceView({
             <SelectContent align="start" className="w-full">
               <SelectGroup>
                 <SelectLabel>Cantidad de fuentes</SelectLabel>
-                <SelectItem value="0">Una sola fuente</SelectItem>
-                <SelectItem value="1">Muchas fuentes</SelectItem>
+                <SelectItem value="false">Una sola fuente</SelectItem>
+                <SelectItem value="true">Muchas fuentes</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
