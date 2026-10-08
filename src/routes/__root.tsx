@@ -26,7 +26,7 @@ const RootLayoutContent = () => {
     ],
     autor: [
       { to: '/dashboard', label: 'Inicio' },
-      { to: '/article/view', label: 'Articulos' },
+      { to: '/article/create', label: 'Articulos' },
     ],
     chair: [
       { to: '/article/select', label: 'Articulos a Asignar' },
@@ -63,7 +63,7 @@ const RootLayoutContent = () => {
         { to: '/reviewer/', label: 'Revisor' },
         { to: '/users', label: 'Usuarios'},
         { to: '/conference/view', label: 'Conferencias' },
-        { to: '/article/select', label: 'Articulos' },
+        { to: '/article/create', label: 'Articulos' },
         { to: '/chairs/select-session', label: 'Chair' },
         { to: '/reviewer/bidding', label: 'Bidding' },
         ...commonAuthLinks,

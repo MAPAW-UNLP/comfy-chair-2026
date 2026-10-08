@@ -384,9 +384,23 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
     return "Seleccionar archivo...";
   };
 
-  const extensionesFormateadas = currentConference?.allowed_extensions
-  ?.map((ext: string) => ext.toUpperCase())
-  ?.join(', ') || 'ninguna';
+  // ✅ Formateo seguro para allowed_extensions
+const extensionesFormateadas = (() => {
+  const exts = currentConference?.allowed_extensions;
+  
+  if (Array.isArray(exts)) {
+    return exts.map((ext: string) => ext.toUpperCase()).join(', ');
+  }
+  
+  if (typeof exts === 'string') {
+    return (exts as string)
+      .split(',')
+      .map((ext) => ext.trim().toUpperCase())
+      .join(', ');
+  }
+
+  return 'ninguna';
+})();
   //------------------------------------------------------------
   // Renderizado del componente
   //------------------------------------------------------------
