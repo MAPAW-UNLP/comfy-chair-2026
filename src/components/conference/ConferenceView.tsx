@@ -29,7 +29,21 @@ export function ConferenceView({
     { value: 'txt', label: 'TXT' },
   ];
 
-  const files = valorAllowedExtensions ?? ['pdf'];
+  const getNormalizedFiles = (): ALLOWED_EXTENSIONS_CHOICES[] => {
+    if (Array.isArray(valorAllowedExtensions)) {
+      return valorAllowedExtensions;
+    }
+    if (typeof valorAllowedExtensions === 'string') {
+      // Si el backend devuelve una cadena separada por comas ("pdf,docx") o simple ("pdf")
+      return (valorAllowedExtensions as string)
+        .split(',')
+        .map((ext) => ext.trim() as ALLOWED_EXTENSIONS_CHOICES)
+        .filter(Boolean);
+    }
+    return ['pdf'];
+  };
+
+  const files = getNormalizedFiles();
 
   const handleSelectFormat = (val: ALLOWED_EXTENSIONS_CHOICES) => {
     if (!files.includes(val)) {
