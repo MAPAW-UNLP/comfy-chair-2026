@@ -202,11 +202,15 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
       setLoading(true);
 
-      const article: ArticleNew = {
+      if (!mainFile) {
+        toast.error("Debes seleccionar el archivo principal del artículo.");
+        return;
+      }
+
+      const articlePayload: ArticleNew = {
         title: title,
-        main_file: mainFile!,
-        // Nota: Si tu backend requiere múltiples fuentes en FormData, pasa sourceFiles (File[])
-        source_file: articleType === "poster" && sourceFiles.length > 0 ? (sourceFiles as any) : null,
+        main_file: mainFile,
+        source_file: articleType === "poster" && sourceFiles.length > 0 ? sourceFiles : null,
         status: 'reception',
         type: articleType,
         abstract: abstract,
@@ -215,7 +219,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
         session: Number(selectedSession),
       };
 
-      const response = await createArticle(article);
+      const response = await createArticle(articlePayload);
       console.log("Article Submit: ", response);
 
       toast.success('Artículo subido correctamente !', { duration: 5000 });
