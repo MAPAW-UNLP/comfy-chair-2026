@@ -117,6 +117,11 @@ export async function createArticle(newArticle: ArticleNew) {
       title: newArticle.title,
       abstract: newArticle.abstract || "",
       corresponding_author: newArticle.corresponding_author,
+      main_file: newArticle.main_file,
+      status: newArticle.status || "reception",
+      type: newArticle.type || "regular",
+      session: newArticle.session,
+      authors: newArticle.authors,
     },
     sources: newArticle.source_file?.map((file) => ({
       file_path: `media/articles/${file.name}`, // Ajusta la ruta base según requiera el backend
