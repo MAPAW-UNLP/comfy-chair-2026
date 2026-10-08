@@ -25,6 +25,7 @@ const RootLayoutContent = () => {
       { to: '/reviewer/history', label: 'Historial' },
     ],
     autor: [
+      { to: '/dashboard', label: 'Inicio' },
       { to: '/article/view', label: 'Articulos' },
     ],
     chair: [
@@ -51,6 +52,7 @@ const RootLayoutContent = () => {
     }
 
     const commonAuthLinks = [
+      
       { to: '/notifications', label: 'Notificaciones' }
     ];
 

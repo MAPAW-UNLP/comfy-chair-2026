@@ -100,6 +100,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const handleMainFileClick = () => mainFileRef.current?.click();
 
   const handleMainFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log(sourceFiles);
     const file = event.target.files?.[0];
     if (file) {
       setMainFile(file);
