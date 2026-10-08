@@ -62,7 +62,7 @@ function UserCard({ user }: UserCardProps) {
             
           </CardTitle>
           <Badge 
-            variant={user.role === 'admin' ? 'default' : 'secondary'} 
+            variant={user.role === 'admin' ? 'default' : 'secondary'}
             className="flex-shrink-0"
           >
             {roleDisplay}

@@ -44,7 +44,7 @@ export const articleSchema = z.object({
   session: z.string().min(1, "sesión requerida"),
   title: z.string().min(1, "título requerido"),
   abstract: z.string().min(1, "abstract requerido"),
-  file: z.string().min(1, "archivo del articulo requerido"),
+  file: z.string().min(1, "archivo del submission requerido"),
   sourcesFile: z.string().min(1, "archivo de fuentes requerido"),
   authors: z.string().min(1, "seleccionar al menos un autor"),
   correspondingAuthor: z.string().min(1, "autor de notificacion requerido"),

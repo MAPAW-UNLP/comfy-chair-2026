@@ -28,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { type User } from "@/services/userServices";
 import { type Conference } from '@/components/conference/ConferenceApp';
 import { type Session, getSessionsByConferenceGrupo1 } from "@/services/sessionServices";
-import { type Article, type ArticleNew, type ArticleUpdate, createArticle, updateArticle } from "@/services/articleServices";
+import { type Article, type ArticleNew, type ArticleUpdate, ApiError, createArticle, updateArticle } from "@/services/articleServices";
 
 // Lo que espera recibir el componente
 type ArticleFormProps = {
@@ -37,10 +37,22 @@ type ArticleFormProps = {
   editMode? : boolean;
   article? : Article;
   userId : number
+  fixedConferenceId? : number;
+};
+
+// Campos que el backend devuelve en los errores 400 y su equivalente en el form
+const backendFieldMap: Partial<Record<string, keyof ArticleFormData>> = {
+  title: "title",
+  abstract: "abstract",
+  main_file: "file",
+  source_file: "sourcesFile",
+  authors_ids: "authors",
+  corresponding_author_id: "correspondingAuthor",
+  session_id: "session",
 };
 
 //Cuerpo del Componente
-const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode, article, userId }) => {
+const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode, article, userId, fixedConferenceId }) => {
 
   // Navegacion
   const navigate = useNavigate();
@@ -60,7 +72,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const [title, setTitle] = useState<string>(""); // Título del artículo
   const [abstract, setAbstract] = useState<string>(""); // Abstract del artículo
   const [articleType, setArticleType] = useState<string>("regular"); // Tipo de artículo
-  const [selectedConference, setSelectedConference] = useState< number | null>(null); // Conferencia seleccionada
+  const [selectedConference, setSelectedConference] = useState< number | null>(fixedConferenceId ?? null); // Conferencia seleccionada
   const [selectedSession, setSelectedSession] = useState<string | null>(null); // Sesión seleccionada
   const [authors, setAuthors] = useState<User[]>([]); // Autores seleccionados
   const [correspondingAuthor, setCorrespondingAuthor] = useState<string>(""); // Autor de notificación
@@ -112,6 +124,43 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   }
 
   //------------------------------------------------------------
+  // Manejo de errores del alta
+  //------------------------------------------------------------
+  const handleCreateError = (error: unknown) => {
+
+    if (!(error instanceof ApiError)) {
+      setError((error as Error).message);
+      setShowErrorAlert(true);
+      return;
+    }
+
+    if (error.status === 400) {
+      const fieldErrors: Partial<ArticleFormData> = {};
+      const generalErrors: string[] = [];
+
+      Object.entries(error.errors).forEach(([key, messages]) => {
+        const field = backendFieldMap[key];
+        if (field) fieldErrors[field] = messages.join(" ");
+        else generalErrors.push(...messages);
+      });
+
+      setErrors(fieldErrors);
+      if (generalErrors.length > 0) {
+        setError(generalErrors.join(" "));
+        setShowErrorAlert(true);
+      }
+    } else if (error.status === 403) {
+      toast.error("No tenés permisos para crear un submission en esta conferencia");
+    } else if (error.status === 404) {
+      toast.error("La conferencia o la sesión ya no existe");
+      navigate({ to: `/conference/${fixedConferenceId}` });
+    } else {
+      setError(error.message);
+      setShowErrorAlert(true);
+    }
+  };
+
+  //------------------------------------------------------------
   // Manejo del boton de submit
   //------------------------------------------------------------
   const handleSubmit = async () => {
@@ -143,7 +192,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
     // Validar que el usuario logueado esté entre los autores
     if (!authors.some(a => a.id === userId)) {
-      toast.error("Debes incluirte como autor del artículo.");
+      toast.error("Debes incluirte como autor del submission.");
       return;
     }
 
@@ -167,14 +216,18 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       const response = await createArticle(article);
       console.log("Article Submit: ", response);
 
-      toast.success('Artículo subido correctamente !', { duration: 5000 });
+      toast.success('Submission subido correctamente !', { duration: 5000 });
       navigateBack();
 
     } catch (error) {
 
       console.error("Error al subir el artículo: ", error);
-      setError((error as Error).message);
-      setShowErrorAlert(true);
+      if (fixedConferenceId !== undefined) {
+        handleCreateError(error);
+      } else {
+        setError((error as Error).message);
+        setShowErrorAlert(true);
+      }
 
     } finally {
       setLoading(false);
@@ -215,7 +268,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
     // Validar que el usuario logueado esté entre los autores
     if (!authors.some(a => a.id === userId)) {
-      toast.error("Debes incluirte como autor del artículo.");
+      toast.error("Debes incluirte como autor del submission.");
       return;
     }
 
@@ -249,7 +302,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       const response = await updateArticle(article.id, updated);
       console.log('Article Update: ', response);
       
-      toast.success('Artículo actualizado correctamente !', { duration: 5000 });
+      toast.success('Submission actualizado correctamente !', { duration: 5000 });
       navigateBack();
 
     } catch (error) {
@@ -332,7 +385,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
       {/* Titulo del Form */}
       <h2 className="text-lg font-bold italic text-slate-500 text-center">
-        {!editMode ? "Alta de Artículo" : "Editar Artículo"}
+        {!editMode ? "Alta de Submission" : "Editar Submission"}
       </h2>
 
       <hr className="bg-slate-100" />
@@ -343,7 +396,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
         {/* Combobox de Conferencia */}
         <div className="flex-1 flex flex-col gap-2">
           <Label htmlFor="conferencia">Conferencia {errors.conference && <p className="text-destructive">{errors.conference}</p>}</Label>
-          <ConferenceCombobox value={selectedConference} onValueChange={setSelectedConference} conferences={conferences} disabled={editMode} />
+          <ConferenceCombobox value={selectedConference} onValueChange={setSelectedConference} conferences={conferences} disabled={editMode || fixedConferenceId !== undefined} />
         </div>
 
         {/* Select de Sesiones */}
@@ -379,7 +432,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       {/* Campo de Título */}
       <div className="flex-1 flex flex-col gap-2">
         <Label htmlFor="titulo">Título {errors.title && <p className="text-destructive">{errors.title}</p>}</Label>
-        <Input type="text" id="title" placeholder="Título del artículo..." maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)}/>
+        <Input type="text" id="title" placeholder="Título del submission..." maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)}/>
       </div>
       
       {/* Campo de Abstract */}
@@ -409,7 +462,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
         {/* Archivo principal */}
         <div className="flex-1 grid items-start gap-2">
           <Label htmlFor="DetalleRegular">
-            Artículo {errors.file && <p className="text-destructive">{errors.file}</p>}
+            Submission {errors.file && <p className="text-destructive">{errors.file}</p>}
           </Label>
           <input type="file" ref={mainFileRef} onChange={handleMainFileChange} className="hidden" />
           <Button
@@ -493,7 +546,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
       {/* Combobox de autores */}
       <div className="flex-1 flex flex-col gap-2">
-        <Label htmlFor="autor">Autores del Artículo {errors.authors && <p className="text-destructive">{errors.authors}</p>}</Label>
+        <Label htmlFor="autor">Autores del Submission {errors.authors && <p className="text-destructive">{errors.authors}</p>}</Label>
         <UserCombobox onValueChange={handleAgregarAutor} backgroundWhite={true} users={availableUsers} />
       </div>
 
@@ -550,7 +603,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
             Error
           </AlertTitle>
           <AlertDescription>
-              Hubo un error al subir el artículo {error}
+              Hubo un error al subir el submission {error}
           </AlertDescription>
         </Alert>
       )}
