@@ -91,7 +91,7 @@ export function ConferenceView({
           <FieldLabel>Cantidad de fuentes permitidas</FieldLabel>
           <Select
             value={String(valorSourcesMultiple)}
-            onValueChange={(v) => actualizarSourcesMultiple(Boolean(v))}
+            onValueChange={(v) => actualizarSourcesMultiple(v === "true")}
           >
             <SelectTrigger>
               <SelectValue placeholder="Seleccionar opción..." />
