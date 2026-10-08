@@ -110,31 +110,68 @@ export const getArticlesByConferenceId = async (conferenceId: number): Promise<A
 //------------------------------------------------------------
 // GRUPO 1 - Alta de Articulos
 //------------------------------------------------------------
+//------------------------------------------------------------
+// GRUPO 1 - Alta de Articulos (Corregido)
+//------------------------------------------------------------
 export async function createArticle(newArticle: ArticleNew) {
-  // 1. Armamos el payload en formato JSON con la estructura exacta recibida
-  const payload = {
-    article: {
-      title: newArticle.title,
-      abstract: newArticle.abstract || "",
-      corresponding_author: newArticle.corresponding_author,
-      main_file: newArticle.main_file,
-      status: newArticle.status || "reception",
-      type: newArticle.type || "regular",
-      session: newArticle.session,
-      authors: newArticle.authors,
-    },
-    sources: newArticle.source_file?.map((file) => ({
-      file_path: `media/articles/${file.name}`, // Ajusta la ruta base según requiera el backend
-      filename: file.name,
-    })) || [],
-  };
+  // 0. VALIDACIÓN DE SEGURIDAD (Esto detecta el error {} antes de enviarlo al backend)
+  if (newArticle.main_file && !(newArticle.main_file instanceof File) && !(newArticle.main_file instanceof Blob)) {
+    console.error("❌ ERROR: El main_file no es un archivo válido:", newArticle.main_file);
+    throw new Error("El archivo principal está vacío o mal capturado en el formulario (no es tipo File).");
+  }
+
+  const formData = new FormData();
+
+  // 1. Datos básicos (Todo debe convertirse a string en FormData)
+  formData.append('title', newArticle.title);
+  formData.append('type', newArticle.type || "regular");
+  formData.append('abstract', newArticle.abstract || "");
+  formData.append('status', newArticle.status || "reception");
+  
+  if (newArticle.corresponding_author) {
+    formData.append('corresponding_author_id', String(newArticle.corresponding_author));
+  }
+  
+  if (newArticle.session) {
+    formData.append('session_id', String(newArticle.session));
+  }
+
+  // 2. Relación ManyToMany (Múltiples autores)
+  if (newArticle.authors && newArticle.authors.length > 0) {
+    newArticle.authors.forEach(authorId => {
+      formData.append('authors_ids', String(authorId));
+    });
+  }
+
+  // 3. Archivo Principal
+  if (newArticle.main_file) {
+    formData.append('main_file', newArticle.main_file);
+  }
+
+  // 4. Archivos Source (Iteramos y pasamos el File real)
+  if (newArticle.source_file && newArticle.source_file.length > 0) {
+    newArticle.source_file.forEach(file => {
+      if (file instanceof File || file instanceof Blob) {
+        formData.append('sources', file);
+      } else {
+        console.warn("⚠️ Un archivo source no es válido y no se envió:", file);
+      }
+    });
+  }
 
   try {
-    console.log("Enviando JSON del artículo:", payload);
+    console.log("Enviando FormData del artículo...");
+    
+    // DEPÚRACIÓN: Mostrará exactamente qué va dentro del FormData antes de enviarlo
+    for (const pair of formData.entries()) {
+      console.log(`- ${pair[0]}:`, pair[1]);
+    }
 
-    // 2. Realizamos la petición POST enviando el objeto con Header application/json
-    const res = await api.post(`/api/article/`, payload, {
-      headers: { "Content-Type": "application/json" },
+    // Realizamos la petición forzando el header para romper cualquier interceptor JSON
+    const res = await api.post(`/api/article/`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     });
 
     return normalizeArticleShape(res.data);

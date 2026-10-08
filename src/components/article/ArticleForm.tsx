@@ -80,7 +80,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   // Obtener la conferencia actual seleccionada
   const currentConference = conferences.find((c) => c.id === selectedConference);
   // Ajusta 'accepts_multiple_sources' según la propiedad real de tu modelo Conference
-  const acceptsMultipleSources = Boolean(currentConference?.sources_multiple === 0 ? false : true);
+  const acceptsMultipleSources = currentConference?.sources_multiple === true;
 
   // Manejo de archivos
   const mainFileRef = useRef<HTMLInputElement>(null); 
@@ -384,6 +384,9 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
     return "Seleccionar archivo...";
   };
 
+  const extensionesFormateadas = currentConference?.allowed_extensions
+  ?.map((ext: string) => ext.toUpperCase())
+  ?.join(', ') || 'ninguna';
   //------------------------------------------------------------
   // Renderizado del componente
   //------------------------------------------------------------
@@ -466,6 +469,9 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
                   ? "Esta conferencia permite muchas fuentes." 
                   : "Esta conferencia permite una sola fuente."}
               </span>
+                        <span className="text-xs text-muted-foreground">
+            Esta conferencia permite las siguientes extensiones: {extensionesFormateadas}.
+          </span>
       </div> 
 
       {/* Archivos */}
@@ -477,9 +483,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
             <Label htmlFor="DetalleRegular">
               Artículo {errors.file && <p className="text-destructive">{errors.file}</p>}
             </Label>
-            <span className="text-xs text-muted-foreground">
-              Esta conferencia permite las siguientes extensiones: PDF, Docx, etc.
-            </span>
+
           </div>
           <input 
             type="file" 
