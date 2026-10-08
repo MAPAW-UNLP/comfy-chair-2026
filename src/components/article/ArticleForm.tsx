@@ -30,6 +30,18 @@ import { type Conference } from '@/components/conference/ConferenceApp';
 import { type Session, getSessionsByConferenceGrupo1 } from "@/services/sessionServices";
 import { type Article, type ArticleNew, type ArticleUpdate, createArticle, updateArticle } from "@/services/articleServices";
 
+// Configuración escalable de validación de extensiones
+const ALLOWED_ARTICLE_EXTENSIONS = [".pdf"]; 
+const ALLOWED_SOURCE_EXTENSIONS = [".pdf", ".zip", ".rar", ".png", ".jpeg", ".jpg"]; 
+
+/**
+ * Helper para validar si un archivo posee una extensión permitida.
+ */
+const validateFileExtension = (file: File, allowedExtensions: string[]): boolean => {
+  const fileName = file.name.toLowerCase();
+  return allowedExtensions.some((ext) => fileName.endsWith(ext.toLowerCase()));
+};
+
 // Lo que espera recibir el componente
 type ArticleFormProps = {
   conferences : Conference[];
@@ -47,30 +59,40 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const navigateBack = () => navigate({ to: `/articles/${selectedConference}`, replace: true });
 
   // Setteo de sesiones
-  const [sessions, setSessions] = useState<Session[]>([]); // Sesiones pertenecientes a la conferencia seleccionada
+  const [sessions, setSessions] = useState<Session[]>([]); 
 
   // Manejo de errores y estados de carga
-  const [error, setError] = useState<string | null>(null); // Error general
-  const [errors, setErrors] = useState<Partial<ArticleFormData>>({}); // Errores por campo para validación del form
-  const [showErrorAlert, setShowErrorAlert] = useState<boolean>(false); // Mostrar alert de error
-  const [loading, setLoading] = useState<boolean>(false); // Estado de carga del submit
-  const [loadingSessions, setLoadingSessions] = useState<boolean>(false); // Estado de carga de sesiones
+  const [error, setError] = useState<string | null>(null); 
+  const [errors, setErrors] = useState<Partial<ArticleFormData>>({}); 
+  const [showErrorAlert, setShowErrorAlert] = useState<boolean>(false); 
+  const [loading, setLoading] = useState<boolean>(false); 
+  const [loadingSessions, setLoadingSessions] = useState<boolean>(false); 
   
-  // Setteo de campos del formulario (solo para edición)
-  const [title, setTitle] = useState<string>(""); // Título del artículo
-  const [abstract, setAbstract] = useState<string>(""); // Abstract del artículo
-  const [articleType, setArticleType] = useState<string>("regular"); // Tipo de artículo
-  const [selectedConference, setSelectedConference] = useState< number | null>(null); // Conferencia seleccionada
-  const [selectedSession, setSelectedSession] = useState<string | null>(null); // Sesión seleccionada
-  const [authors, setAuthors] = useState<User[]>([]); // Autores seleccionados
-  const [correspondingAuthor, setCorrespondingAuthor] = useState<string>(""); // Autor de notificación
+  // Setteo de campos del formulario
+  const [title, setTitle] = useState<string>(""); 
+  const [abstract, setAbstract] = useState<string>(""); 
+  const [articleType, setArticleType] = useState<string>("regular"); 
+  const [selectedConference, setSelectedConference] = useState<number | null>(null); 
+  const [selectedSession, setSelectedSession] = useState<string | null>(null); 
+  const [authors, setAuthors] = useState<User[]>([]); 
+  const [correspondingAuthor, setCorrespondingAuthor] = useState<string>(""); 
+
+  // Obtener la conferencia actual seleccionada
+  const currentConference = conferences.find((c) => c.id === selectedConference);
+  // Ajusta 'accepts_multiple_sources' según la propiedad real de tu modelo Conference
+  const acceptsMultipleSources = Boolean(currentConference?.count_sources === 0 ? false : true);
 
   // Manejo de archivos
-  const mainFileRef = useRef<HTMLInputElement>(null); // Ref para el input de archivo principal
-  const sourceFileRef = useRef<HTMLInputElement>(null); // Ref para el input de archivo de fuentes
-  const [mainFile, setMainFile] = useState<File | null>(null); // Archivo principal
-  const [sourceFile, setSourceFile] = useState<File | null>(null); // Archivo de fuentes (solo para posters)
-  const { mainFileName, sourceFileName, mainFileUrl, sourceFileUrl } = useArticleFiles(article ?? null); // Hook custom para el manejo de archivos
+  const mainFileRef = useRef<HTMLInputElement>(null); 
+  const sourceFileRef = useRef<HTMLInputElement>(null); 
+  const [mainFile, setMainFile] = useState<File | null>(null); 
+  
+  // AHORA sourceFiles ES UN ARRAY DE ARCHIVOS
+  const [sourceFiles, setSourceFiles] = useState<File[]>([]); 
+  
+  const [mainFileError, setMainFileError] = useState<boolean>(false); 
+  const [sourceFileError, setSourceFileError] = useState<boolean>(false); 
+  const { mainFileName, sourceFileName, mainFileUrl, sourceFileUrl } = useArticleFiles(article ?? null); 
 
   //------------------------------------------------------------
   // Manejo de la seleccion de archivos
@@ -79,14 +101,33 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
   const handleMainFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) setMainFile(file);
+    if (file) {
+      setMainFile(file);
+      const isValid = validateFileExtension(file, ALLOWED_ARTICLE_EXTENSIONS);
+      setMainFileError(!isValid);
+      if (!isValid) {
+        toast.error(`Formato no permitido. Solo se aceptan archivos: ${ALLOWED_ARTICLE_EXTENSIONS.join(", ")}`);
+      }
+    }
   };
 
   const handleSourceFileClick = () => sourceFileRef.current?.click();
 
   const handleSourceFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) setSourceFile(file);
+    const selectedList = event.target.files;
+    if (!selectedList || selectedList.length === 0) return;
+
+    const filesArray = Array.from(selectedList);
+
+    // Validar extensiones para cada archivo
+    const hasInvalid = filesArray.some(file => !validateFileExtension(file, ALLOWED_SOURCE_EXTENSIONS));
+
+    setSourceFiles(filesArray);
+    setSourceFileError(hasInvalid);
+
+    if (hasInvalid) {
+      toast.error(`Uno o más archivos de fuentes no tienen un formato permitido.`);
+    }
   };
 
   //------------------------------------------------------------
@@ -101,7 +142,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
   const handleEliminarAutor = (id: number) => {
     setAuthors(authors.filter((a) => a.id !== id));
-    if (correspondingAuthor === String(id)) setCorrespondingAuthor(""); // limpiar si se elimina
+    if (correspondingAuthor === String(id)) setCorrespondingAuthor(""); 
   };
 
   //------------------------------------------------------------
@@ -118,7 +159,18 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
     setShowErrorAlert(false);
 
-    // Datos a validar con Zod
+    if (mainFileError) {
+      toast.error(`El archivo principal no tiene un formato válido (${ALLOWED_ARTICLE_EXTENSIONS.join(", ")}).`);
+      return;
+    }
+    if (articleType === "poster" && sourceFileError) {
+      toast.error("Uno o más archivos de fuentes no tienen un formato válido.");
+      return;
+    }
+
+    // Nombres para validación de Zod
+    const sourceFilesString = sourceFiles.map(f => f.name).join(", ");
+
     const formData = {
       conference: selectedConference ? String(selectedConference) : "",
       session: selectedSession ?? "",
@@ -127,10 +179,9 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       file: mainFile ? mainFile.name : "",
       authors: authors.length > 0 ? "ok" : "",
       correspondingAuthor: correspondingAuthor ?? "",
-      sourcesFile: articleType === "poster" ? (sourceFile ? sourceFile.name : "") : "ok",
+      sourcesFile: articleType === "poster" ? (sourceFiles.length > 0 ? sourceFilesString : "") : "ok",
     };
 
-    // Validación con Zod
     const result = articleSchema.safeParse(formData);
     if (!result.success) {
       const fieldErrors: Partial<ArticleFormData> = {};
@@ -141,13 +192,11 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       return;
     }
 
-    // Validar que el usuario logueado esté entre los autores
     if (!authors.some(a => a.id === userId)) {
       toast.error("Debes incluirte como autor del artículo.");
       return;
     }
 
-    // Preparar objeto a enviar al backend
     try {
 
       setLoading(true);
@@ -155,7 +204,8 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       const article: ArticleNew = {
         title: title,
         main_file: mainFile!,
-        source_file: articleType === "poster" ? sourceFile : null,
+        // Nota: Si tu backend requiere múltiples fuentes en FormData, pasa sourceFiles (File[])
+        source_file: articleType === "poster" && sourceFiles.length > 0 ? (sourceFiles as any) : null,
         status: 'reception',
         type: articleType,
         abstract: abstract,
@@ -190,7 +240,17 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
     setShowErrorAlert(false);
 
-    // Datos a validar con Zod
+    if (mainFileError) {
+      toast.error(`El archivo principal no tiene un formato válido (${ALLOWED_ARTICLE_EXTENSIONS.join(", ")}).`);
+      return;
+    }
+    if (articleType === "poster" && sourceFileError) {
+      toast.error("Uno o más archivos de fuentes no tienen un formato válido.");
+      return;
+    }
+
+    const sourceFilesString = sourceFiles.map(f => f.name).join(", ");
+
     const formDataForValidation = {
       conference: selectedConference ? String(selectedConference) : "",
       session: selectedSession ?? "",
@@ -199,10 +259,9 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       file: mainFile ? mainFile.name : mainFileName ?? "",
       authors: authors.length > 0 ? "ok" : "",
       correspondingAuthor: correspondingAuthor ?? "",
-      sourcesFile: articleType === "poster" ? (sourceFile ? sourceFile.name : sourceFileName ?? "") : "ok",
+      sourcesFile: articleType === "poster" ? (sourceFiles.length > 0 ? sourceFilesString : sourceFileName ?? "") : "ok",
     };
 
-    // Validación con Zod
     const result = articleSchema.safeParse(formDataForValidation);
     if (!result.success) {
       const fieldErrors: Partial<ArticleFormData> = {};
@@ -213,13 +272,11 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       return;
     }
 
-    // Validar que el usuario logueado esté entre los autores
     if (!authors.some(a => a.id === userId)) {
       toast.error("Debes incluirte como autor del artículo.");
       return;
     }
 
-    // Preparar objeto a enviar al backend
     try {
 
       setLoading(true);
@@ -234,16 +291,14 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
         session: selectedSession ? Number(selectedSession) : null,
       };
 
-      // Archivo principal
       if (mainFile) {
         updated.main_file = mainFile;
       }
 
-      // Archivo fuentes
       if (articleType === "regular") {
-        updated.source_file = null; // Si es regular, fuerzo el campo source_file = null para borrar cualquier referencia vieja
-      } else if (sourceFile) {
-        updated.source_file = sourceFile;
+        updated.source_file = null; 
+      } else if (sourceFiles.length > 0) {
+        updated.source_file = sourceFiles as any;
       }
 
       const response = await updateArticle(article.id, updated);
@@ -272,15 +327,11 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
     }
   }, [editMode, userId]);
 
-
   //------------------------------------------------------------
   // Efecto para precargar datos del form en modo edición
   //------------------------------------------------------------
   useEffect(() => {
-
     if (editMode && article) {
-
-      // Setteo de campos del form
       setTitle(article.title);
       setAbstract(article.abstract);
       setArticleType(article.type);
@@ -288,27 +339,21 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       setSelectedSession(article.session?.id ? String(article.session.id) : null);
       setAuthors(article.authors);
       setCorrespondingAuthor(String(article.corresponding_author?.id ?? ""));
-      
     }
-
   }, [editMode, article]);
 
   //------------------------------------------------------------
   // Efecto para traer sesiones al cambiar la conferencia
   //------------------------------------------------------------
   useEffect(() => {
-
     if (selectedConference) {
-
       setLoadingSessions(true);
 
       getSessionsByConferenceGrupo1(Number(selectedConference)).then((data) => {
         setSessions(data);
-        // Si estamos en modo edición y el artículo tiene sesión asignada y pertenece a la conferencia seleccionada entonces precargamos la sesión
         if (editMode && article?.session && article.session.conference?.id === selectedConference) {
           setSelectedSession(String(article.session.id));
         } else {
-          // Si no estamos en modo edición (o la sesión no coincide) entonces limpiamos la selección
           setSelectedSession(null);
         }
       }).catch((err) => console.error("Error cargando sesiones:", err)).finally(() => setLoadingSessions(false));
@@ -317,12 +362,22 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       setSessions([]);
       setSelectedSession(null);
     }
-
   }, [selectedConference, editMode, article]);
 
   const availableUsers = users.filter(u => 
     !authors.some(a => a.id === u.id)
   );
+
+  // Formateador del texto a mostrar en el botón de fuentes
+  const getSourceButtonText = () => {
+    if (sourceFiles.length > 0) {
+      return sourceFiles.map((f) => f.name).join(", ");
+    }
+    if (sourceFileName) {
+      return sourceFileName;
+    }
+    return "Seleccionar archivo...";
+  };
 
   //------------------------------------------------------------
   // Renderizado del componente
@@ -408,20 +463,33 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
         
         {/* Archivo principal */}
         <div className="flex-1 grid items-start gap-2">
-          <Label htmlFor="DetalleRegular">
-            Artículo {errors.file && <p className="text-destructive">{errors.file}</p>}
-          </Label>
-          <input type="file" ref={mainFileRef} onChange={handleMainFileChange} className="hidden" />
+          <div className="flex justify-between items-center">
+            <Label htmlFor="DetalleRegular">
+              Artículo {errors.file && <p className="text-destructive">{errors.file}</p>}
+            </Label>
+            <span className="text-xs text-muted-foreground">
+              Esta conferencia permite las siguientes extensiones: PDF, Docx, etc.
+            </span>
+          </div>
+          <input 
+            type="file" 
+            ref={mainFileRef} 
+            onChange={handleMainFileChange} 
+            accept={ALLOWED_ARTICLE_EXTENSIONS.join(",")} 
+            className="hidden" 
+          />
           <Button
             variant="outline"
             onClick={handleMainFileClick}
             type="button"
-            className={`w-full text-white ${
-              mainFile
-                ? "bg-lime-900"                     
+            className={`w-full text-white transition-colors truncate ${
+              mainFileError
+                ? "bg-red-600 hover:bg-red-700"
+                : mainFile
+                ? "bg-lime-900 hover:bg-lime-950"                     
                 : editMode && mainFileName  
-                ? "bg-lime-900"
-                : "bg-slate-900"                    
+                ? "bg-lime-900 hover:bg-lime-950"
+                : "bg-slate-900 hover:bg-slate-800"                    
             }`}
           >
             {mainFile
@@ -435,27 +503,39 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
         {/* Archivo de fuentes solo si es Poster */}
         {articleType === "poster" && (
           <div className="flex-1 grid items-start gap-2">
-            <Label htmlFor="DetalleRegular">
-              Fuentes {errors.sourcesFile && <p className="text-destructive">{errors.sourcesFile}</p>}
-            </Label>
-            <input type="file" ref={sourceFileRef} onChange={handleSourceFileChange} className="hidden" />
+            <div className="flex justify-between items-center">
+              <Label htmlFor="DetalleRegular">
+                Fuentes {errors.sourcesFile && <p className="text-destructive">{errors.sourcesFile}</p>}
+              </Label>
+              <span className="text-xs text-muted-foreground">
+                {acceptsMultipleSources 
+                  ? "Esta conferencia permite muchas fuentes." 
+                  : "Esta conferencia permite una sola fuente."}
+              </span>
+            </div>
+            <input 
+              type="file" 
+              ref={sourceFileRef} 
+              onChange={handleSourceFileChange} 
+              accept={ALLOWED_SOURCE_EXTENSIONS.join(",")} 
+              multiple={acceptsMultipleSources} // <-- Activa/Desactiva la selección múltiple
+              className="hidden" 
+            />
             <Button
               variant="outline"
               onClick={handleSourceFileClick}
               type="button"
-              className={`w-full text-white ${
-                sourceFile
-                  ? "bg-lime-900"                         
+              className={`w-full text-white transition-colors truncate ${
+                sourceFileError
+                  ? "bg-red-600 hover:bg-red-700"
+                  : sourceFiles.length > 0
+                  ? "bg-slate-900 hover:bg-slate-800"                         
                   : editMode && sourceFileName   
-                  ? "bg-lime-900"
-                  : "bg-slate-900"                        
+                  ? "bg-lime-900 hover:bg-lime-950"
+                  : "bg-slate-900 hover:bg-slate-800"                        
               }`}
             >
-              {sourceFile
-                ? sourceFile.name
-                : sourceFileName
-                ? sourceFileName
-                : "Seleccionar archivo..."}
+              {getSourceButtonText()}
             </Button>
           </div>
         )}
@@ -489,7 +569,6 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
           )}
         </div>
       )}
-
 
       {/* Combobox de autores */}
       <div className="flex-1 flex flex-col gap-2">
