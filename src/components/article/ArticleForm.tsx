@@ -461,6 +461,11 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
             <Label htmlFor="poster">Poster</Label>
           </div>
         </RadioGroup>
+        <span className="text-xs text-muted-foreground">
+                {acceptsMultipleSources 
+                  ? "Esta conferencia permite muchas fuentes." 
+                  : "Esta conferencia permite una sola fuente."}
+              </span>
       </div> 
 
       {/* Archivos */}
@@ -512,11 +517,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
               <Label htmlFor="DetalleRegular">
                 Fuentes {errors.sourcesFile && <p className="text-destructive">{errors.sourcesFile}</p>}
               </Label>
-              <span className="text-xs text-muted-foreground">
-                {acceptsMultipleSources 
-                  ? "Esta conferencia permite muchas fuentes." 
-                  : "Esta conferencia permite una sola fuente."}
-              </span>
+              
             </div>
             <input 
               type="file" 
