@@ -203,7 +203,7 @@ function ConferenceForm({
           valorAllowedExtensions={conferencia.allowed_extensions}
           actualizarVista={actualizarVista}
           actualizarSourcesMultiple={actualizarSourcesMultiple}
-          actualizarAllowedFiles={actualizarAllowedExtensions}
+          actualizarAllowedExtensions={actualizarAllowedExtensions} // <-- Corregido
         />
       </div>
 
