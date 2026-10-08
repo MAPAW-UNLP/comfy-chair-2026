@@ -47,7 +47,7 @@ export interface ArticleNew {
   status: string | null;
   type: string | null;
   abstract: string;
-  source_file?: File | null;
+  source_file?: File[] | null;
   authors: number[];
   corresponding_author: number | null;
   session: number | null;
@@ -114,9 +114,11 @@ export async function createArticle(newArticle: ArticleNew) {
   const formData = new FormData();
   formData.append("title", newArticle.title);
   formData.append("main_file", newArticle.main_file);
-  if (newArticle.source_file) {
-    formData.append("source_file", newArticle.source_file);
-  }
+  if (newArticle.source_file?.length) {
+    newArticle.source_file.forEach((file) => {
+      formData.append("source_file", file);
+    });
+  } 
   formData.append("status", newArticle.status || "reception");
   formData.append("type", newArticle.type || "");
   formData.append("abstract", newArticle.abstract || "");
