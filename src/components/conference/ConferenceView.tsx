@@ -1,6 +1,5 @@
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldSet, FieldTitle } from '@/components/ui/field';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { NumberField, NumberFieldDecrement, NumberFieldGroup, NumberFieldIncrement, NumberFieldInput, NumberFieldScrubArea } from '@/components/ui/number-field';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '../ui/select';
 import { X } from 'lucide-react';
 import type { FILES_ACCEPTED_CHOICES } from './ConferenceApp';
@@ -30,7 +29,6 @@ export function ConferenceView({
     { value: 'txt', label: 'TXT' },
   ];
 
-  // Garantizamos que siempre sea un array para evitar errores de .map()
   const files = valorFilesAccepted ?? ['pdf'];
 
   const handleSelectFormat = (val: FILES_ACCEPTED_CHOICES) => {
@@ -88,21 +86,24 @@ export function ConferenceView({
           </RadioGroup>
         </FieldSet>
 
+        {/* Selección de cantidad de fuentes con Select dentro de Field */}
         <Field>
-          <NumberField
-            value={valorCountSources}
-            min={0}
-            max={5}
-            size="sm"
-            onValueChange={(value) => actualizarCountSources(value ?? 0)}
+          <FieldLabel>Cantidad de fuentes permitidas</FieldLabel>
+          <Select
+            value={String(valorCountSources)}
+            onValueChange={(v) => actualizarCountSources(Number(v))}
           >
-            <NumberFieldScrubArea label="Cantidad de fuentes permitidas" />
-            <NumberFieldGroup>
-              <NumberFieldDecrement />
-              <NumberFieldInput />
-              <NumberFieldIncrement />
-            </NumberFieldGroup>
-          </NumberField>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar opción..." />
+            </SelectTrigger>
+            <SelectContent align="start" className="w-full">
+              <SelectGroup>
+                <SelectLabel>Cantidad de fuentes</SelectLabel>
+                <SelectItem value="1">Una sola fuente</SelectItem>
+                <SelectItem value="0">Muchas fuentes</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </Field>
 
         <Field className="min-h-[120px]">
@@ -111,10 +112,10 @@ export function ConferenceView({
             value=""
             onValueChange={(v) => handleSelectFormat(v as FILES_ACCEPTED_CHOICES)}
           >
-            <SelectTrigger >
+            <SelectTrigger>
               <SelectValue placeholder="Agregar formato..." />
             </SelectTrigger>
-            <SelectContent align='start' className="w-full">
+            <SelectContent align="start" className="w-full">
               <SelectGroup>
                 <SelectLabel>Formatos permitidos</SelectLabel>
                 {formatosPermitidos.map((item) => (
