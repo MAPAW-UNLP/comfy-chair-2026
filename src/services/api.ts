@@ -11,6 +11,8 @@ let baseURL =
     return `${proto}://${host}${port ? `:${port}` : ''}`;
   })();
 
+
+  
 // sin barra final
 baseURL = baseURL.replace(/\/+$/, '');
 
@@ -27,6 +29,8 @@ let navigateToLogin: (() => void) | null = null;
 export const setNavigateToLogin = (callback: () => void) => {
   navigateToLogin = callback;
 };
+
+
 
 // Add request interceptor to attach JWT token
 axiosInstance.interceptors.request.use(
