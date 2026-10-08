@@ -7,7 +7,7 @@ import { getCommonUsers, type User } from '@/services/userServices';
 import { UserCombobox } from '../combobox/UserCombobox';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
-import type { ALLOWED_FILES_CHOICES } from './ConferenceApp';
+import type { ALLOWED_EXTENSIONS_CHOICES } from './ConferenceApp';
 
 function esFechaValida(fecha1: string, fecha2: string) {
   const f1 = new Date(fecha1);
@@ -39,7 +39,7 @@ function ConferenceForm({
     end_date: '',
     blind_kind: 'single blind',
     sources_multiple: false,
-    allowed_files: ['pdf'],
+    allowed_extensions: ['pdf'],
   });
   const [chairs, setChairs] = useState<User[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -87,8 +87,8 @@ function ConferenceForm({
     setConferencia((prev) => ({ ...prev, sources_multiple: count }));
   };
 
-  const actualizarAllowedFiles = (files: ALLOWED_FILES_CHOICES[]) => {
-    setConferencia((prev) => ({ ...prev, allowed_files: files }));
+  const actualizarAllowedExtensions = (files: ALLOWED_EXTENSIONS_CHOICES[]) => {
+    setConferencia((prev) => ({ ...prev, allowed_extensions: files }));
   };
 
   useEffect(() => {
@@ -106,7 +106,7 @@ function ConferenceForm({
       setConferencia({
         ...valorConferencia,
         sources_multiple: valorConferencia.sources_multiple ?? 1,
-        allowed_files: valorConferencia.allowed_files ?? ['pdf'],
+        allowed_extensions: valorConferencia.allowed_extensions ?? ['pdf'],
       });
       if (valorConferencia.start_date)
         setStartDate(parseDateSinOffset(valorConferencia.start_date));
@@ -200,10 +200,10 @@ function ConferenceForm({
         <ConferenceView
           valorVisualizacion={conferencia.blind_kind}
           valorSourcesMultiple={conferencia.sources_multiple}
-          valorAllowedFiles={conferencia.allowed_files}
+          valorAllowedExtensions={conferencia.allowed_extensions}
           actualizarVista={actualizarVista}
           actualizarSourcesMultiple={actualizarSourcesMultiple}
-          actualizarAllowedFiles={actualizarAllowedFiles}
+          actualizarAllowedFiles={actualizarAllowedExtensions}
         />
       </div>
 

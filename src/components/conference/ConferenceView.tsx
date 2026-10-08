@@ -2,26 +2,26 @@ import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldSet
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '../ui/select';
 import { X } from 'lucide-react';
-import type { ALLOWED_FILES_CHOICES } from './ConferenceApp';
+import type { ALLOWED_EXTENSIONS_CHOICES } from './ConferenceApp';
 
 type VISTA_CHOICES = 'single blind' | 'double blind';
 
 type ConferenceViewProp = {
   valorVisualizacion: VISTA_CHOICES;
   valorSourcesMultiple?: boolean;
-  valorAllowedFiles?: ALLOWED_FILES_CHOICES[];
+  valorAllowedExtensions?: ALLOWED_EXTENSIONS_CHOICES[];
   actualizarVista: (v: VISTA_CHOICES) => void;
   actualizarSourcesMultiple: (v: boolean) => void;
-  actualizarAllowedFiles: (files: ALLOWED_FILES_CHOICES[]) => void;
+  actualizarAllowedExtensions: (files: ALLOWED_EXTENSIONS_CHOICES[]) => void;
 };
 
 export function ConferenceView({
   valorVisualizacion,
   valorSourcesMultiple = false,
-  valorAllowedFiles: valorFilesAccepted = ['pdf'],
+  valorAllowedExtensions = ['pdf'],
   actualizarVista,
   actualizarSourcesMultiple,
-  actualizarAllowedFiles,
+  actualizarAllowedExtensions,
 }: ConferenceViewProp) {
   const formatosPermitidos = [
     { value: 'pdf', label: 'PDF' },
@@ -29,16 +29,16 @@ export function ConferenceView({
     { value: 'txt', label: 'TXT' },
   ];
 
-  const files = valorFilesAccepted ?? ['pdf'];
+  const files = valorAllowedExtensions ?? ['pdf'];
 
-  const handleSelectFormat = (val: ALLOWED_FILES_CHOICES) => {
+  const handleSelectFormat = (val: ALLOWED_EXTENSIONS_CHOICES) => {
     if (!files.includes(val)) {
-      actualizarAllowedFiles([...files, val]);
+      actualizarAllowedExtensions([...files, val]);
     }
   };
 
-  const handleRemoveFormat = (formatToRemove: ALLOWED_FILES_CHOICES) => {
-    actualizarAllowedFiles(files.filter((f) => f !== formatToRemove));
+  const handleRemoveFormat = (formatToRemove: ALLOWED_EXTENSIONS_CHOICES) => {
+    actualizarAllowedExtensions(files.filter((f) => f !== formatToRemove));
   };
 
   return (
@@ -110,7 +110,7 @@ export function ConferenceView({
           <FieldLabel>Formatos permitidos</FieldLabel>
           <Select
             value=""
-            onValueChange={(v) => handleSelectFormat(v as ALLOWED_FILES_CHOICES)}
+            onValueChange={(v) => handleSelectFormat(v as ALLOWED_EXTENSIONS_CHOICES)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Agregar formato..." />
