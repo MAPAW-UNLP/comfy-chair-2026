@@ -165,27 +165,13 @@ function getRoleCount(
 export default function ConferenceUsers({
   conferenceId,
 }: ConferenceUsersProps) {
-  const [users, setUsers] = useState<ConferenceUser[]>([]);
-  const [allUsers, setAllUsers] = useState<ConferenceUser[]>([]);
+  const [searchedUsers, setSearchedUsers] = useState<ConferenceUser[]>([]);
 
   const [search, setSearch] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-
-  const loadAllUsers = useCallback(async () => {
-    try {
-      const data = await getConferenceUsers(conferenceId);
-
-      setAllUsers(data.users);
-    } catch (err) {
-      console.error(
-        'Error al cargar todos los usuarios de la conferencia:',
-        err
-      );
-    }
-  }, [conferenceId]);
 
   const loadUsers = useCallback(async () => {
     try {
@@ -194,10 +180,9 @@ export default function ConferenceUsers({
 
       const data = await getConferenceUsers(conferenceId, {
         search,
-        role: selectedRole,
       });
 
-      setUsers(data.users);
+      setSearchedUsers(data.users);
     } catch (err) {
       console.error(
         'Error al cargar los usuarios de la conferencia:',
@@ -208,11 +193,7 @@ export default function ConferenceUsers({
     } finally {
       setLoading(false);
     }
-  }, [conferenceId, search, selectedRole]);
-
-  useEffect(() => {
-    loadAllUsers();
-  }, [loadAllUsers]);
+  }, [conferenceId, search]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -226,32 +207,44 @@ export default function ConferenceUsers({
     setCurrentPage(1);
   }, [search, selectedRole]);
 
+  // El rol se filtra en el front para que los contadores reflejen la
+  // búsqueda sin depender del rol seleccionado.
+  const users = useMemo(() => {
+    if (!selectedRole) {
+      return searchedUsers;
+    }
+
+    return searchedUsers.filter((user) =>
+      user.roles.includes(selectedRole)
+    );
+  }, [searchedUsers, selectedRole]);
+
   const roleCounts = useMemo(() => {
     return {
-      '': allUsers.length,
+      '': searchedUsers.length,
 
       conference_chair: getRoleCount(
-        allUsers,
+        searchedUsers,
         'conference_chair'
       ),
 
       session_chair: getRoleCount(
-        allUsers,
+        searchedUsers,
         'session_chair'
       ),
 
       reviewer: getRoleCount(
-        allUsers,
+        searchedUsers,
         'reviewer'
       ),
 
       author: getRoleCount(
-        allUsers,
+        searchedUsers,
         'author'
       ),
 
     };
-  }, [allUsers]);
+  }, [searchedUsers]);
 
   const totalPages = Math.ceil(
     users.length / PAGE_SIZE
