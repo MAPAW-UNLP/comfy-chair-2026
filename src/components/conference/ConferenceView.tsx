@@ -2,26 +2,26 @@ import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldSet
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '../ui/select';
 import { X } from 'lucide-react';
-import type { FILES_ACCEPTED_CHOICES } from './ConferenceApp';
+import type { ALLOWED_FILES_CHOICES } from './ConferenceApp';
 
 type VISTA_CHOICES = 'single blind' | 'double blind';
 
 type ConferenceViewProp = {
   valorVisualizacion: VISTA_CHOICES;
-  valorCountSources?: number;
-  valorFilesAccepted?: FILES_ACCEPTED_CHOICES[];
+  valorSourcesMultiple?: boolean;
+  valorAllowedFiles?: ALLOWED_FILES_CHOICES[];
   actualizarVista: (v: VISTA_CHOICES) => void;
-  actualizarCountSources: (count: number) => void;
-  actualizarFilesAccepted: (files: FILES_ACCEPTED_CHOICES[]) => void;
+  actualizarSourcesMultiple: (v: boolean) => void;
+  actualizarAllowedFiles: (files: ALLOWED_FILES_CHOICES[]) => void;
 };
 
 export function ConferenceView({
   valorVisualizacion,
-  valorCountSources = 0,
-  valorFilesAccepted = ['pdf'],
+  valorSourcesMultiple = false,
+  valorAllowedFiles: valorFilesAccepted = ['pdf'],
   actualizarVista,
-  actualizarCountSources,
-  actualizarFilesAccepted,
+  actualizarSourcesMultiple,
+  actualizarAllowedFiles,
 }: ConferenceViewProp) {
   const formatosPermitidos = [
     { value: 'pdf', label: 'PDF' },
@@ -31,14 +31,14 @@ export function ConferenceView({
 
   const files = valorFilesAccepted ?? ['pdf'];
 
-  const handleSelectFormat = (val: FILES_ACCEPTED_CHOICES) => {
+  const handleSelectFormat = (val: ALLOWED_FILES_CHOICES) => {
     if (!files.includes(val)) {
-      actualizarFilesAccepted([...files, val]);
+      actualizarAllowedFiles([...files, val]);
     }
   };
 
-  const handleRemoveFormat = (formatToRemove: FILES_ACCEPTED_CHOICES) => {
-    actualizarFilesAccepted(files.filter((f) => f !== formatToRemove));
+  const handleRemoveFormat = (formatToRemove: ALLOWED_FILES_CHOICES) => {
+    actualizarAllowedFiles(files.filter((f) => f !== formatToRemove));
   };
 
   return (
@@ -90,8 +90,8 @@ export function ConferenceView({
         <Field>
           <FieldLabel>Cantidad de fuentes permitidas</FieldLabel>
           <Select
-            value={String(valorCountSources)}
-            onValueChange={(v) => actualizarCountSources(Number(v))}
+            value={String(valorSourcesMultiple)}
+            onValueChange={(v) => actualizarSourcesMultiple(Boolean(v))}
           >
             <SelectTrigger>
               <SelectValue placeholder="Seleccionar opción..." />
@@ -110,7 +110,7 @@ export function ConferenceView({
           <FieldLabel>Formatos permitidos</FieldLabel>
           <Select
             value=""
-            onValueChange={(v) => handleSelectFormat(v as FILES_ACCEPTED_CHOICES)}
+            onValueChange={(v) => handleSelectFormat(v as ALLOWED_FILES_CHOICES)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Agregar formato..." />

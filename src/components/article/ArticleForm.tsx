@@ -80,7 +80,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   // Obtener la conferencia actual seleccionada
   const currentConference = conferences.find((c) => c.id === selectedConference);
   // Ajusta 'accepts_multiple_sources' según la propiedad real de tu modelo Conference
-  const acceptsMultipleSources = Boolean(currentConference?.count_sources === 0 ? false : true);
+  const acceptsMultipleSources = Boolean(currentConference?.sources_multiple === 0 ? false : true);
 
   // Manejo de archivos
   const mainFileRef = useRef<HTMLInputElement>(null); 
