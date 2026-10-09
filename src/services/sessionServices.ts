@@ -8,6 +8,10 @@ export interface Session {
   deadline: string | undefined;
   capacity: number;
   conference: Conference | null;
+  submission_start?: string | null;
+  submission_end?: string | null;
+  review_start?: string | null;
+  review_end?: string | null;
   threshold_percentage?: number | null;
   improvement_threshold?: number | null;
   chairs?: number[];

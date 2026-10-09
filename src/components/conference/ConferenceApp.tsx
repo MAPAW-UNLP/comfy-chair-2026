@@ -19,6 +19,10 @@ export type Conference = {
   description: string;
   start_date?: string;
   end_date?: string;
+  submission_start?: string | null;
+  submission_end?: string | null;
+  review_start?: string | null;
+  review_end?: string | null;
   blind_kind: VISTA_CHOICES;
   chairs?: number[];
 };

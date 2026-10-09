@@ -37,6 +37,10 @@ export default function AltaSession({
         title: data.title,
         deadline: data.deadline?.toISOString().split('T')[0], // Solo la fecha (YYYY-MM-DD)
         capacity: data.capacity,
+        submission_start: data.submission_start || null,
+        submission_end: data.submission_end || null,
+        review_start: data.review_start || null,
+        review_end: data.review_end || null,
         chairs: data.chairs.map((ch) => ch.id), // Enviar solo los IDs de los chairs
         threshold_percentage:
           data.selectionMethod === 'corte_fijo' ? data.percentage : undefined,
