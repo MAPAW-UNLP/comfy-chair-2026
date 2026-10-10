@@ -165,10 +165,13 @@ export function PanelSessionChair() {
                         type="button"
                         className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition"
                         onClick={() => {
-                          console.log("Invitar artículo:", article.id);
+                          navigate({
+                            to: "/article/assign/$id",
+                            params: { id: String(article.id) },
+                          });
                         }}
                       >
-                        Invitar
+                        Asignar
                       </button>
                     </td>
                   </tr>
