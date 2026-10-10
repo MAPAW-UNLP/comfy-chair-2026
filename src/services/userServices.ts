@@ -153,3 +153,45 @@ export const updateUserPassword = async (data: UpdatePasswordPayload): Promise<U
   const response = await api.put('/user/update-password/', data);
   return response.data;
 }
+
+// Usuarios que participan en una conferencia
+export interface ConferenceUser {
+  id: number;
+  full_name: string;
+  email: string;
+  affiliation: string;
+  roles: string[];
+}
+
+export interface ConferenceUsersResponse {
+  conference_id: number;
+  users: ConferenceUser[];
+}
+
+export interface ConferenceUsersFilters {
+  search?: string;
+  role?: string;
+}
+
+export const getConferenceUsers = async (
+  conferenceId: number,
+  filters?: ConferenceUsersFilters
+): Promise<ConferenceUsersResponse> => {
+  const params = new URLSearchParams();
+
+  if (filters?.search?.trim()) {
+    params.append('search', filters.search.trim());
+  }
+
+  if (filters?.role?.trim()) {
+    params.append('role', filters.role.trim());
+  }
+
+  const queryString = params.toString();
+
+  const response = await api.get(
+    `/api/conference/${conferenceId}/users/${queryString ? `?${queryString}` : ''}`
+  );
+
+  return response.data;
+};

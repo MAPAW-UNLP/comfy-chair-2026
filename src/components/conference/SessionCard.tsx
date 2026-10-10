@@ -7,6 +7,8 @@ import type { Session } from '@/services/sessionServices';
 import EditarSession from './SessionEdit';
 import { Calendar } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
+import { useAuth } from '@/contexts/AuthContext';
+import { canManageSessions } from './sessionPermissions';
 
 type SessionCardProps = {
   session: Session;
@@ -18,6 +20,7 @@ export default function SessionCard({
   onSessionUpdated,
 }: SessionCardProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'dd/MM/yyyy', { locale: es });
@@ -40,12 +43,14 @@ export default function SessionCard({
           <div className="text-xs text-muted-foreground">Sesión</div>
           <CardTitle className="text-xl">{session.title}</CardTitle>
         </div>
-        <div onClick={(e) => e.stopPropagation()}>
-          <EditarSession
-            session={session}
-            onSessionUpdated={onSessionUpdated}
-          />
-        </div>
+        {canManageSessions(user, session.conference) && (
+          <div onClick={(e) => e.stopPropagation()}>
+            <EditarSession
+              session={session}
+              onSessionUpdated={onSessionUpdated}
+            />
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Deadline */}
