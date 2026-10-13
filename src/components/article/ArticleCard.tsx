@@ -18,7 +18,7 @@ import { type Article, type Status } from "@/services/articleServices";
 import { checkDeletionRequestExists } from "@/services/articleServices";
 import { downloadMainFile, downloadSourceFile } from "@/services/articleServices";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { AlertCircleIcon, CircleXIcon, EyeIcon, FileDownIcon, PencilIcon, SettingsIcon, Trash2Icon } from "lucide-react"
+import { AlertCircleIcon, CircleXIcon, ClockIcon, EyeIcon, FileDownIcon, PencilIcon, SettingsIcon, Trash2Icon } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 // Lo que espera recibir el componente
@@ -114,6 +114,13 @@ const ArticleCard : React.FC<ArticleCardProps> = ({ article, onDeleted }) => {
   }
 
   //------------------------------------------------------------
+  // Ver el historial del articulo
+  //------------------------------------------------------------
+  const irArticleHistoryPage = () => {
+    navigate({ to: `/article/history/${article.id}` });
+  }
+
+  //------------------------------------------------------------
   // Efecto para verificar si el artículo tiene una solicitud de baja
   //------------------------------------------------------------
   useEffect(() => {
@@ -136,6 +143,7 @@ const ArticleCard : React.FC<ArticleCardProps> = ({ article, onDeleted }) => {
       setIsLoadingDeletionStatus(false);
     }
   }, [article.id, article.status]); 
+
 
   //------------------------------------------------------------
   // Efecto para actualizar el tiempo restante cada minuto si el estado es "Recibido"
@@ -233,6 +241,11 @@ const ArticleCard : React.FC<ArticleCardProps> = ({ article, onDeleted }) => {
                   onConfirm={() => handleDelete(article.id)}
                 />
               )}
+              
+              <DropdownMenuItem onClick={irArticleHistoryPage} className="cursor-pointer">
+                <ClockIcon/> Ver Historial
+              </DropdownMenuItem>
+                 
               
               {/* Opción de "Solicitar Baja": Solo visible si NO se ha solicitado aún */}
               {(article.status === "accepted") && !deletionRequested && (
