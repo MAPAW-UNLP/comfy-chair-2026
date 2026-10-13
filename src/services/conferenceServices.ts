@@ -119,6 +119,18 @@ export const updateConference = async (
   }
 };
 
+export const updateConferencePeriods = async (
+  id: number,
+  periods: Pick<Conference, 'submission_start' | 'submission_end' | 'review_start' | 'review_end'>,
+  user_id: string
+): Promise<Conference> => {
+  const response = await api.patch(`/api/conference/${id}/periods/`, {
+    ...periods,
+    user_id,
+  });
+  return response.data;
+};
+
 export const deleteConference = async (id: string, user_id: string): Promise<void> => {
   await api.delete(`/api/conference/${id}/?user_id=${user_id}`);
 };
