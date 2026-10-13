@@ -41,6 +41,10 @@ export default function EditarSession({
     selectionMethod: session.threshold_percentage ? 'corte_fijo' : 'mejores',
     percentage: session.threshold_percentage ?? undefined,
     threshold: session.improvement_threshold ?? undefined,
+    submission_start: session.submission_start ?? '',
+    submission_end: session.submission_end ?? '',
+    review_start: session.review_start ?? '',
+    review_end: session.review_end ?? '',
     chairs: chairs, 
   };
 
@@ -52,13 +56,17 @@ export default function EditarSession({
         title: data.title,
         deadline: data.deadline?.toISOString().split('T')[0], // Solo la fecha (YYYY-MM-DD)
         capacity: data.capacity,
+        submission_start: data.submission_start || null,
+        submission_end: data.submission_end || null,
+        review_start: data.review_start || null,
+        review_end: data.review_end || null,
         conference_id: session.conference?.id,
         chairs: data.chairs.map((ch) => ch.id), // Enviar solo los IDs de los chairs
         threshold_percentage: data.selectionMethod === 'corte_fijo' ? data.percentage : undefined,
         improvement_threshold: data.selectionMethod === 'mejores' ? data.threshold : undefined,
       };
 
-      await updateSession(session.id.toString(), sessionData, session.conference!.id, user!.id);
+      await updateSession(session.id.toString(), sessionData, session.conference!.id.toString(), user!.id.toString());
 
       toast.success('Sesión actualizada exitosamente');
       setOpen(false);

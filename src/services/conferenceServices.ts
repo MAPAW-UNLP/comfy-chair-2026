@@ -81,6 +81,10 @@ export const createConference = async (
 
     const response = await api.post('/api/conference/', {
       ...conferencia,
+      submission_start: conferencia.submission_start || null,
+      submission_end: conferencia.submission_end || null,
+      review_start: conferencia.review_start || null,
+      review_end: conferencia.review_end || null,
       chairs: chairs.map(user => user.id),
       user_id
     });
@@ -101,6 +105,10 @@ export const updateConference = async (
   try {
     const response = await api.patch(`/api/conference/${id}/`, {
       ...conferencia,
+      submission_start: conferencia.submission_start || null,
+      submission_end: conferencia.submission_end || null,
+      review_start: conferencia.review_start || null,
+      review_end: conferencia.review_end || null,
       chairs: chairs.map(user => user.id),
       user_id
     });

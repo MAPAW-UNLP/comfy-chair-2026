@@ -29,6 +29,7 @@ import { type User } from "@/services/userServices";
 import { type Conference } from '@/components/conference/ConferenceApp';
 import { type Session, getSessionsByConferenceGrupo1 } from "@/services/sessionServices";
 import { type Article, type ArticleNew, type ArticleUpdate, createArticle, updateArticle } from "@/services/articleServices";
+import { formatDateWindow, getSessionWindow, isDateWindowOpen } from "@/lib/dateWindows";
 
 // Lo que espera recibir el componente
 type ArticleFormProps = {
@@ -117,6 +118,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const handleSubmit = async () => {
 
     setShowErrorAlert(false);
+    if (!ensureSubmissionOpen()) return;
 
     // Datos a validar con Zod
     const formData = {
@@ -189,6 +191,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
     if (!article) return;
 
     setShowErrorAlert(false);
+    if (!ensureSubmissionOpen()) return;
 
     // Datos a validar con Zod
     const formDataForValidation = {
@@ -323,6 +326,18 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const availableUsers = users.filter(u => 
     !authors.some(a => a.id === u.id)
   );
+  const selectedSessionData = sessions.find((s) => s.id === Number(selectedSession));
+  const submissionSession = selectedSessionData ?? (editMode ? article?.session : null);
+  const submissionWindow = getSessionWindow(submissionSession, 'submission');
+  const submissionOpen = !submissionSession || isDateWindowOpen(submissionWindow);
+
+  const ensureSubmissionOpen = () => {
+    if (!submissionOpen) {
+      toast.error(`El periodo de envío está cerrado (${formatDateWindow(submissionWindow)}).`);
+      return false;
+    }
+    return true;
+  };
 
   //------------------------------------------------------------
   // Renderizado del componente
@@ -373,6 +388,12 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
               ))}
             </SelectContent>
           </Select>
+          {selectedSessionData && (
+            <p className={submissionOpen ? "text-xs text-muted-foreground" : "text-xs text-red-600"}>
+              Envío: {formatDateWindow(submissionWindow)}
+              {!submissionOpen && " (cerrado)"}
+            </p>
+          )}
         </div>
       </div>
 
@@ -416,6 +437,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
             variant="outline"
             onClick={handleMainFileClick}
             type="button"
+            disabled={!submissionOpen || loading}
             className={`w-full text-white ${
               mainFile
                 ? "bg-lime-900"                     
@@ -443,6 +465,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
               variant="outline"
               onClick={handleSourceFileClick}
               type="button"
+              disabled={!submissionOpen || loading}
               className={`w-full text-white ${
                 sourceFile
                   ? "bg-lime-900"                         
@@ -537,7 +560,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
             Cancelar
           </Button>
         )}
-        <Button variant="outline" onClick={editMode ? handleUpdate : handleSubmit} className="flex-1 bg-slate-900 text-white" disabled={loading}>
+        <Button variant="outline" onClick={editMode ? handleUpdate : handleSubmit} className="flex-1 bg-slate-900 text-white" disabled={loading || !submissionOpen}>
           {loading ? editMode ? "Guardando..." : "Subiendo..." : editMode ? "Guardar" : "Subir"}
         </Button>
       </div>

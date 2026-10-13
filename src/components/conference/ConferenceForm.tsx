@@ -8,7 +8,8 @@ import { UserCombobox } from '../combobox/UserCombobox';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 
-function esFechaValida(fecha1: string, fecha2: string) {
+function esFechaValida(fecha1?: string, fecha2?: string) {
+  if (!fecha1 || !fecha2) return true;
   const f1 = new Date(fecha1);
   const f2 = new Date(fecha2);
 
@@ -18,6 +19,14 @@ function esFechaValida(fecha1: string, fecha2: string) {
 function parseDateSinOffset(fecha: string): Date {
   const [year, month, day] = fecha.split('-').map(Number);
   return new Date(year, month - 1, day); // mes empieza en 0
+}
+
+function formatDateForApi(date?: Date): string | undefined {
+  if (!date) return undefined;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 type ConferenceFormProps = {
@@ -36,12 +45,20 @@ function ConferenceForm({
     description: '',
     start_date: '',
     end_date: '',
+    submission_start: '',
+    submission_end: '',
+    review_start: '',
+    review_end: '',
     blind_kind: 'single blind',
   });
   const [chairs, setChairs] = useState<User[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [start_date, setStartDate] = useState<Date | undefined>(undefined);
   const [end_date, setEndDate] = useState<Date | undefined>(undefined);
+  const [submissionStart, setSubmissionStart] = useState<Date | undefined>(undefined);
+  const [submissionEnd, setSubmissionEnd] = useState<Date | undefined>(undefined);
+  const [reviewStart, setReviewStart] = useState<Date | undefined>(undefined);
+  const [reviewEnd, setReviewEnd] = useState<Date | undefined>(undefined);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +67,18 @@ function ConferenceForm({
         'La fecha de fin debe ser posterior o igual a la fecha de inicio'
       );
       return;
+    }
+
+    for (const [startField, endField] of [
+      ['submission_start', 'submission_end'],
+      ['review_start', 'review_end'],
+    ] as const) {
+      const start = conferencia[startField];
+      const end = conferencia[endField];
+      if (start && end && end < start) {
+        toast.error(`La fecha de cierre de ${startField.startsWith('submission') ? 'envío' : 'revisión'} no puede ser anterior al inicio.`);
+        return;
+      }
     }
 
     handleSubmit(conferencia, chairs);
@@ -82,20 +111,36 @@ function ConferenceForm({
   useEffect(() => {
     setConferencia((prev) => ({
       ...prev,
-      start_date: start_date
-        ? start_date.toISOString().split('T')[0]
-        : undefined,
-      end_date: end_date ? end_date.toISOString().split('T')[0] : undefined,
+      start_date: formatDateForApi(start_date),
+      end_date: formatDateForApi(end_date),
+      submission_start: formatDateForApi(submissionStart),
+      submission_end: formatDateForApi(submissionEnd),
+      review_start: formatDateForApi(reviewStart),
+      review_end: formatDateForApi(reviewEnd),
     }));
-  }, [start_date, end_date]);
+  }, [start_date, end_date, submissionStart, submissionEnd, reviewStart, reviewEnd]);
 
   useEffect(() => {
     if (valorConferencia) {
-      setConferencia(valorConferencia);
+      setConferencia({
+        ...valorConferencia,
+        submission_start: valorConferencia.submission_start ?? '',
+        submission_end: valorConferencia.submission_end ?? '',
+        review_start: valorConferencia.review_start ?? '',
+        review_end: valorConferencia.review_end ?? '',
+      });
       if (valorConferencia.start_date)
         setStartDate(parseDateSinOffset(valorConferencia.start_date));
       if (valorConferencia.end_date)
         setEndDate(parseDateSinOffset(valorConferencia.end_date));
+      if (valorConferencia.submission_start)
+        setSubmissionStart(parseDateSinOffset(valorConferencia.submission_start));
+      if (valorConferencia.submission_end)
+        setSubmissionEnd(parseDateSinOffset(valorConferencia.submission_end));
+      if (valorConferencia.review_start)
+        setReviewStart(parseDateSinOffset(valorConferencia.review_start));
+      if (valorConferencia.review_end)
+        setReviewEnd(parseDateSinOffset(valorConferencia.review_end));
     }
   }, [valorConferencia]);
 
@@ -179,6 +224,34 @@ function ConferenceForm({
             <label htmlFor="end_date">Fecha de cierre</label>
             <CustomCalendar date={end_date} setDate={setEndDate} />
           </div>
+
+          <fieldset className="flex flex-col gap-3 rounded border p-3">
+            <legend className="px-1 font-semibold">
+              Ventana de envío de artículos <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
+            </legend>
+            <label className="flex flex-col gap-1 text-sm">
+              Inicio
+              <CustomCalendar date={submissionStart} setDate={setSubmissionStart} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              Cierre
+              <CustomCalendar date={submissionEnd} setDate={setSubmissionEnd} />
+            </label>
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-3 rounded border p-3">
+            <legend className="px-1 font-semibold">
+              Ventana de revisión de artículos <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
+            </legend>
+            <label className="flex flex-col gap-1 text-sm">
+              Inicio
+              <CustomCalendar date={reviewStart} setDate={setReviewStart} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              Cierre
+              <CustomCalendar date={reviewEnd} setDate={setReviewEnd} />
+            </label>
+          </fieldset>
         </div>
 
         {valorConferencia ? (

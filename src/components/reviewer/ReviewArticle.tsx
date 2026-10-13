@@ -3,6 +3,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import type { Session } from "@/services/sessionServices";
+import { formatDateWindow, getSessionWindow, isDateWindowOpen } from "@/lib/dateWindows";
 
 import { getArticleById } from "@/services/articleServices";
 import {
@@ -26,6 +28,7 @@ type Article = {
   main_file?: string | File | null; // PDF principal
   source_file?: string | File | null; // adjunto extra (posters)
   authors?: Author[];
+  session?: Session | null;
 };
 
 // Definición de scores con etiquetas (orden de mejor a peor)
@@ -77,6 +80,9 @@ export default function ReviewArticle() {
   // 🔹 Revisión de otros revisores
   const [peerReviews, setPeerReviews] = useState<ReviewDTO[]>([]);
   const [loadingPeers, setLoadingPeers] = useState(false);
+
+  const reviewWindow = getSessionWindow(article?.session, "review");
+  const reviewOpen = !article?.session || isDateWindowOpen(reviewWindow);
 
   const otherReviews = useMemo(
     () => peerReviews.filter((r) => r.reviewer !== reviewerId),
@@ -225,6 +231,10 @@ export default function ReviewArticle() {
 
   // ---- Acciones ----
   const ensureFields = () => {
+    if (!reviewOpen) {
+      alert(`El periodo de revisión está cerrado (${formatDateWindow(reviewWindow)}).`);
+      return false;
+    }
     if (!opinion.trim() || score === "") {
       alert("Completá la opinión y la puntuación.");
       return false;
@@ -427,6 +437,13 @@ export default function ReviewArticle() {
         </p>
       </div>
 
+      <div className={reviewOpen
+        ? "mt-4 rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800"
+        : "mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800"}>
+        Periodo de revisión: {formatDateWindow(reviewWindow)}
+        {!reviewOpen && " (cerrado)"}
+      </div>
+
       {/* Abstract */}
       <p className="mt-4 text-slate-700 dark:text-slate-300">
         {article.abstract || "Sin resumen disponible."}
@@ -478,6 +495,7 @@ export default function ReviewArticle() {
             rows={7}
             value={opinion}
             onChange={(e) => setOpinion(e.target.value)}
+            disabled={!reviewOpen || saving}
             placeholder="Escribí aquí tu revisión…"
             className="w-full rounded-lg border border-slate-300 bg-white p-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           />
@@ -494,6 +512,7 @@ export default function ReviewArticle() {
           <select
             value={score}
             onChange={(e) => setScore(e.target.value)}
+            disabled={!reviewOpen || saving}
             className={[
               "w-full max-w-xs rounded-xl border bg-white p-2.5 text-sm text-slate-900 shadow-sm",
               "focus:outline-none focus:ring-2 focus:ring-sky-400",
@@ -522,6 +541,7 @@ export default function ReviewArticle() {
               onClick={handleSaveDraft}
               disabled={
                 saving ||
+                !reviewOpen ||
                 !opinion.trim() ||
                 score === "" ||
                 !Number.isFinite(reviewerId)
@@ -536,6 +556,7 @@ export default function ReviewArticle() {
             onClick={handleSend}
             disabled={
               saving ||
+              !reviewOpen ||
               !opinion.trim() ||
               score === "" ||
               !Number.isFinite(reviewerId)
