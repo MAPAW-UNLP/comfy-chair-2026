@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 
-// Definimos el tipo del revisor
+// 1. Actualizar los tipos para coincidir con tu models.py
 interface Revisor {
   id: number;
-  username: string;
+  full_name: string;
+  email: string;
 }
 
 export function SessionReviewers() {
@@ -13,31 +14,32 @@ export function SessionReviewers() {
 
   useEffect(() => {
     const fetchReviewers = async () => {
-      // Obtenemos el ID de la sesión del localStorage (igual que en tu PanelSessionChair)
       const sessionIdString = localStorage.getItem("selectedSession");
+      
+      const token = localStorage.getItem("authToken"); 
+
       if (!sessionIdString) return;
 
       try {
-        // TODO: Aquí irá el fetch a tu backend de Django real cuando esté listo.
-        // Ejemplo: const response = await fetch(`http://localhost:8000/api/sessions/${sessionIdString}/reviewers/`);
-        // const data = await response.json();
+        const response = await fetch(`http://localhost:8000/user/sessions/${sessionIdString}/reviewers/`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            // Agregamos el header de autorización:
+            'Authorization': token ? `Bearer ${token}` : '', // O `Bearer ${token}` dependiendo de tu conf de DRF
+          }
+        });
         
-        // MOCK DE DATOS: Usamos datos falsos temporalmente para que veas que funciona la búsqueda
-        const mockData = [
-          { id: 1, username: "user1" },
-          { id: 2, username: "user2" },
-          { id: 3, username: "alan_turing" },
-          { id: 4, username: "ada_lovelace" }
-        ];
+        if (!response.ok) {
+           console.error("Error del servidor:", response.status);
+           throw new Error('Error al obtener los datos');
+        }
         
-        // Simulamos el tiempo de carga de una API
-        setTimeout(() => {
-          setRevisores(mockData);
-          setLoading(false);
-        }, 500);
-
+        const data = await response.json();
+        setRevisores(data);
       } catch (error) {
         console.error("Error obteniendo revisores:", error);
+      } finally {
         setLoading(false);
       }
     };
@@ -45,27 +47,26 @@ export function SessionReviewers() {
     fetchReviewers();
   }, []);
 
-  // Lógica de búsqueda (ignora mayúsculas y minúsculas)
+  // 3. Filtrar usando full_name o email en lugar de username
   const filteredReviewers = revisores.filter((revisor) =>
-    revisor.username.toLowerCase().includes(searchTerm.toLowerCase())
+    revisor.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    revisor.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <div className="max-w-3xl mx-auto p-6">
       <h1 className="text-3xl font-bold text-center mb-8">Revisores de la Sesión</h1>
 
-      {/* Input de Búsqueda */}
       <div className="mb-6">
         <input
           type="text"
-          placeholder="Buscar por nombre de usuario..."
+          placeholder="Buscar por nombre o correo..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full p-4 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-800"
         />
       </div>
 
-      {/* Lista de Revisores */}
       {loading ? (
         <p className="text-center text-gray-500 animate-pulse font-semibold text-xl">Cargando revisores...</p>
       ) : (
@@ -73,7 +74,11 @@ export function SessionReviewers() {
           {filteredReviewers.length > 0 ? (
             filteredReviewers.map((revisor) => (
               <div key={revisor.id} className="p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 flex justify-between items-center transition">
-                <span className="font-semibold text-gray-800 text-lg">{revisor.username}</span>
+                <div>
+                  {/* 4. Mostrar full_name y email */}
+                  <div className="font-semibold text-gray-800 text-lg">{revisor.full_name}</div>
+                  <div className="text-sm text-gray-500">{revisor.email}</div>
+                </div>
                 <span className="px-3 py-1 bg-slate-100 text-slate-700 text-sm rounded-full font-medium">Revisor</span>
               </div>
             ))
@@ -83,7 +88,6 @@ export function SessionReviewers() {
             </div>
           )}
           
-          {/* Contador en el pie de la lista */}
           <div className="bg-slate-800 text-white p-3 text-center text-sm">
             Mostrando {filteredReviewers.length} de {revisores.length} revisores
           </div>
