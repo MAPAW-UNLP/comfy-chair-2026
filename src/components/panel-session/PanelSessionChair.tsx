@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react"
 import { useNavigate, Link } from "@tanstack/react-router"
-import { ClipboardCheck } from "lucide-react"
+import { Users, FileSearch, ClipboardCheck, UserSearch } from "lucide-react"
 import { getSession, type Session } from "@/services/sessionServices";
 import {
   getArticleBySessionId,
   type Article,
 } from "@/services/articleServices";
+
 
 export function PanelSessionChair() {
   const navigate = useNavigate()
@@ -63,27 +64,24 @@ export function PanelSessionChair() {
         Sesión #{sessionId}:<br />
         {sessionTitle}
       </h1>
-
-      {/* Seleccionar corte */}
-      <div className="bg-white border border-gray-300 rounded-xl shadow-sm p-6 mb-10">
-        <div className="flex items-center justify-between gap-6">
-
+{/* Acciones de la Sesión */}
+      <div className="flex flex-col gap-4 mb-10">
+        
+        {/* 1. Corte de sesión */}
+        <div className="bg-white border border-gray-300 rounded-xl shadow-sm p-6 flex items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="bg-gray-100 rounded-lg p-3">
               <ClipboardCheck size={32} className="text-gray-700" />
             </div>
-
             <div>
               <h2 className="text-lg font-semibold text-gray-900">
                 Corte de sesión
               </h2>
-
               <p className="text-sm text-gray-500 mt-1">
                 Definí el criterio de corte para esta sesión.
               </p>
             </div>
           </div>
-
           <Link
             to="/chairs/selection/selection-method"
             search={{ method: 'cutoff', value: '' }}
@@ -91,8 +89,31 @@ export function PanelSessionChair() {
           >
             Seleccionar corte
           </Link>
-
         </div>
+
+        {/* 2. Revisores de la Sesión */}
+        <div className="bg-white border border-gray-300 rounded-xl shadow-sm p-6 flex items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="bg-gray-100 rounded-lg p-3">
+              <UserSearch size={32} className="text-gray-700" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Revisores de la sesión
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Consultá y buscá el padrón de revisores disponibles.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/chairs/reviewers"
+            className="shrink-0 bg-gray-800 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-gray-700 transition"
+          >
+            Ver revisores
+          </Link>
+        </div>
+
       </div>
 
       {/* Lista de artículos */}
