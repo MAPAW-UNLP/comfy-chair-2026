@@ -64,7 +64,7 @@ export function PanelSessionChair() {
         Sesión #{sessionId}:<br />
         {sessionTitle}
       </h1>
-{/* Acciones de la Sesión */}
+      {/* Acciones de la Sesión */}
       <div className="flex flex-col gap-4 mb-10">
 
         <div className="bg-white border border-gray-300 rounded-xl shadow-sm p-6 flex items-center justify-between gap-6">
@@ -88,7 +88,7 @@ export function PanelSessionChair() {
             Configurar
           </Link>
         </div>
-        
+
         {/* 1. Corte de sesión */}
         <div className="bg-white border border-gray-300 rounded-xl shadow-sm p-6 flex items-center justify-between gap-6">
           <div className="flex items-center gap-4">
