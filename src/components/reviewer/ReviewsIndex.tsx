@@ -6,21 +6,20 @@ import React, {
   useCallback,
 } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
+import { toast } from "sonner";
 
-import { getAllArticles, type Article } from "@/services/articleServices";
-import { getBidsByReviewer } from "@/services/biddingServices";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
 import { useCountdown } from "@/utils/useCountdown";
 import {
-  fetchAssignedArticles,
-  type AssignedArticle,
-} from "@/services/assignmentsServices";
-import {
-  hasPublishedReview,
-  getOwnReviewByArticle,
+  getMyAssignments,
+  type ReviewerAssignment,
 } from "@/services/reviewerServices";
 import { Button } from "../ui/button";
+import { Progress } from "../ui/progress";
+import ReviewerConferenceSwitcher from "./ReviewerConferenceSwitcher";
 
 /* ====================== ENV + helpers de fechas ====================== */
 
@@ -87,6 +86,58 @@ function SoftCard(props: {
   );
 }
 
+// Porcentaje para la barra. Con total 0 devuelve 0 (evita dividir por cero).
+const percent = (done: number, total: number) =>
+  total > 0 ? Math.round((done / total) * 100) : 0;
+
+const LOAD_ERROR_TITLE = "No se pudieron cargar tus artículos.";
+
+// Mensaje que manda el backend en { "error": "..." }. null si no hay uno
+// (por ejemplo, si el backend está apagado o respondió con una página de error).
+function backendErrorMessage(err: unknown): string | null {
+  if (isAxiosError(err)) {
+    const msg = (err.response?.data as { error?: unknown } | undefined)?.error;
+    if (typeof msg === "string" && msg.trim()) return msg;
+  }
+  return null;
+}
+
+// Tarjeta para los estados de la lista: sin conferencia, sin asignaciones y error.
+function StateCard(props: {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  tone?: "default" | "error";
+}) {
+  const titleColor = props.tone === "error" ? "text-rose-700" : "text-slate-800";
+  return (
+    <div className="rounded-2xl bg-slate-50 px-6 py-8 text-center shadow-sm ring-1 ring-black/5">
+      <p className={`text-base font-semibold ${titleColor}`}>{props.title}</p>
+      {props.description && (
+        <p className="mt-1 text-sm text-slate-500">{props.description}</p>
+      )}
+      {props.action && (
+        <div className="mt-4 flex justify-center">{props.action}</div>
+      )}
+    </div>
+  );
+}
+
+// Esqueleto de carga (no existe el componente ui/skeleton).
+function ListSkeleton() {
+  return (
+    <div role="status" className="space-y-3">
+      <span className="sr-only">Cargando artículos…</span>
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="h-28 animate-pulse rounded-2xl bg-slate-200/70"
+        />
+      ))}
+    </div>
+  );
+}
+
 /* ====================== Bloque de artículos asignados ====================== */
 
 type ReviewStatus = "pending" | "draft" | "completed";
@@ -124,6 +175,19 @@ const STATUS_UI = {
     cta: "Ver revisiones" as const,
   },
 } as const;
+
+// El backend informa "published"; esta pantalla lo muestra como "completed".
+const STATUS_FROM_API: Record<ReviewerAssignment["review_status"], ReviewStatus> = {
+  pending: "pending",
+  draft: "draft",
+  published: "completed",
+};
+
+const toRow = (r: ReviewerAssignment): UiRow => ({
+  id: r.article.id,
+  title: r.article.title,
+  status: STATUS_FROM_API[r.review_status],
+});
 
 /* -------------- ArticleCard con badge + botón alineados -------------- */
 
@@ -172,12 +236,66 @@ function ArticleCard({
   );
 }
 
+/* -------------- Sección de una sesión: título, progreso y tarjetas -------------- */
+
+interface SessionSectionProps {
+  title: string;
+  // Sin "progress" no se dibuja la barra (grupo de artículos sin sesión).
+  progress?: { published: number; total: number };
+  rows: UiRow[];
+  onAction: (article: UiRow) => void;
+  selectedId: number | null;
+  flashId: number | null;
+}
+
+function SessionSection({
+  title,
+  progress,
+  rows,
+  onAction,
+  selectedId,
+  flashId,
+}: SessionSectionProps) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          {title}
+        </h3>
+        {progress && (
+          <span className="shrink-0 text-sm text-slate-600">
+            {progress.published}/{progress.total} revisados
+          </span>
+        )}
+      </div>
+
+      {progress && (
+        <Progress
+          value={percent(progress.published, progress.total)}
+          aria-label={`Progreso de ${title}`}
+        />
+      )}
+
+      <div className="space-y-3">
+        {rows.map((a) => (
+          <ArticleCard
+            key={a.id}
+            article={a}
+            onAction={onAction}
+            selected={selectedId === a.id}
+            flashing={flashId === a.id}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /* =============================== Componente =============================== */
 
 export default function ReviewsIndex() {
   const navigate = useNavigate();
   const auth = useAuth();
-  const reviewerId = Number(auth.user?.id ?? 1);
   const { selectedRole } = useRole();
 
   // normalizar rol y obtener conferenceId si el rol seleccionado es reviewer/revisor
@@ -185,210 +303,88 @@ export default function ReviewsIndex() {
   const isReviewerRole =
     roleKey === "reviewer" || roleKey === "revisor" || roleKey.startsWith("rev");
   const selectedConferenceId = isReviewerRole ? selectedRole?.conferenceId : undefined;
+  const conferenceName = isReviewerRole ? selectedRole?.conferenceName : undefined;
 
   const phase = getPhase(new Date());
 
-  const biddingCountdown = useCountdown(BIDDING_END || undefined);
   const reviewCountdown = useCountdown(REVIEW_END || undefined);
 
-  const biddingDhm = `${pad(biddingCountdown.days)}:${pad(
-    biddingCountdown.hours
-  )}:${pad(biddingCountdown.minutes)}`;
   const reviewDhm = `${pad(reviewCountdown.days)}:${pad(
     reviewCountdown.hours
   )}:${pad(reviewCountdown.minutes)}`;
 
-  const [articulos, setArticulos] = useState<Article[]>([]);
-  const [articulosLoaded, setArticulosLoaded] = useState(false);
-  const [bids, setBids] = useState<{ article: number; choice?: string }[]>([]);
-  const [err, setErr] = useState<string | null>(null);
+  /* ---- Carga de datos: un solo request al backend ---- */
 
-  const [assigned, setAssigned] = useState<AssignedArticle[] | null>(null);
-  const [loadingAssigned, setLoadingAssigned] = useState(false);
-  const [reviewedMap, setReviewedMap] = useState<Record<number, boolean>>({});
+  // Las asignaciones se piden solo con usuario, fase de revisión y conferencia
+  // elegida. Al cambiar la conferencia cambia la queryKey y se vuelve a pedir.
+  // El revisor lo identifica el backend por el token: no se manda su id.
+  const queryEnabled =
+    !!auth.user && phase === "review" && selectedConferenceId != null;
 
-  const total = articulos.length;
-  const completados = useMemo(
-    () => bids.filter((b) => !!(b.choice && String(b.choice).trim())).length,
-    [bids]
+  const {
+    data: assignmentsData,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["reviewer", "assignments", selectedConferenceId],
+    queryFn: () => getMyAssignments({ conferenceId: selectedConferenceId }),
+    enabled: queryEnabled,
+    // Al volver desde el formulario de revisión siempre se actualiza el estado.
+    refetchOnMount: "always",
+  });
+
+  const loading = queryEnabled && isLoading;
+
+  // Un toast por cada fallo de carga (React Query ya agotó sus reintentos).
+  useEffect(() => {
+    if (isError) toast.error(backendErrorMessage(error) ?? LOAD_ERROR_TITLE);
+  }, [isError, error]);
+
+  // Lista plana: se usa para saber si hay algo que mostrar.
+  const data: UiRow[] = useMemo(
+    () => (assignmentsData?.results ?? []).map(toRow),
+    [assignmentsData]
   );
 
-  /* ---- Carga de datos ---- */
+  // Agrupa las tarjetas por sesión. Los totales de cada barra vienen del
+  // backend (stats.by_session); acá solo se reparten los artículos.
+  const groups = useMemo(() => {
+    const bySession = new Map<number, UiRow[]>();
+    const withoutSession: UiRow[] = [];
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const arts = await getAllArticles();
-        const userBids = auth.user ? await getBidsByReviewer(reviewerId) : [];
-        setArticulos(arts);
-        setBids(userBids);
-        // marcar que ya cargamos los artículos (aunque sean 0)
-        setArticulosLoaded(true);
-        setErr(null);
-      } catch {
-        setErr("No se pudieron cargar los datos.");
-        setArticulosLoaded(true); // evitar bloquear otros efectos en caso de error
+    for (const r of assignmentsData?.results ?? []) {
+      if (!r.session) {
+        withoutSession.push(toRow(r));
+        continue;
       }
-    })();
-  }, [auth.user, reviewerId]);
-
-
-  /**
-   * Intenta obtener el id de la conferencia desde un Article (session -> conference).
-   * Devuelve null si no se puede determinar.
-   */
-  function getArticleConferenceId(a: Article): number | null {
-    // @ts-ignore
-    const session = a?.session;
-    if (!session) return null;
-
-    // session puede venir como id (number/string) o como objeto
-    if (typeof session === "number" || typeof session === "string") {
-      // si session es solo un id no tenemos la info de conference aquí
-      return null;
+      const list = bySession.get(r.session.id) ?? [];
+      list.push(toRow(r));
+      bySession.set(r.session.id, list);
     }
 
-    // session es objeto: buscar conference como id, string, o como objeto con id
-    // @ts-ignore
-    const conf = session.conference ?? session.conference_id ?? session.conferenceId ?? null;
-    if (!conf) return null;
+    const sessions = (assignmentsData?.stats.by_session ?? []).map((s) => ({
+      id: s.session_id,
+      title: s.title,
+      published: s.published,
+      total: s.total,
+      rows: bySession.get(s.session_id) ?? [],
+    }));
 
-    if (typeof conf === "number") return conf;
-    if (typeof conf === "string" && /^\d+$/.test(conf)) return Number(conf);
+    return { sessions, withoutSession };
+  }, [assignmentsData]);
 
-    // conf puede ser objeto { id: X, ... }
-    if (typeof conf === "object" && conf !== null) {
-      const id = conf.id ?? conf.pk ?? conf.conference_id ?? null;
-      if (typeof id === "number") return id;
-      if (typeof id === "string" && /^\d+$/.test(id)) return Number(id);
-    }
+  const reviewedCount = assignmentsData?.stats.published ?? 0;
+  const assignedCount = assignmentsData?.stats.total ?? 0;
+  const pendingCount = assignmentsData?.stats.pending ?? 0;
+  const draftCount = assignmentsData?.stats.draft ?? 0;
 
-    return null;
-  }
+  /* ------------------- Resaltado del artículo al volver del formulario ------------------- */
 
-  const lastFetchKey = React.useRef<string | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-
-    (async () => {
-      // Esperar que la lista de artículos esté cargada para poder filtrar por sesión->conferencia
-      if (!articulosLoaded) return;
-
-      // Si el rol es revisor pero aún no tenemos conferenceId, no hagas la petición
-      if (isReviewerRole && (selectedConferenceId === undefined || selectedConferenceId === null))
-        return;
-
-      // Construimos una "clave" para evitar refetches redundantes (misma conferencia / mismo reviewer / misma fase)
-      const fetchKey = `${String(selectedConferenceId ?? "all")}:${String(reviewerId)}:${phase}`;
-      if (lastFetchKey.current === fetchKey) return;
-      lastFetchKey.current = fetchKey;
-
-      // Si no estamos en fase / user -> limpiar y salir
-      if (phase !== "review" || !auth.user) {
-        if (alive) {
-          setAssigned(null);
-          setData([]);
-          setReviewedMap({});
-          setLoading(false);
-        }
-        return;
-      }
-
-      setLoading(true);
-
-      try {
-        // 1) traer asignaciones (backend puede filtrar por conferenceId)
-        const rows = await fetchAssignedArticles(reviewerId, selectedConferenceId);
-
-        // 2) filtrar por conferencia usando la metadata de articulos.session -> conference
-        let filtered = rows;
-        if (selectedConferenceId && articulos.length > 0) {
-          const articMap = new Map<number, Article>();
-          for (const a of articulos) articMap.set(a.id, a);
-
-          const tmp = rows.filter((r) => {
-            const aid = Number(r.id);
-            const art = articMap.get(aid);
-            if (!art) return false;
-            const confId = getArticleConferenceId(art);
-            if (confId === null) return false;
-            return Number(confId) === Number(selectedConferenceId);
-          });
-
-          // si queda vacío por inconsistencia, fallback a rows (evita mostrar vacío por error del mapper)
-          if (tmp.length > 0) filtered = tmp;
-        }
-
-        // 3) calcular estado y reviewedMap en paralelo (Promise.all)
-        const enriched = await Promise.all(
-          filtered.map(async (a) => {
-            const own = await getOwnReviewByArticle(a.id, reviewerId);
-            const status: ReviewStatus = own?.is_published
-              ? "completed"
-              : own
-              ? "draft"
-              : "pending";
-            return {
-              id: a.id,
-              title: a.title,
-              status,
-              ownPublished: Boolean(own?.is_published),
-            };
-          })
-        );
-
-        if (!alive) return;
-
-        // 4) actualizar estados de una sola vez para evitar re-renders intermedios
-        setAssigned(filtered);
-        setData(enriched.map((e) => ({ id: e.id, title: e.title, status: e.status })));
-        const map: Record<number, boolean> = {};
-        enriched.forEach((e) => (map[e.id] = e.ownPublished));
-        setReviewedMap(map);
-      } catch (e) {
-        setAssigned([]);
-        setData([]);
-        setReviewedMap({});
-        // eslint-disable-next-line no-console
-        console.error("Error cargando artículos asignados:", e);
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [articulosLoaded, reviewerId, phase, selectedConferenceId, auth.user]);
-
-  const reviewedCount = useMemo(
-    () => Object.values(reviewedMap).filter(Boolean).length,
-    [reviewedMap]
-  );
-
-  /* ------------------- Datos para el listado en fase de review ------------------- */
-
-  const [data, setData] = useState<UiRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [flashId, setFlashId] = useState<number | null>(null);
-
-  // Estado por artículo basado en TU review
-  const computeStatusFor = useCallback(
-    async (articleId: number): Promise<ReviewStatus> => {
-      try {
-        const own = await getOwnReviewByArticle(articleId, reviewerId);
-
-        if (own?.is_published) return "completed"; // tu review enviada
-        if (own) return "draft";                   // tenés borrador
-        return "pending";                          // no empezaste nada
-      } catch {
-        return "pending";
-      }
-    },
-    [reviewerId]
-  );
 
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
@@ -421,23 +417,97 @@ export default function ReviewsIndex() {
   );
 
   const content = useMemo(() => {
-    if (loading) return <p className="text-slate-600">Cargando…</p>;
-    if (!data.length) return <p className="text-slate-600">Sin asignar aún…</p>;
+    // 1) Sin conferencia elegida: todavía no hay nada que pedir.
+    if (selectedConferenceId == null)
+      return (
+        <StateCard
+          title="Elegí una conferencia para ver tus artículos."
+          description="Seleccioná tu rol de revisor en una conferencia desde tu panel."
+          action={
+            <Button
+              onClick={() => navigate({ to: "/dashboard" })}
+              className="bg-slate-900 text-white font-medium hover:bg-slate-800"
+            >
+              Ir a mi panel
+            </Button>
+          }
+        />
+      );
 
+    // 2) Cargando.
+    if (loading) return <ListSkeleton />;
+
+    // 3) Error de carga: nunca se muestra una lista de reemplazo.
+    if (isError)
+      return (
+        <StateCard
+          tone="error"
+          title={LOAD_ERROR_TITLE}
+          description={backendErrorMessage(error) ?? undefined}
+          action={
+            <Button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="bg-slate-900 text-white font-medium hover:bg-slate-800"
+            >
+              {isFetching ? "Reintentando…" : "Reintentar"}
+            </Button>
+          }
+        />
+      );
+
+    // 4) Conferencia elegida pero sin artículos asignados.
+    if (!data.length)
+      return (
+        <StateCard
+          title={`Todavía no tenés artículos asignados${
+            conferenceName ? ` en ${conferenceName}` : ""
+          }.`}
+          description="Cuando el chair te asigne artículos, van a aparecer acá."
+        />
+      );
+
+    // 5) Lista agrupada por sesión.
     return (
-      <div className="space-y-3">
-        {data.map((a) => (
-          <ArticleCard
-            key={a.id}
-            article={a}
+      <div className="space-y-8">
+        {groups.sessions.map((g) => (
+          <SessionSection
+            key={g.id}
+            title={g.title}
+            progress={{ published: g.published, total: g.total }}
+            rows={g.rows}
             onAction={handleAction}
-            selected={selectedId === a.id}
-            flashing={flashId === a.id}
+            selectedId={selectedId}
+            flashId={flashId}
           />
         ))}
+
+        {groups.withoutSession.length > 0 && (
+          <SessionSection
+            title="Sin sesión"
+            rows={groups.withoutSession}
+            onAction={handleAction}
+            selectedId={selectedId}
+            flashId={flashId}
+          />
+        )}
       </div>
     );
-  }, [data, loading, handleAction, selectedId, flashId]);
+  }, [
+    selectedConferenceId,
+    conferenceName,
+    data,
+    groups,
+    loading,
+    isError,
+    isFetching,
+    error,
+    refetch,
+    navigate,
+    handleAction,
+    selectedId,
+    flashId,
+  ]);
 
   /* ============================ Render principal ============================ */
 
@@ -445,6 +515,9 @@ export default function ReviewsIndex() {
     <div className="mx-auto w-full max-w-md px-4 py-6 md:max-w-2xl">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Bienvenido, Revisor</h1>
+        <div className="mt-2">
+          <ReviewerConferenceSwitcher />
+        </div>
         <Button
           onClick={() => navigate({ to: "/reviewer/history" })}
           className="bg-slate-700 hover:bg-slate-600 text-white font-medium"
@@ -474,10 +547,18 @@ export default function ReviewsIndex() {
             <SoftCard>
               <div className="flex h-full flex-col items-center justify-center">
                 <div className="text-3xl font-semibold tracking-tight">
-                  {reviewedCount}/{assigned?.length ?? 0}
+                  {reviewedCount}/{assignedCount}
                 </div>
                 <div className="mt-1 text-sm text-slate-600">
                   Artículos revisados
+                </div>
+                <Progress
+                  className="mt-3"
+                  value={percent(reviewedCount, assignedCount)}
+                  aria-label="Progreso de la conferencia"
+                />
+                <div className="mt-2 text-center text-xs text-slate-500">
+                  Pendientes: {pendingCount} · Borradores: {draftCount}
                 </div>
               </div>
             </SoftCard>

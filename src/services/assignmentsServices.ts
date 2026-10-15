@@ -1,6 +1,5 @@
 // src/services/assignmentsServices.ts
 import api from '@/services/api';
-import { getAllArticles, type Article } from '@/services/articleServices';
 
 export interface AssignedArticle {
   id: number;
@@ -14,8 +13,9 @@ export interface AssignedArticle {
  *   GET /api/reviewers/:reviewerId/
  *
  * El serializer puede exponer distintos nombres para la lista; se
- * normalizan aquí. Si no hay lista, se cae a un fallback inofensivo:
- * usa el listado general de artículos para que la UI no rompa.
+ * normalizan aquí. Si no hay lista o falla, devuelve [] (GRUPO 1: antes
+ * caía al listado general de artículos y un revisor sin asignaciones
+ * veía y podía revisar artículos que no le correspondían).
  */
 export async function fetchAssignedArticles(
   reviewerId: number | string,
@@ -58,12 +58,10 @@ export async function fetchAssignedArticles(
       }));
     }
   } catch {
-    // ignoramos y seguimos al fallback
+    // sin asignaciones visibles
   }
 
-  // Fallback: no toca el back; se usa el listado general
-  const arts: Article[] = await getAllArticles();
-  return arts.map((a) => ({ id: a.id, title: a.title }));
+  return [];
 }
 
 /**
