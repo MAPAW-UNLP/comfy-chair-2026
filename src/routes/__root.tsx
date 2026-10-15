@@ -6,6 +6,7 @@ import { RoleProvider, useRole } from '@/contexts/RoleContext';
 import { Armchair, Menu, X } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 import { Toaster } from '@/components/ui/sonner';
+import { InvitationsNavLabel } from '@/components/reviewer/invitations/InvitationsNavLabel';
 
 // Componente interno que usa el contexto de autenticación
 const RootLayoutContent = () => {
@@ -18,9 +19,10 @@ const RootLayoutContent = () => {
   const roleKey = String(selectedRole?.role ?? "").toLowerCase().trim();
 
   // Mapa estático fuera del render/efectos para evitar recreaciones e inmutabilidad
-  const roleRoutes: Record<string, { to: string; label: string }[]> = {
+  const roleRoutes: Record<string, { to: string; label: React.ReactNode }[]> = {
     revisor: [
       { to: '/reviewer/', label: 'Revisor' },
+      { to: '/reviewer/invitations', label: <InvitationsNavLabel /> }, // GRUPO 1
       { to: '/reviewer/bidding', label: 'Bidding' },
       { to: '/reviewer/history', label: 'Historial' },
     ],
@@ -61,6 +63,7 @@ const RootLayoutContent = () => {
       return [
         { to: '/dashboard', label: 'Inicio' },
         { to: '/reviewer/', label: 'Revisor' },
+        { to: '/reviewer/invitations', label: <InvitationsNavLabel /> }, // GRUPO 1
         { to: '/users', label: 'Usuarios'},
         { to: '/conference/view', label: 'Conferencias' },
         { to: '/article/create', label: 'Articulos' },

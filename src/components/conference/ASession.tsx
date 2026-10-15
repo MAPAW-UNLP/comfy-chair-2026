@@ -22,6 +22,7 @@ import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import Statistics from './Statistics';
 import { useAuth } from '@/contexts/AuthContext';
 import Breadcrumb from '../ui/Breadcrumb';
+import { useRole } from '@/contexts/RoleContext';
 import { canManageSessions } from './sessionPermissions';
 
 function ASession() {
@@ -35,6 +36,7 @@ function ASession() {
   const [filteredArticles, setFilteredArticles] = useState<Article[] | []>([]);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { selectedRole } = useRole();
   const canManage = canManageSessions(user, session?.conference);
 
   const fetchSession = async () => {
@@ -118,6 +120,21 @@ function ASession() {
           )}
         </div>
         <p className="text-sm">Deadline {formatearFecha(session!.deadline)}</p>
+        {selectedRole?.role === 'revisor' &&
+          selectedRole.conferenceId === session!.conference?.id && (
+            <Button
+              size={'sm'}
+              className="w-fit cursor-pointer"
+              onClick={() =>
+                navigate({
+                  to: '/reviewer/bidding',
+                  search: { conferenceId: session!.conference?.id, sessionId: session!.id },
+                })
+              }
+            >
+              Bidding de la sesión
+            </Button>
+          )}
       </div>
 
       <div className="flex flex-col bg-card rounded shadow border border-gray-200 p-5 w-full gap-2">
