@@ -13,6 +13,21 @@ export type Type = "regular" | "poster";
 
 export type Status = "reception" | "bidding" | "assignment" | "review" | "selection" | "accepted" | "rejected";
 
+export type EventTypeChoices = 
+  | "draft_created" 
+  | "submitted" 
+  | "reviewer_assigned" 
+  | "review_received" 
+  | "final_verdict";
+
+  export type VerdictStatus = "accepted" | "rejected";
+  
+
+export interface ArticleHistoryItem {
+  event_type: EventTypeChoices;
+  created_at: string; 
+  verdict?: VerdictStatus; // Presente solo si event_type es 'final_verdict'
+}
 export interface Article {
   id: number;
   title: string;
@@ -44,7 +59,7 @@ export interface ArticleNew {
   status: string | null;
   type: string | null;
   abstract: string;
-  source_file?: File | null;
+  source_file?: File[] | null;
   authors: number[];
   corresponding_author: number | null;
   session: number | null;
@@ -60,6 +75,15 @@ export interface ArticleUpdate {
   authors?: number[];
   corresponding_author?: number | null;
   session?: number | null;
+}
+
+export interface ArticleHistory {
+    event_type: EventTypeChoices;
+    metadata: Record<string, unknown>;
+    created_at: Date;
+    article: Article;
+    created_by: User | null;
+    reviewed_by: User | null;
 }
 
 function normalizeArticleShape(raw: any): Article {
@@ -98,30 +122,71 @@ export const getArticlesByConferenceId = async (conferenceId: number): Promise<A
 //------------------------------------------------------------
 // GRUPO 1 - Alta de Articulos
 //------------------------------------------------------------
+//------------------------------------------------------------
+// GRUPO 1 - Alta de Articulos (Corregido)
+//------------------------------------------------------------
 export async function createArticle(newArticle: ArticleNew) {
-  const formData = new FormData();
-  formData.append("title", newArticle.title);
-  formData.append("main_file", newArticle.main_file);
-  if (newArticle.source_file) {
-    formData.append("source_file", newArticle.source_file);
+  // 0. VALIDACIÓN DE SEGURIDAD (Esto detecta el error {} antes de enviarlo al backend)
+  if (newArticle.main_file && !(newArticle.main_file instanceof File) && !(newArticle.main_file instanceof Blob)) {
+    console.error("❌ ERROR: El main_file no es un archivo válido:", newArticle.main_file);
+    throw new Error("El archivo principal está vacío o mal capturado en el formulario (no es tipo File).");
   }
-  formData.append("status", newArticle.status || "reception");
-  formData.append("type", newArticle.type || "");
-  formData.append("abstract", newArticle.abstract || "");
-  formData.append("corresponding_author_id", newArticle.corresponding_author?.toString() || "");
-  formData.append("session_id", newArticle.session?.toString() || "");
 
-  newArticle.authors.forEach((authorId) => {
-    formData.append("authors_ids", authorId.toString());
-  });
+  const formData = new FormData();
+
+  // 1. Datos básicos (Todo debe convertirse a string en FormData)
+  formData.append('title', newArticle.title);
+  formData.append('type', newArticle.type || "regular");
+  formData.append('abstract', newArticle.abstract || "");
+  formData.append('status', newArticle.status || "reception");
+  
+  if (newArticle.corresponding_author) {
+    formData.append('corresponding_author_id', String(newArticle.corresponding_author));
+  }
+  
+  if (newArticle.session) {
+    formData.append('session_id', String(newArticle.session));
+  }
+
+  // 2. Relación ManyToMany (Múltiples autores)
+  if (newArticle.authors && newArticle.authors.length > 0) {
+    newArticle.authors.forEach(authorId => {
+      formData.append('authors_ids', String(authorId));
+    });
+  }
+
+  // 3. Archivo Principal
+  if (newArticle.main_file) {
+    formData.append('main_file', newArticle.main_file);
+  }
+
+  // 4. Archivos Source (Iteramos y pasamos el File real)
+  if (newArticle.source_file && newArticle.source_file.length > 0) {
+    newArticle.source_file.forEach(file => {
+      if (file instanceof File || file instanceof Blob) {
+        formData.append('sources', file);
+      } else {
+        console.warn("⚠️ Un archivo source no es válido y no se envió:", file);
+      }
+    });
+  }
 
   try {
+    console.log("Enviando FormData del artículo...");
+    
+    // DEPÚRACIÓN: Mostrará exactamente qué va dentro del FormData antes de enviarlo
+    for (const pair of formData.entries()) {
+      console.log(`- ${pair[0]}:`, pair[1]);
+    }
+
+    // Realizamos la petición forzando el header para romper cualquier interceptor JSON
     const res = await api.post(`/api/article/`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     });
 
     return normalizeArticleShape(res.data);
-
   } catch (err: any) {
     if (err.response?.data) {
       throw new ApiError(JSON.stringify(err.response.data), err.response.status, err.response.data.errors);
@@ -251,3 +316,19 @@ export const getAllArticles = async (): Promise<Article[]> => {
   const response = await api.get('/api/article');
   return response.data;
 };
+
+//Usado por el grupo 4 en el sprint 1. Se utilizar para el historial de los articulos
+export async function getArticleHistory(articleId: number): Promise<ArticleHistoryItem[]> {
+  try {
+    const res = await api.get<ArticleHistoryItem[]>(`/api/article/${articleId}/history/`);
+    if (!res.status || res.status >= 400) {
+      throw new Error("Error al obtener el historial del artículo");
+    }
+    return res.data;
+  } catch (err: any) {
+    if (err.response?.data) {
+      throw new Error(JSON.stringify(err.response.data));
+    }
+    throw err;
+  }
+}

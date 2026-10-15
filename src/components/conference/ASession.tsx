@@ -22,6 +22,8 @@ import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import Statistics from './Statistics';
 import { useAuth } from '@/contexts/AuthContext';
 import Breadcrumb from '../ui/Breadcrumb';
+import { useRole } from '@/contexts/RoleContext';
+import { canManageSessions } from './sessionPermissions';
 
 function ASession() {
   const sessionInicial = Route.useLoaderData();
@@ -34,6 +36,8 @@ function ASession() {
   const [filteredArticles, setFilteredArticles] = useState<Article[] | []>([]);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { selectedRole } = useRole();
+  const canManage = canManageSessions(user, session?.conference);
 
   const fetchSession = async () => {
     try {
@@ -52,9 +56,15 @@ function ASession() {
   };
 
   const onDelete = async () => {
-    await deleteSession(String(session!.id), user!.id);
-    toast.warning('Sesión eliminada');
-    navigate({ to: `/conference/${session!.conference?.id}` });
+    try {
+      await deleteSession(String(session!.id), user!.id);
+      toast.warning('Sesión eliminada');
+      navigate({ to: `/conference/${session!.conference?.id}` });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Error al eliminar la sesión'
+      );
+    }
   };
 
   useEffect(() => {
@@ -105,9 +115,26 @@ function ASession() {
             {session!.title.toUpperCase()}
           </h1>
 
-          <EditarSession session={session!} onSessionUpdated={fetchSession} />
+          {canManage && (
+            <EditarSession session={session!} onSessionUpdated={fetchSession} />
+          )}
         </div>
         <p className="text-sm">Deadline {formatearFecha(session!.deadline)}</p>
+        {selectedRole?.role === 'revisor' &&
+          selectedRole.conferenceId === session!.conference?.id && (
+            <Button
+              size={'sm'}
+              className="w-fit cursor-pointer"
+              onClick={() =>
+                navigate({
+                  to: '/reviewer/bidding',
+                  search: { conferenceId: session!.conference?.id, sessionId: session!.id },
+                })
+              }
+            >
+              Bidding de la sesión
+            </Button>
+          )}
       </div>
 
       <div className="flex flex-col bg-card rounded shadow border border-gray-200 p-5 w-full gap-2">
@@ -188,7 +215,7 @@ function ASession() {
       <div className="flex flex-col sm:flex-row justify-between items-center mt-5 m-2 gap-3">
         <div></div>
 
-        {articles.length == 0 && (
+        {canManage && articles.length == 0 && (
           <Button
             variant="destructive"
             onClick={handleEliminarSession}

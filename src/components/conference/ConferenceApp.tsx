@@ -11,7 +11,8 @@ import { Route } from '@/routes/_auth/conference/view';
 import { useEffect, useState } from 'react';
 import { SearchBar } from './ConferenceSearch';
 
-type VISTA_CHOICES = 'single blind' | 'double blind' | 'completo';
+type VISTA_CHOICES = 'single blind' | 'double blind';
+export type ALLOWED_EXTENSIONS_CHOICES = 'pdf' | 'docx' | 'txt';
 
 export type Conference = {
   id: number;
@@ -19,8 +20,14 @@ export type Conference = {
   description: string;
   start_date?: string;
   end_date?: string;
+  submission_start?: string | null;
+  submission_end?: string | null;
+  review_start?: string | null;
+  review_end?: string | null;
   blind_kind: VISTA_CHOICES;
   chairs?: number[];
+  sources_multiple: boolean;
+  allowed_extensions: ALLOWED_EXTENSIONS_CHOICES[];
 };
 
 function ConferenceApp() {
