@@ -4,6 +4,6 @@ import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_auth/conference/view')({
   component: ConferenceApp,
-  loader: getActiveConferences
+  loader: () => getActiveConferences()
 })
 

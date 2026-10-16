@@ -510,6 +510,7 @@ const extensionesFormateadas = (() => {
             variant="outline"
             onClick={handleMainFileClick}
             type="button"
+            disabled={loading}
             className={`w-full text-white transition-colors truncate ${
               mainFileError
                 ? "bg-red-600 hover:bg-red-700"
@@ -549,6 +550,7 @@ const extensionesFormateadas = (() => {
               variant="outline"
               onClick={handleSourceFileClick}
               type="button"
+              disabled={loading}
               className={`w-full text-white transition-colors truncate ${
                 sourceFileError
                   ? "bg-red-600 hover:bg-red-700"

@@ -510,6 +510,7 @@ export default function ReviewArticle(props?: ReviewArticleProps) {
             rows={7}
             value={opinion}
             onChange={(e) => setOpinion(e.target.value)}
+            disabled={saving}
             placeholder="Escribí aquí tu revisión…"
             className="w-full rounded-lg border border-slate-300 bg-white p-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           />
@@ -526,6 +527,7 @@ export default function ReviewArticle(props?: ReviewArticleProps) {
           <select
             value={score}
             onChange={(e) => setScore(e.target.value)}
+            disabled={saving}
             className={[
               "w-full max-w-xs rounded-xl border bg-white p-2.5 text-sm text-slate-900 shadow-sm",
               "focus:outline-none focus:ring-2 focus:ring-sky-400",
