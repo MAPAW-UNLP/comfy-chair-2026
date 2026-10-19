@@ -12,7 +12,7 @@ import { InvitationsNavLabel } from '@/components/reviewer/invitations/Invitatio
 const RootLayoutContent = () => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  
+
   const { user } = useAuth();
   const { selectedRole } = useRole();
 
@@ -54,7 +54,7 @@ const RootLayoutContent = () => {
     }
 
     const commonAuthLinks = [
-      
+
       { to: '/notifications', label: 'Notificaciones' }
     ];
 
@@ -69,7 +69,7 @@ const RootLayoutContent = () => {
         { to: '/article/create', label: 'Articulos' },
         { to: '/chairs/select-session', label: 'Chair' },
         { to: '/reviewer/bidding', label: 'Bidding' },
-        ...commonAuthLinks,
+        ...commonAuthLinks.filter(({ to }) => to !== '/dashboard'),
       ];
     }
 
@@ -87,13 +87,13 @@ const RootLayoutContent = () => {
 
       {/* Navbar superior */}
       <header className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
-        
+
         {/* Navegación visible en pantallas grandes */}
         <nav className="hidden xl:flex gap-2 order-1 xl:order-1">
           {links.map((link) => (
-            <Link 
-              key={link.to} 
-              to={link.to} 
+            <Link
+              key={link.to}
+              to={link.to}
               className="px-3 py-1 rounded-md hover:bg-gray-400 [&.active]:bg-slate-400 [&.active]:text-white"
             >
               {link.label}
