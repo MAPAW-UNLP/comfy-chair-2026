@@ -30,6 +30,12 @@ function DashboardPage() {
     queryKey: ['user-full-data'],
     queryFn: getUserFullData,
   })
+ 
+  useEffect(() => {
+    try {
+      clearSelectedRole()
+    } catch {}
+  }, [])
 
   // Auto-hide the banner
   useEffect(() => {

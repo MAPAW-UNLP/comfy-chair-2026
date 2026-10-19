@@ -88,10 +88,6 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [authors, setAuthors] = useState<User[]>([]);
   const [correspondingAuthor, setCorrespondingAuthor] = useState<string>("");
-  // Obtener la conferencia actual seleccionada
-  const currentConference = conferences.find((c) => c.id === selectedConference);
-  // Ajusta 'accepts_multiple_sources' según la propiedad real de tu modelo Conference
-  const acceptsMultipleSources = currentConference?.sources_multiple === true;
 
 
   // Obtener la conferencia actual seleccionada
