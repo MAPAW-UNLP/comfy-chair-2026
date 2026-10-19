@@ -155,6 +155,18 @@ export async function getMyAssignments({
   return data;
 }
 
+export interface SessionPeriods {
+  session_id: number;
+  server_now: string;
+  bidding: Period;
+  review: Period;
+}
+
+export async function getSessionPeriods(sessionId: number): Promise<SessionPeriods> {
+  const { data } = await api.get<SessionPeriods>(`/api/reviewer/sessions/${sessionId}/periods/`);
+  return data;
+}
+
 function isFilledReview(r: Partial<Review> | null | undefined) {
   return !!(r && typeof r.score === 'number' && String(r.opinion ?? '').trim());
 }
