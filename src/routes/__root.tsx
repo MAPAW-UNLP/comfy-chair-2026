@@ -6,21 +6,22 @@ import { RoleProvider, useRole } from '@/contexts/RoleContext';
 import { Armchair, Menu, X } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 import { Toaster } from '@/components/ui/sonner';
+import { InvitationsNavLabel } from '@/components/reviewer/invitations/InvitationsNavLabel';
 
 // Componente interno que usa el contexto de autenticación
 const RootLayoutContent = () => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  
   const { user } = useAuth();
   const { selectedRole } = useRole();
 
   const roleKey = String(selectedRole?.role ?? "").toLowerCase().trim();
 
   // Mapa estático fuera del render/efectos para evitar recreaciones e inmutabilidad
-  const roleRoutes: Record<string, { to: string; label: string }[]> = {
+  const roleRoutes: Record<string, { to: string; label: React.ReactNode }[]> = {
     revisor: [
       { to: '/reviewer/', label: 'Revisor' },
+      { to: '/reviewer/invitations', label: <InvitationsNavLabel /> }, // GRUPO 1
       { to: '/reviewer/bidding', label: 'Bidding' },
       { to: '/reviewer/history', label: 'Historial' },
     ],
@@ -52,7 +53,6 @@ const RootLayoutContent = () => {
     }
 
     const commonAuthLinks = [
-      
       { to: '/notifications', label: 'Notificaciones' }
     ];
 
@@ -61,6 +61,7 @@ const RootLayoutContent = () => {
       return [
         { to: '/dashboard', label: 'Inicio' },
         { to: '/reviewer/', label: 'Revisor' },
+        { to: '/reviewer/invitations', label: <InvitationsNavLabel /> }, // GRUPO 1
         { to: '/users', label: 'Usuarios'},
         { to: '/conference/view', label: 'Conferencias' },
         { to: '/article/create', label: 'Articulos' },
@@ -88,9 +89,9 @@ const RootLayoutContent = () => {
         {/* Navegación visible en pantallas grandes */}
         <nav className="hidden xl:flex gap-2 order-1 xl:order-1">
           {links.map((link) => (
-            <Link 
-              key={link.to} 
-              to={link.to} 
+            <Link
+              key={link.to}
+              to={link.to}
               className="px-3 py-1 rounded-md hover:bg-gray-400 [&.active]:bg-slate-400 [&.active]:text-white"
             >
               {link.label}

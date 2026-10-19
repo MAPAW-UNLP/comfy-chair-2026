@@ -58,7 +58,7 @@ export default function EditarSession({
         improvement_threshold: data.selectionMethod === 'mejores' ? data.threshold : undefined,
       };
 
-      await updateSession(session.id.toString(), sessionData, session.conference!.id, user!.id);
+      await updateSession(session.id.toString(), sessionData, session.conference!.id.toString(), user!.id.toString());
 
       toast.success('Sesión actualizada exitosamente');
       setOpen(false);

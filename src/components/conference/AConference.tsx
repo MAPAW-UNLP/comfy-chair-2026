@@ -15,10 +15,10 @@ import { toast } from 'sonner';
 import { SearchBar } from './ConferenceSearch';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import Statistics from './Statistics';
-import Breadcrumb from '../ui/Breadcrumb';
+import Breadcrumb from '../ui/breadcrumb';
 import { getArticlesByConferenceId, type Article } from '@/services/articleServices';
-import { isAdmin } from '@/lib/permissions';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRole } from '@/contexts/RoleContext';
 import ConferenceUsers from './ConferenceUsers';
 import { canManageSessions } from './sessionPermissions';
 
@@ -38,6 +38,7 @@ function AConference() {
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [articles, setArticles] = useState<Article[]>([]);
   const {user}= useAuth()
+  const { selectedRole } = useRole();
 
   const [verUsuarios, setVerUsuarios] = useState<boolean>(false);
   const esAdmin = user?.role === 'admin';
@@ -137,6 +138,18 @@ function AConference() {
           Desde {formatearFecha(conferencia.start_date!)} a{' '}
           {formatearFecha(conferencia.end_date!)}
         </p>
+        {selectedRole?.role === 'revisor' &&
+          selectedRole.conferenceId === conferencia.id && (
+            <Button
+              size={'sm'}
+              className="w-fit cursor-pointer"
+              onClick={() =>
+                navigate({ to: '/reviewer/bidding', search: { conferenceId: conferencia.id } })
+              }
+            >
+              Bidding de la conferencia
+            </Button>
+          )}
       </div>
 
       <div className="flex flex-col bg-card rounded shadow border border-gray-200 p-5 w-full">
@@ -186,7 +199,7 @@ function AConference() {
 
       <div className="flex flex-col bg-card rounded shadow border border-gray-200 p-5 w-full gap-8">
         {verUsuarios ? ( <ConferenceUsers conferenceId={Number(conferencia.id)} />
-      ) 
+      )
         : verEstadisticas ? (
           <Statistics 
             fromConference={true}
@@ -213,7 +226,7 @@ function AConference() {
                 <h2 className="text-1xl font-bold">Sesiones disponibles</h2>
                 <div className="flex flex-col items-end gap-1">
                   <div className="flex gap-2">
-                    {!isAdmin(user?.role) && (
+                    {canManageSessions(user, conferencia) && (
                       <AltaSession
                         conference={conferencia}
                         onSessionCreated={fetchSessions}

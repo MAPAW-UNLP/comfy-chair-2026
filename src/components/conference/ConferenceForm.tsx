@@ -9,7 +9,8 @@ import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ALLOWED_EXTENSIONS_CHOICES } from './ConferenceApp';
 
-function esFechaValida(fecha1: string, fecha2: string) {
+function esFechaValida(fecha1?: string, fecha2?: string) {
+  if (!fecha1 || !fecha2) return true;
   const f1 = new Date(fecha1);
   const f2 = new Date(fecha2);
 
@@ -195,6 +196,7 @@ function ConferenceForm({
             <label htmlFor="end_date">Fecha de cierre</label>
             <CustomCalendar date={end_date} setDate={setEndDate} />
           </div>
+
         </div>
 
         <ConferenceView

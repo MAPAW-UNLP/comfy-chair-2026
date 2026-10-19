@@ -55,3 +55,10 @@ export type LoginFormData = z.infer<typeof loginSchema>
 export type UpdateUserDataFormData = z.infer<typeof updateUserDataSchema>
 export type UpdatePasswordFormData = z.infer<typeof updatePasswordSchema>
 export type ArticleFormData = z.infer<typeof articleSchema> //Grupo 1
+
+//Grupo 1: rechazo de invitación a revisar
+export const rejectInvitationSchema = z.object({
+  reason: z.string().trim().max(500, "El motivo puede tener como máximo 500 caracteres").optional(),
+})
+
+export type RejectInvitationFormData = z.infer<typeof rejectInvitationSchema>

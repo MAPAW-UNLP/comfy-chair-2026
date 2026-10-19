@@ -96,6 +96,10 @@ export const createConference = async (
 
     const response = await api.post('/api/conference/', {
       ...conferencia,
+      submission_start: conferencia.submission_start || null,
+      submission_end: conferencia.submission_end || null,
+      review_start: conferencia.review_start || null,
+      review_end: conferencia.review_end || null,
       chairs: chairs.map(user => user.id),
       user_id
     });
@@ -116,6 +120,10 @@ export const updateConference = async (
   try {
     const response = await api.patch(`/api/conference/${id}/`, {
       ...conferencia,
+      submission_start: conferencia.submission_start || null,
+      submission_end: conferencia.submission_end || null,
+      review_start: conferencia.review_start || null,
+      review_end: conferencia.review_end || null,
       chairs: chairs.map(user => user.id),
       user_id
     });
@@ -124,6 +132,18 @@ export const updateConference = async (
     handleConferenceError(err, false);
     throw err;
   }
+};
+
+export const updateConferencePeriods = async (
+  id: number,
+  periods: Pick<Conference, 'submission_start' | 'submission_end' | 'review_start' | 'review_end'>,
+  user_id: string
+): Promise<Conference> => {
+  const response = await api.patch(`/api/conference/${id}/periods/`, {
+    ...periods,
+    user_id,
+  });
+  return response.data;
 };
 
 export const deleteConference = async (id: string, user_id: string): Promise<void> => {

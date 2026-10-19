@@ -31,8 +31,8 @@ import { type Session, getSessionsByConferenceGrupo1 } from "@/services/sessionS
 import { type Article, type ArticleNew, type ArticleUpdate, ApiError, createArticle, updateArticle } from "@/services/articleServices";
 
 // Configuración escalable de validación de extensiones
-const ALLOWED_ARTICLE_EXTENSIONS = [".pdf"]; 
-const ALLOWED_SOURCE_EXTENSIONS = [".pdf", ".zip", ".rar", ".png", ".jpeg", ".jpg"]; 
+const ALLOWED_ARTICLE_EXTENSIONS = [".pdf"];
+const ALLOWED_SOURCE_EXTENSIONS = [".pdf", ".zip", ".rar", ".png", ".jpeg", ".jpg"];
 
 /**
  * Helper para validar si un archivo posee una extensión permitida.
@@ -71,23 +71,28 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const navigateBack = () => navigate({ to: `/articles/${selectedConference}`, replace: true });
 
   // Setteo de sesiones
-  const [sessions, setSessions] = useState<Session[]>([]); 
+  const [sessions, setSessions] = useState<Session[]>([]);
 
   // Manejo de errores y estados de carga
-  const [error, setError] = useState<string | null>(null); 
-  const [errors, setErrors] = useState<Partial<ArticleFormData>>({}); 
-  const [showErrorAlert, setShowErrorAlert] = useState<boolean>(false); 
-  const [loading, setLoading] = useState<boolean>(false); 
-  const [loadingSessions, setLoadingSessions] = useState<boolean>(false); 
+  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Partial<ArticleFormData>>({});
+  const [showErrorAlert, setShowErrorAlert] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [loadingSessions, setLoadingSessions] = useState<boolean>(false);
   
   // Setteo de campos del formulario
-  const [title, setTitle] = useState<string>(""); // Título del artículo
-  const [abstract, setAbstract] = useState<string>(""); // Abstract del artículo
-  const [articleType, setArticleType] = useState<string>("regular"); // Tipo de artículo
-  const [selectedConference, setSelectedConference] = useState< number | null>(fixedConferenceId ?? null); // Conferencia seleccionada
-  const [selectedSession, setSelectedSession] = useState<string | null>(null); // Sesión seleccionada
-  const [authors, setAuthors] = useState<User[]>([]); // Autores seleccionados
-  const [correspondingAuthor, setCorrespondingAuthor] = useState<string>(""); // Autor de notificación
+  const [title, setTitle] = useState<string>("");
+  const [abstract, setAbstract] = useState<string>("");
+  const [articleType, setArticleType] = useState<string>("regular");
+  const [selectedConference, setSelectedConference] = useState< number | null>(fixedConferenceId ?? null);
+  const [selectedSession, setSelectedSession] = useState<string | null>(null);
+  const [authors, setAuthors] = useState<User[]>([]);
+  const [correspondingAuthor, setCorrespondingAuthor] = useState<string>("");
+  // Obtener la conferencia actual seleccionada
+  const currentConference = conferences.find((c) => c.id === selectedConference);
+  // Ajusta 'accepts_multiple_sources' según la propiedad real de tu modelo Conference
+  const acceptsMultipleSources = currentConference?.sources_multiple === true;
+
 
   // Obtener la conferencia actual seleccionada
   const currentConference = conferences.find((c) => c.id === selectedConference);
@@ -95,16 +100,16 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const acceptsMultipleSources = currentConference?.sources_multiple === true;
 
   // Manejo de archivos
-  const mainFileRef = useRef<HTMLInputElement>(null); 
-  const sourceFileRef = useRef<HTMLInputElement>(null); 
-  const [mainFile, setMainFile] = useState<File | null>(null); 
-  
+  const mainFileRef = useRef<HTMLInputElement>(null);
+  const sourceFileRef = useRef<HTMLInputElement>(null);
+  const [mainFile, setMainFile] = useState<File | null>(null);
+
   // AHORA sourceFiles ES UN ARRAY DE ARCHIVOS
-  const [sourceFiles, setSourceFiles] = useState<File[]>([]); 
-  
-  const [mainFileError, setMainFileError] = useState<boolean>(false); 
-  const [sourceFileError, setSourceFileError] = useState<boolean>(false); 
-  const { mainFileName, sourceFileName, mainFileUrl, sourceFileUrl } = useArticleFiles(article ?? null); 
+  const [sourceFiles, setSourceFiles] = useState<File[]>([]);
+
+  const [mainFileError, setMainFileError] = useState<boolean>(false);
+  const [sourceFileError, setSourceFileError] = useState<boolean>(false);
+  const { mainFileName, sourceFileName, mainFileUrl, sourceFileUrl } = useArticleFiles(article ?? null);
 
   //------------------------------------------------------------
   // Manejo de la seleccion de archivos
@@ -155,7 +160,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
   const handleEliminarAutor = (id: number) => {
     setAuthors(authors.filter((a) => a.id !== id));
-    if (correspondingAuthor === String(id)) setCorrespondingAuthor(""); 
+    if (correspondingAuthor === String(id)) setCorrespondingAuthor("");
   };
 
   //------------------------------------------------------------
@@ -354,7 +359,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       }
 
       if (articleType === "regular") {
-        updated.source_file = null; 
+        updated.source_file = null;
       } else if (sourceFiles.length > 0) {
         updated.source_file = sourceFiles as any;
       }
@@ -426,7 +431,6 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
     !authors.some(a => a.id === u.id)
   );
 
-  // Formateador del texto a mostrar en el botón de fuentes
   const getSourceButtonText = () => {
     if (sourceFiles.length > 0) {
       return sourceFiles.map((f) => f.name).join(", ");
@@ -437,14 +441,13 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
     return "Seleccionar archivo...";
   };
 
-  // ✅ Formateo seguro para allowed_extensions
 const extensionesFormateadas = (() => {
   const exts = currentConference?.allowed_extensions;
-  
+
   if (Array.isArray(exts)) {
     return exts.map((ext: string) => ext.toUpperCase()).join(', ');
   }
-  
+
   if (typeof exts === 'string') {
     return (exts as string)
       .split(',')
@@ -509,7 +512,7 @@ const extensionesFormateadas = (() => {
       {/* Campo de Título */}
       <div className="flex-1 flex flex-col gap-2">
         <Label htmlFor="titulo">Título {errors.title && <p className="text-destructive">{errors.title}</p>}</Label>
-        <Input type="text" id="title" placeholder="Título del artículo..." maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)}/>
+        <Input type="text" id="title" placeholder="Título del submission..." maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)}/>
       </div>
       
       {/* Campo de Abstract */}
@@ -532,40 +535,38 @@ const extensionesFormateadas = (() => {
           </div>
         </RadioGroup>
         <span className="text-xs text-muted-foreground">
-                {acceptsMultipleSources 
-                  ? "Esta conferencia permite muchas fuentes." 
+                {acceptsMultipleSources
+                  ? "Esta conferencia permite muchas fuentes."
                   : "Esta conferencia permite una sola fuente."}
               </span>
                         <span className="text-xs text-muted-foreground">
             Esta conferencia permite las siguientes extensiones: {extensionesFormateadas}.
           </span>
-      </div> 
+      </div>
 
       {/* Archivos */}
       <div className="flex flex-col md:flex-row gap-4 w-full">
         
         {/* Archivo principal */}
         <div className="flex-1 grid items-start gap-2">
-          <input type="file" ref={mainFileRef} onChange={handleMainFileChange} className="hidden" />
-          
           <div className="flex justify-between items-center">
             <Label htmlFor="DetalleRegular">
-              Artículo {errors.file && <p className="text-destructive">{errors.file}</p>}
+              Submission {errors.file && <p className="text-destructive">{errors.file}</p>}
             </Label>
 
           </div>
-          <input 
-            type="file" 
-            ref={mainFileRef} 
-            onChange={handleMainFileChange} 
-            accept={ALLOWED_ARTICLE_EXTENSIONS.join(",")} 
-            className="hidden" 
+          <input
+            type="file"
+            ref={mainFileRef}
+            onChange={handleMainFileChange}
+            accept={ALLOWED_ARTICLE_EXTENSIONS.join(",")}
+            className="hidden"
           />
-          
           <Button
             variant="outline"
             onClick={handleMainFileClick}
             type="button"
+            disabled={loading}
             className={`w-full text-white transition-colors truncate ${
               mainFileError
                 ? "bg-red-600 hover:bg-red-700"
@@ -591,20 +592,21 @@ const extensionesFormateadas = (() => {
               <Label htmlFor="DetalleRegular">
                 Fuentes {errors.sourcesFile && <p className="text-destructive">{errors.sourcesFile}</p>}
               </Label>
-              
+
             </div>
-            <input 
-              type="file" 
-              ref={sourceFileRef} 
-              onChange={handleSourceFileChange} 
-              accept={ALLOWED_SOURCE_EXTENSIONS.join(",")} 
+            <input
+              type="file"
+              ref={sourceFileRef}
+              onChange={handleSourceFileChange}
+              accept={ALLOWED_SOURCE_EXTENSIONS.join(",")}
               multiple={acceptsMultipleSources} // <-- Activa/Desactiva la selección múltiple
-              className="hidden" 
+              className="hidden"
             />
             <Button
               variant="outline"
               onClick={handleSourceFileClick}
               type="button"
+              disabled={loading}
               className={`w-full text-white transition-colors truncate ${
                 sourceFileError
                   ? "bg-red-600 hover:bg-red-700"
