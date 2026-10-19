@@ -59,6 +59,21 @@ export const getFinishedConferences = async (): Promise<Conference[]> => {
   return response.data;
 };
 
+export type AuthorConferenceStatus = 'active' | 'finished';
+
+export const getAuthorConferences = async (
+  status: AuthorConferenceStatus,
+  search = '',
+  signal?: AbortSignal
+): Promise<Conference[]> => {
+  const trimmedSearch = search.trim();
+  const response = await api.get(`/api/conference/${status}/`, {
+    params: trimmedSearch ? { search: trimmedSearch } : undefined,
+    signal,
+  });
+  return response.data;
+};
+
 export const getConference = async (id: string): Promise<Conference> => {
   const response = await api.get(`/api/conference/${id}/`);
   return response.data;

@@ -20,6 +20,7 @@ export const RoleProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     try {
       const raw = localStorage.getItem("comfychair:selectedRole");
+      console.log("Loading selected role from localStorage: ", localStorage.getItem("comfychair:selectedRole"));
       if (raw) setSelectedRoleState(JSON.parse(raw));
     } catch {}
   }, []);

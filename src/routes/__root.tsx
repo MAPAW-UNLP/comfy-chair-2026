@@ -172,4 +172,5 @@ const RootLayout = () => {
   );
 };
 
+// Exportamos la ruta raíz del enrutador, usando este layout como componente principal
 export const Route = createRootRoute({ component: RootLayout });
