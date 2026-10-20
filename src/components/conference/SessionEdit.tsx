@@ -13,7 +13,7 @@ import SessionForm, { type SessionFormData } from './SessionForm';
 import { toast } from 'sonner';
 import { updateSession, type Session } from '@/services/sessionServices';
 import { Edit } from 'lucide-react';
-import { getAllUsers, type User } from '@/services/userServices';
+import { getCommonUsers, type User } from '@/services/userServices';
 import { useAuth } from '@/contexts/AuthContext';
 
 type EditarSessionProps = {
@@ -79,7 +79,7 @@ export default function EditarSession({
 
     useEffect(() => {
       const fetchChairs = async () => {
-        const data = await getAllUsers();
+        const data = await getCommonUsers();
         setChairs(data.filter((user) => session?.chairs!.includes(user.id)));
       };
       fetchChairs();

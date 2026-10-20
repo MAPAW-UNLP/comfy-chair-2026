@@ -10,7 +10,7 @@ import { Button } from '../ui/button';
 import ModalEliminar from './ModalDelete';
 import { useNavigate } from '@tanstack/react-router';
 import EditarSession from './SessionEdit';
-import { getAllUsers, type User } from '@/services/userServices';
+import { getCommonUsers, type User } from '@/services/userServices';
 import {
   getArticleBySessionId,
   type Article,
@@ -73,7 +73,7 @@ function ASession() {
 
   useEffect(() => {
     const fetchChairs = async () => {
-      const data = await getAllUsers();
+      const data = await getCommonUsers();
       setChairs(data.filter((user) => session?.chairs.includes(user.id)));
     };
     fetchChairs();

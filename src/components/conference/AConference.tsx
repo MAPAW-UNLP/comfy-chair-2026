@@ -3,7 +3,7 @@ import { Route } from '@/routes/_auth/conference/$id';
 import { Edit, Plus, Trash2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useNavigate } from '@tanstack/react-router';
-import { getAllUsers, type User } from '@/services/userServices';
+import { getCommonUsers, type User } from '@/services/userServices';
 import AltaSession from './SessionCreate';
 import { getSessionsByConference } from '@/services/sessionServices';
 import type { Session } from '@/services/sessionServices';
@@ -97,7 +97,7 @@ function AConference() {
       const chairsIds = conferencia.chairs;
       if (!chairsIds) return;
 
-      const allUsers = await getAllUsers();
+      const allUsers = await getCommonUsers();
       const users = allUsers.filter((user: User) =>
         chairsIds.includes(user.id)
       );

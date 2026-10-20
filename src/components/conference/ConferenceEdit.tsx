@@ -3,7 +3,7 @@ import { Route } from '@/routes/_auth/conference/edit/$id';
 import { updateConference } from '@/services/conferenceServices';
 import { useNavigate } from '@tanstack/react-router';
 import ConferenceForm from './ConferenceForm';
-import { getAllUsers, type User } from '@/services/userServices';
+import { getCommonUsers, type User } from '@/services/userServices';
 import type { Conference } from './ConferenceApp';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -39,7 +39,7 @@ function ConferenceEdit() {
       const chairsIds = conferenciaInicial.chairs;
       if (!chairsIds) return;
 
-      const allUsers = await getAllUsers();
+      const allUsers = await getCommonUsers();
       const users = allUsers.filter((user: User) =>
         chairsIds.includes(user.id)
       );
