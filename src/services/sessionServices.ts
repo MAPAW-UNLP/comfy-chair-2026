@@ -17,6 +17,7 @@ const handleSessionError = (err: any, isCreate: boolean) => {
   const message= err.response?.data;
   if (!message) return
   const posibleError =
+    message?.detail ||
     message?.title?.[0] ||
     message?.deadline?.[0] ||
     message?.capacity?.[0] ||
@@ -105,5 +106,10 @@ export const updateSession = async (
 
 // Elimina una sesión por su ID
 export const deleteSession = async (sessionId: string, user_id: string): Promise<void> => {
-  await api.delete(`/api/session/${sessionId}/?user_id=${user_id}`);
+  try {
+    await api.delete(`/api/session/${sessionId}/?user_id=${user_id}`);
+  } catch (error) {
+    handleSessionError(error, false);
+    throw error;
+  }
 };

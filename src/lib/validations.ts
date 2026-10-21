@@ -44,7 +44,7 @@ export const articleSchema = z.object({
   session: z.string().min(1, "sesión requerida"),
   title: z.string().min(1, "título requerido"),
   abstract: z.string().min(1, "abstract requerido"),
-  file: z.string().min(1, "archivo del articulo requerido"),
+  file: z.string().min(1, "archivo del submission requerido"),
   sourcesFile: z.string().min(1, "archivo de fuentes requerido"),
   authors: z.string().min(1, "seleccionar al menos un autor"),
   correspondingAuthor: z.string().min(1, "autor de notificacion requerido"),
@@ -55,3 +55,10 @@ export type LoginFormData = z.infer<typeof loginSchema>
 export type UpdateUserDataFormData = z.infer<typeof updateUserDataSchema>
 export type UpdatePasswordFormData = z.infer<typeof updatePasswordSchema>
 export type ArticleFormData = z.infer<typeof articleSchema> //Grupo 1
+
+//Grupo 1: rechazo de invitación a revisar
+export const rejectInvitationSchema = z.object({
+  reason: z.string().trim().max(500, "El motivo puede tener como máximo 500 caracteres").optional(),
+})
+
+export type RejectInvitationFormData = z.infer<typeof rejectInvitationSchema>
