@@ -26,7 +26,6 @@ const RootLayoutContent = () => {
       { to: '/reviewer/history', label: 'Historial' },
     ],
     autor: [
-      { to: '/dashboard', label: 'Inicio' },
       { to: '/article/create', label: 'Articulos' },
     ],
     chair: [
@@ -53,27 +52,21 @@ const RootLayoutContent = () => {
     }
 
     const commonAuthLinks = [
-      { to: '/notifications', label: 'Notificaciones' }
+      { to: '/dashboard', label: 'Inicio' },
+      { to: '/notifications', label: 'Notificaciones' },
+      { to: '/conference/view', label: 'Conferencias' },
     ];
 
     // Si está autenticado pero todavia no selecionó un rol, mostrar todas las rutas posibles
     if (!roleKey) {
       return [
-        { to: '/dashboard', label: 'Inicio' },
-        { to: '/reviewer/', label: 'Revisor' },
-        { to: '/reviewer/invitations', label: <InvitationsNavLabel /> }, // GRUPO 1
-        { to: '/users', label: 'Usuarios'},
-        { to: '/conference/view', label: 'Conferencias' },
-        { to: '/article/create', label: 'Articulos' },
-        { to: '/chairs/select-session', label: 'Chair' },
-        { to: '/reviewer/bidding', label: 'Bidding' },
         ...commonAuthLinks,
       ];
     }
 
     // Si tiene un rol seleccionado
     const roleSpecific = roleRoutes[roleKey] ?? [];
-    return [...roleSpecific, ...commonAuthLinks];
+    return [...commonAuthLinks, ...roleSpecific];
   }, [user, roleKey]);
 
   // Normalización de rutas para el active state
