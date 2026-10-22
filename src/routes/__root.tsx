@@ -34,7 +34,12 @@ const RootLayoutContent = () => {
       { to: '/chairs/selection/selection-method', label: 'Seleccionar Corte de Sesión' },
     ],
     admin: [
-      { to: '/conference/view', label: 'Conferencias' },
+        { to: '/reviewer/', label: 'Revisor' },
+        { to: '/reviewer/invitations', label: <InvitationsNavLabel /> }, // GRUPO 1
+        { to: '/users', label: 'Usuarios'},
+        { to: '/article/create', label: 'Articulos' },
+        { to: '/chairs/select-session', label: 'Chair' },
+        { to: '/reviewer/bidding', label: 'Bidding' },
     ],
     users: [
       { to: '/users', label: 'Ver usuarios'}
@@ -56,6 +61,11 @@ const RootLayoutContent = () => {
       { to: '/notifications', label: 'Notificaciones' },
       { to: '/conference/view', label: 'Conferencias' },
     ];
+
+    if (user.role === 'admin'){
+      const roleSpecific = roleRoutes['admin'];
+      return [...commonAuthLinks, ...roleSpecific];
+    }
 
     // Si está autenticado pero todavia no selecionó un rol, mostrar todas las rutas posibles
     if (!roleKey) {
