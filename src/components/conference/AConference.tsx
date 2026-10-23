@@ -3,7 +3,6 @@ import { Route } from '@/routes/_auth/conference/$id';
 import { Edit, Plus, Trash2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useNavigate } from '@tanstack/react-router';
-import { getCommonUsers, type User } from '@/services/userServices';
 import AltaSession from './SessionCreate';
 import { getSessionsByConference } from '@/services/sessionServices';
 import type { Session } from '@/services/sessionServices';
@@ -32,7 +31,6 @@ function AConference() {
   const conferencia = Route.useLoaderData();
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [chairs, setChairs] = useState<User[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [filteredSessions, setFilteredSessions] = useState<Session[]>([]);
   const [verEstadisticas, setVerEstadisticas] = useState<boolean>(false);
@@ -91,30 +89,8 @@ function AConference() {
   );
 
   useEffect(() => {
-    let isCancelled = false;
-
-    const getChairs = async () => {
-      const chairsIds = conferencia.chairs;
-      if (!chairsIds) return;
-
-      const allUsers = await getCommonUsers();
-      const users = allUsers.filter((user: User) =>
-        chairsIds.includes(user.id)
-      );
-
-      if (!isCancelled) {
-        setChairs(users);
-      }
-    };
-
-    getChairs();
     fetchSessions(); // Cargar sesiones al montar el componente
     fetchArticles(); // Cargar artículos al montar el componente
-
-    return () => {
-      //Cancelo el seteo de chairs del efecto anterior si cambia conferencia
-      isCancelled = true;
-    };
   }, [conferencia]);
 
   return (
@@ -157,7 +133,7 @@ function AConference() {
         <h2 className="text-1xl font-bold">Descripción</h2>
         <p className="break-words">{conferencia.description}</p>
         <h2 className="text-1xl font-bold">Chairs</h2>
-        {chairs.map((ch) => {
+        {conferencia.chairs_detail?.map((ch) => {
           return <p key={ch.id}>{ch.full_name}</p>;
         })}
       </div>
