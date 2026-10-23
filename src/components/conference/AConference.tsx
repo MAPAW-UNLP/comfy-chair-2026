@@ -277,9 +277,9 @@ function AConference() {
                 No hay coincidencias.
               </div>
             ) : (
-              <CarouselContainer>
+              <CarouselContainer mobileVertical>
                 {filteredSessions.map((session) => (
-                  <CarouselItem key={session.id} width="350px">
+                  <CarouselItem key={session.id} width="350px" mobileFullWidth>
                     <SessionCard
                       session={session}
                       onSessionUpdated={fetchSessions}

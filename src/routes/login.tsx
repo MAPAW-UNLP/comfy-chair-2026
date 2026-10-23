@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,6 +13,7 @@ export const Route = createFileRoute('/login')({
     return {
       redirect: (search.redirect as string) || undefined,
       registered: (search.registered as string) || undefined,
+      ...(search.disabled === 'true' ? { disabled: 'true' } : {}),
     }
   },
   component: LoginPage,
@@ -19,7 +21,7 @@ export const Route = createFileRoute('/login')({
 
 function LoginPage() {
   const navigate = useNavigate()
-  const { redirect, registered } = Route.useSearch()
+  const { redirect, registered, disabled } = Route.useSearch()
   const { login, user } = useAuth()
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -63,7 +65,13 @@ function LoginPage() {
       console.log('Login successful')
     } catch (error) {
       console.error('Login failed:', error)
-      
+      if (axios.isAxiosError(error) &&
+          error.response?.status === 403 &&
+          error.response?.data?.code === 'account_disabled') {
+        setFormError('Su cuenta se encuentra deshabilitada.')
+        return
+      }
+
       // Check if it's a 5xx server error
       const axiosError = error as { response?: { status?: number } }
       if (axiosError.response?.status && axiosError.response.status >= 500) {
@@ -95,6 +103,11 @@ function LoginPage() {
           {registered === 'true' && (
             <div className="mb-4 p-3 text-sm text-green-800 bg-green-100 border border-green-300 rounded-md">
               ¡Cuenta creada exitosamente! Por favor, inicia sesión con tus credenciales.
+            </div>
+          )}
+          {disabled === 'true' && (
+            <div className="mb-4 p-3 text-sm text-destructive bg-destructive/10 border border-destructive rounded-md">
+              Su cuenta se encuentra deshabilitada.
             </div>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">

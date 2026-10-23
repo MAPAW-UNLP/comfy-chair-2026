@@ -1,6 +1,6 @@
 /* Componente de carrusel reutilizable con flechas de navegación */
 
-import { useRef, useState, useEffect, type ReactNode } from 'react';
+import { useRef, useState, useEffect, type CSSProperties, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -8,11 +8,13 @@ import { cn } from '@/lib/utils';
 type CarouselContainerProps = {
   children: ReactNode;
   className?: string;
+  mobileVertical?: boolean;
 };
 
 export function CarouselContainer({ 
   children, 
-  className
+  className,
+  mobileVertical = false,
 }: CarouselContainerProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -55,7 +57,7 @@ export function CarouselContainer({
           onClick={scrollLeft}
           variant="secondary"
           size="icon"
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-slate-900 hover:bg-slate-700 text-white rounded-full shadow-lg"
+          className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-slate-900 hover:bg-slate-700 text-white rounded-full shadow-lg ${mobileVertical ? 'hidden md:inline-flex' : ''}`}
           aria-label="Scroll izquierda"
         >
           <ChevronLeft className="w-6 h-6" />
@@ -67,7 +69,9 @@ export function CarouselContainer({
         ref={scrollContainerRef}
         onScroll={updateScrollButtons}
         className={cn(
-          "flex gap-4 overflow-x-auto scroll-smooth scrollbar-hide pb-2",
+          mobileVertical
+            ? 'flex flex-col gap-4 overflow-visible pb-2 md:flex-row md:overflow-x-auto'
+            : 'flex gap-4 overflow-x-auto scroll-smooth scrollbar-hide pb-2',
           className
         )}
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -81,7 +85,7 @@ export function CarouselContainer({
           onClick={scrollRight}
           variant="secondary"
           size="icon"
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-slate-900 hover:bg-slate-700 text-white rounded-full shadow-lg"
+          className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-slate-900 hover:bg-slate-700 text-white rounded-full shadow-lg ${mobileVertical ? 'hidden md:inline-flex' : ''}`}
           aria-label="Scroll derecha"
         >
           <ChevronRight className="w-6 h-6" />
@@ -96,17 +100,27 @@ type CarouselItemProps = {
   children: ReactNode;
   width?: string;
   className?: string;
+  mobileFullWidth?: boolean;
 };
 
 export function CarouselItem({ 
   children, 
   width = "350px",
-  className 
+  className,
+  mobileFullWidth = false,
 }: CarouselItemProps) {
   return (
     <div 
-      className={cn("flex-shrink-0", className)} 
-      style={{ width }}
+      className={cn(
+        'flex-shrink-0',
+        mobileFullWidth && 'w-full md:w-[var(--carousel-item-width)]',
+        className
+      )}
+      style={
+        mobileFullWidth
+          ? ({ '--carousel-item-width': width } as CSSProperties)
+          : { width }
+      }
     >
       {children}
     </div>

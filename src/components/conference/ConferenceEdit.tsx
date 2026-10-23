@@ -12,6 +12,7 @@ function ConferenceEdit() {
   const conferenciaInicial = Route.useLoaderData() as Conference;
   const [chairs, setChairs] = useState<User[]>([]);
   const navigate = useNavigate();
+  const { deshabilitar } = Route.useSearch();
   const {user}= useAuth()
 
   const handleSubmit = async (conf: Omit<Conference, 'id'>, chairs: User[]) => {
@@ -24,11 +25,18 @@ function ConferenceEdit() {
       delete updatedConf.end_date;
     }
     try {
-      await updateConference(conferenciaInicial.id, updatedConf, chairs, user!.id);
+      await updateConference(String(conferenciaInicial.id), updatedConf, chairs, user!.id);
       toast.success('Conferencia actualizada correctamente');
+      if (deshabilitar) {
+        navigate({
+          to: '/users',
+          search: { deshabilitar },
+        });
+        return;
+      }
       navigate({ to: `/conference/${conferenciaInicial.id}` });
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error al actualizar la conferencia.');
     }
   };
 

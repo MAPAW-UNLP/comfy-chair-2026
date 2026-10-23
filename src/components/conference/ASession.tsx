@@ -1,6 +1,6 @@
 /* Componente que muestra una sesión individual */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { axiosInstance as api } from '@/services/api';
 import { deleteSession, type Session } from '@/services/sessionServices';
 import { Loader2, Trash2 } from 'lucide-react';
@@ -35,11 +35,13 @@ function ASession() {
   const [articles, setArticles] = useState<Article[] | []>([]);
   const [filteredArticles, setFilteredArticles] = useState<Article[] | []>([]);
   const navigate = useNavigate();
+  const { editar, deshabilitar } = Route.useSearch();
   const { user } = useAuth();
   const { selectedRole } = useRole();
   const canManage = canManageSessions(user, session?.conference);
+  const conferenceId = session?.conference?.id;
 
-  const fetchSession = async () => {
+  const fetchSession = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get(`/api/session/${sessionInicial.id}/`);
@@ -49,7 +51,7 @@ function ASession() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sessionInicial.id]);
 
   const handleEliminarSession = () => {
     setShowDeleteModal(true);
@@ -69,15 +71,15 @@ function ASession() {
 
   useEffect(() => {
     fetchSession();
-  }, []);
+  }, [fetchSession]);
 
   useEffect(() => {
     const fetchChairs = async () => {
       const data = await getCommonUsers();
-      setChairs(data.filter((user) => session?.chairs.includes(user.id)));
+      setChairs(data.filter((user) => session?.chairs?.includes(user.id)));
     };
     fetchChairs();
-  }, []);
+  }, [session?.chairs]);
 
   useEffect(() => {
     const fetchArticles = async () => {
@@ -116,19 +118,27 @@ function ASession() {
           </h1>
 
           {canManage && (
-            <EditarSession session={session!} onSessionUpdated={fetchSession} />
+            <EditarSession
+              session={session!}
+              onSessionUpdated={fetchSession}
+              initiallyOpen={editar === 'true'}
+              returnToUserId={deshabilitar}
+            />
           )}
         </div>
-        <p className="text-sm">Deadline {formatearFecha(session!.deadline)}</p>
+        <p className="text-sm">
+          Deadline {session!.deadline ? formatearFecha(session!.deadline) : 'Sin fecha'}
+        </p>
         {selectedRole?.role === 'revisor' &&
-          selectedRole.conferenceId === session!.conference?.id && (
+          conferenceId !== undefined &&
+          selectedRole.conferenceId === conferenceId && (
             <Button
               size={'sm'}
               className="w-fit cursor-pointer"
               onClick={() =>
                 navigate({
                   to: '/reviewer/bidding',
-                  search: { conferenceId: session!.conference?.id, sessionId: session!.id },
+                  search: { conferenceId, sessionId: session!.id },
                 })
               }
             >

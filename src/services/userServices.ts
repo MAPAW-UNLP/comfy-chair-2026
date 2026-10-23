@@ -7,6 +7,36 @@ export interface User {
   email: string;
   role: string;
   deleted:boolean;
+  is_active?: boolean;
+}
+
+export interface DisableConflict {
+  type: 'conference' | 'session';
+  id: number;
+  title: string;
+  conference_id?: number;
+  conference_title?: string;
+}
+
+export interface PendingReviewSession {
+  session_id: number;
+  session_title: string;
+  articles: Array<{ id: number; title: string }>;
+}
+
+export interface DisableCheckResponse {
+  user_id: number;
+  can_disable: boolean;
+  conflicts: DisableConflict[];
+  chair_removals: DisableConflict[];
+  pending_reviews: PendingReviewSession[];
+}
+
+export interface UserStatusResponse {
+  message: string;
+  user: User;
+  removed_assignments?: number;
+  notified_sessions?: Array<{ session_id: number; session_title: string }>;
 }
 
 export interface Article {
@@ -46,6 +76,23 @@ export interface ProcessedConference {
 //------------------------------------------------------------
 export const getAllUsers = async (): Promise<User[]> => {
   const response = await api.get('/user/getUsers');
+  return response.data;
+}
+
+export const getUserDisableCheck = async (
+  userId: number
+): Promise<DisableCheckResponse> => {
+  const response = await api.get(`/user/${userId}/disable-check/`);
+  return response.data;
+}
+
+export const updateUserStatus = async (
+  userId: number,
+  isActive: boolean
+): Promise<UserStatusResponse> => {
+  const response = await api.patch(`/user/${userId}/status/`, {
+    is_active: isActive,
+  });
   return response.data;
 }
 

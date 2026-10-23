@@ -38,9 +38,6 @@ const RootLayoutContent = () => {
     admin: [
       { to: '/conference/view', label: 'Conferencias' },
     ],
-    users: [
-      { to: '/users', label: 'Ver usuarios'}
-    ]
   };
 
   // Calcular la lista final de links con useMemo para prevenir duplicaciones o empujes múltiples
@@ -57,6 +54,9 @@ const RootLayoutContent = () => {
 
       { to: '/notifications', label: 'Notificaciones' }
     ];
+    const adminLinks = user.role === 'admin'
+      ? [{ to: '/users', label: 'Usuarios' }]
+      : [];
 
     // Si está autenticado pero todavia no selecionó un rol, mostrar todas las rutas posibles
     if (!roleKey) {
@@ -64,7 +64,7 @@ const RootLayoutContent = () => {
         { to: '/dashboard', label: 'Inicio' },
         { to: '/reviewer/', label: 'Revisor' },
         { to: '/reviewer/invitations', label: <InvitationsNavLabel /> }, // GRUPO 1
-        { to: '/users', label: 'Usuarios'},
+        ...adminLinks,
         { to: '/conference/view', label: 'Conferencias' },
         { to: '/article/create', label: 'Articulos' },
         { to: '/chairs/select-session', label: 'Chair' },
@@ -75,7 +75,7 @@ const RootLayoutContent = () => {
 
     // Si tiene un rol seleccionado
     const roleSpecific = roleRoutes[roleKey] ?? [];
-    return [...roleSpecific, ...commonAuthLinks];
+    return [...roleSpecific, ...adminLinks, ...commonAuthLinks];
   }, [user, roleKey]);
 
   // Normalización de rutas para el active state
