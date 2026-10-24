@@ -17,6 +17,7 @@ import { ChevronLeft, ChevronRight, Search, TriangleAlert } from 'lucide-react'
 import {
   getAllUsers,
   getUserDisableCheck,
+  requestChairReplacement,
   updateUserStatus,
   type DisableCheckResponse,
   type DisableConflict,
@@ -285,6 +286,7 @@ function UsersPage() {
   const [dialogState, setDialogState] = useState<DisableDialogState | null>(null)
   const [isCheckingDisable, setIsCheckingDisable] = useState(false)
   const [updatingUserId, setUpdatingUserId] = useState<number | null>(null)
+  const [requestingSessionId, setRequestingSessionId] = useState<number | null>(null)
   const { user: currentUser } = useAuth()
   const navigate = useNavigate()
   const { deshabilitar } = Route.useSearch()
@@ -410,19 +412,53 @@ function UsersPage() {
     }
   }
 
-  const resolveConflict = (conflict: DisableConflict) => {
-    if (!dialogState) return
-    const userId = String(dialogState.user.id)
-    if (conflict.type === 'conference') {
-      void navigate({
-        to: `/conference/edit/${conflict.id}`,
-        search: { deshabilitar: userId },
-      })
-      return
+  const handleRequestChairReplacement = async (conflict: DisableConflict) => {
+    if (!dialogState || conflict.type !== 'session') return
+
+    setRequestingSessionId(conflict.id)
+    try {
+      const response = await requestChairReplacement(dialogState.user.id, conflict.id)
+      const notifiedChairs = response.notified_chairs.join(', ')
+      toast.success(
+        conflict.pending_request
+          ? 'Ya había una solicitud pendiente para reemplazar al chair.'
+          : notifiedChairs
+            ? `Solicitud enviada a: ${notifiedChairs}.`
+            : 'Solicitud de reemplazo enviada.'
+      )
+
+      try {
+        const refreshedCheck = await getUserDisableCheck(dialogState.user.id)
+        setDialogState({
+          user: dialogState.user,
+          check: refreshedCheck,
+          view: refreshedCheck.can_disable ? 'confirm' : 'conflicts',
+        })
+      } catch (refreshError) {
+        console.error('Error refreshing disable conflicts after request:', refreshError)
+        toast.error(
+          getRequestErrorMessage(
+            refreshError,
+            'La solicitud se envió, pero no se pudo actualizar el estado de los conflictos.'
+          )
+        )
+      }
+    } catch (err) {
+      console.error('Error requesting a chair replacement:', err)
+      toast.error(
+        getRequestErrorMessage(err, 'No se pudo solicitar el reemplazo del chair.')
+      )
+    } finally {
+      setRequestingSessionId(null)
     }
+  }
+
+  const resolveConflict = (conflict: DisableConflict) => {
+    if (!dialogState || conflict.type !== 'conference') return
+    const userId = String(dialogState.user.id)
     void navigate({
-      to: `/conference/session/${conflict.id}`,
-      search: { editar: 'true', deshabilitar: userId },
+      to: `/conference/edit/${conflict.id}`,
+      search: { deshabilitar: userId },
     })
   }
 
@@ -736,14 +772,44 @@ function UsersPage() {
                   className="flex min-w-0 flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <p className="break-words text-sm leading-relaxed">{getConflictDescription(conflict)}</p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => resolveConflict(conflict)}
-                    className="w-full shrink-0 sm:w-auto"
-                  >
-                    Resolver
-                  </Button>
+                  <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto">
+                    {conflict.type === 'session' ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => void handleRequestChairReplacement(conflict)}
+                          disabled={
+                            requestingSessionId !== null ||
+                            !conflict.can_request_conference_chair ||
+                            Boolean(conflict.pending_request)
+                          }
+                          className="w-full"
+                        >
+                          {requestingSessionId === conflict.id
+                            ? 'Enviando solicitud...'
+                            : conflict.pending_request
+                              ? 'Solicitud pendiente'
+                              : 'Solicitar reemplazo'}
+                        </Button>
+                        {!conflict.can_request_conference_chair && !conflict.pending_request && (
+                          <p className="text-xs text-muted-foreground">
+                            No hay chairs activos de la conferencia para recibir la solicitud.
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => resolveConflict(conflict)}
+                        disabled={requestingSessionId !== null}
+                        className="w-full"
+                      >
+                        Resolver
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

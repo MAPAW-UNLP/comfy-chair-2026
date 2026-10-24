@@ -19,7 +19,7 @@ import { useNavigate } from '@tanstack/react-router';
 
 type EditarSessionProps = {
   session: Session;
-  onSessionUpdated?: () => void;
+  onSessionUpdated?: () => void | Promise<void>;
   trigger?: React.ReactNode;
   initiallyOpen?: boolean;
   returnToUserId?: string;
@@ -68,7 +68,7 @@ export default function EditarSession({
 
       toast.success('Sesión actualizada exitosamente');
       setOpen(false);
-      onSessionUpdated?.();
+      await onSessionUpdated?.();
       if (returnToUserId) {
         navigate({
           to: '/users',
@@ -92,7 +92,7 @@ export default function EditarSession({
     useEffect(() => {
       const fetchChairs = async () => {
         const data = await getCommonUsers();
-        setChairs(data.filter((user) => session?.chairs!.includes(user.id)));
+        setChairs(data.filter((user) => session.chairs?.includes(user.id)));
       };
       fetchChairs();
 
@@ -118,6 +118,7 @@ export default function EditarSession({
       <DialogContent
         className="max-w-[90vw] sm:max-w-[90vw] md:max-w-[90vw]"
         onClick={(e) => e.stopPropagation()} // evita que clicks dentro del modal disparen redirect
+        onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle>Editar Sesión</DialogTitle>

@@ -35,6 +35,7 @@ function ASession() {
   const [articles, setArticles] = useState<Article[] | []>([]);
   const [filteredArticles, setFilteredArticles] = useState<Article[] | []>([]);
   const navigate = useNavigate();
+  const navigateToSession = Route.useNavigate();
   const { editar, deshabilitar } = Route.useSearch();
   const { user } = useAuth();
   const { selectedRole } = useRole();
@@ -52,6 +53,16 @@ function ASession() {
       setLoading(false);
     }
   }, [sessionInicial.id]);
+
+  const handleSessionUpdated = async () => {
+    if (editar === 'true') {
+      await navigateToSession({
+        search: (previous) => ({ ...previous, editar: undefined }),
+        replace: true,
+      });
+    }
+    await fetchSession();
+  };
 
   const handleEliminarSession = () => {
     setShowDeleteModal(true);
@@ -120,7 +131,7 @@ function ASession() {
           {canManage && (
             <EditarSession
               session={session!}
-              onSessionUpdated={fetchSession}
+              onSessionUpdated={handleSessionUpdated}
               initiallyOpen={editar === 'true'}
               returnToUserId={deshabilitar}
             />

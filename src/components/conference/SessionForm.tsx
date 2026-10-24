@@ -58,6 +58,12 @@ export default function SessionForm({
   const [chairs, setChairs] = useState<User[]>(initialData?.chairs || []);
   const [users, setUsers] = useState<User[]>([]);
 
+  useEffect(() => {
+    if (initialData?.chairs) {
+      setChairs(initialData.chairs);
+    }
+  }, [initialData?.chairs]);
+
   // Cargar usuarios al montar el componente
   useEffect(() => {
     const fetchUsers = async () => {
@@ -66,7 +72,7 @@ export default function SessionForm({
       setUsers(filteredData);
     };
     fetchUsers();
-  }, []);
+  }, [conference.chairs]);
 
   // Manejo de chairs
   const handleAddChair = (userId: number) => {
