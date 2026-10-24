@@ -18,6 +18,18 @@ export interface DisableConflict {
   title: string;
   conference_id?: number;
   conference_title?: string;
+  can_request_conference_chair?: boolean;
+  pending_request?: { id: number; requested_at: string } | null;
+}
+
+export interface ChairReplacementRequestResponse {
+  id: number;
+  requested_at: string;
+  session_id: number;
+  session_title: string;
+  conference_id: number;
+  conference_title: string;
+  notified_chairs: string[];
 }
 
 export interface PendingReviewSession {
@@ -98,6 +110,16 @@ export const updateUserStatus = async (
   return response.data;
 }
 
+export const requestChairReplacement = async (
+  userId: number,
+  sessionId: number
+): Promise<ChairReplacementRequestResponse> => {
+  const response = await api.post(`/user/${userId}/chair-requests/`, {
+    session_id: sessionId,
+  });
+  return response.data;
+}
+
 export const getUserFullData = async (): Promise<ProcessedConference[]> => {
   const response = await api.get('/user/user-full-data/');
   const conferences: UserConference[] = response.data.conferences;
@@ -131,6 +153,7 @@ export interface Notification {
   id: number;
   user: number; // User ID (foreign key)
   article: number | null; // Article ID (foreign key, can be null)
+  session: number | null; // Session ID for actionable session notifications
   title: string; // max 100 characters
   message: string;
   type: NotificationType;

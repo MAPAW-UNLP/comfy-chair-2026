@@ -1,14 +1,15 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getAllNotifications, markNotificationAsRead } from '@/services/userServices'
 import type { Notification, NotificationType } from '@/services/userServices'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertCircle, Info, Check } from 'lucide-react'
 import { InvitationNotificationActions } from '@/components/reviewer/invitations/InvitationNotificationActions'
+import { toast } from 'sonner'
 
 export const Route = createFileRoute('/_auth/notifications')({
   component: RouteComponent,
@@ -16,6 +17,7 @@ export const Route = createFileRoute('/_auth/notifications')({
 
 function RouteComponent() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all')
   const [typeFilter, setTypeFilter] = useState<'all' | NotificationType>('all')
 
@@ -32,6 +34,24 @@ function RouteComponent() {
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
     },
   })
+
+  const resolveSessionNotification = async (notification: Notification) => {
+    if (!notification.session) return
+
+    if (!notification.read) {
+      try {
+        await markAsReadMutation.mutateAsync(notification.id)
+      } catch (markError) {
+        console.error('Could not mark session notification as read:', markError)
+        toast.error('No se pudo marcar la notificación como leída.')
+      }
+    }
+
+    void navigate({
+      to: `/conference/session/${notification.session}`,
+      search: { editar: 'true', deshabilitar: undefined },
+    })
+  }
 
   // Client-side filtering
   const filteredNotifications = useMemo(() => {
@@ -129,6 +149,7 @@ function RouteComponent() {
                 notification={notification}
                 onMarkAsRead={() => markAsReadMutation.mutate(notification.id)}
                 isMarking={markAsReadMutation.isPending}
+                onResolveSession={() => void resolveSessionNotification(notification)}
               />
             ))
           )}
@@ -142,9 +163,25 @@ interface NotificationCardProps {
   notification: Notification
   onMarkAsRead: () => void
   isMarking: boolean
+  onResolveSession: () => void
 }
 
-function NotificationCard({ notification, onMarkAsRead, isMarking }: NotificationCardProps) {
+function NotificationCard({
+  notification,
+  onMarkAsRead,
+  isMarking,
+  onResolveSession,
+}: NotificationCardProps) {
+  const [isResolving, setIsResolving] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try {
+      return window.sessionStorage.getItem(`resolving-session-notification-${notification.id}`) === 'true'
+    } catch (storageError) {
+      console.error('Could not read session notification resolution state:', storageError)
+      return false
+    }
+  })
+  const resolveClickHandled = useRef(false)
   const isCritical = notification.type === 'critical'
   const isRead = notification.read
   const formattedDate = new Date(notification.created_at).toLocaleString('es-ES', {
@@ -190,6 +227,30 @@ function NotificationCard({ notification, onMarkAsRead, isMarking }: Notificatio
           )}
         </div>
         <p className="text-sm whitespace-pre-wrap ml-6 text-muted-foreground">{notification.message}</p>
+        {notification.title === 'Sesión sin chair' && notification.session && (
+          <div className="ml-6 mt-3 flex justify-end">
+            <Button
+              size="sm"
+              onClick={() => {
+                if (resolveClickHandled.current) return
+                resolveClickHandled.current = true
+                setIsResolving(true)
+                try {
+                  window.sessionStorage.setItem(
+                    `resolving-session-notification-${notification.id}`,
+                    'true',
+                  )
+                } catch (storageError) {
+                  console.error('Could not persist session notification resolution:', storageError)
+                }
+                onResolveSession()
+              }}
+              disabled={isResolving}
+            >
+              Resolver
+            </Button>
+          </div>
+        )}
         {notification.article && (
           <p className="text-xs text-muted-foreground mt-1 ml-6">
             Artículo ID: {notification.article}
