@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { X } from 'lucide-react';
 import { UserCombobox } from '@/components/combobox/UserCombobox';
-import { getCommonUsers, type User } from '@/services/userServices';
+import { getCommonUsers, type ChairSummary, type User } from '@/services/userServices';
 import CustomCalendar from './CustomCalendar';
 import type { Conference } from './ConferenceApp';
 import { toast } from 'sonner';
@@ -18,7 +18,7 @@ export type SessionFormData = {
   selectionMethod: SelectionMethod;
   percentage?: number | undefined; // Para corte fijo
   threshold?: number | undefined; // Para mejores
-  chairs: User[]; // Lista de chairs
+  chairs: ChairSummary[]; // Lista de chairs
 };
 
 type SessionFormProps = {
@@ -55,7 +55,7 @@ export default function SessionForm({
   const [threshold, setThreshold] = useState<string>(
     initialData?.threshold?.toString() || '-1'
   );
-  const [chairs, setChairs] = useState<User[]>(initialData?.chairs || []);
+  const [chairs, setChairs] = useState<ChairSummary[]>(initialData?.chairs || []);
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {

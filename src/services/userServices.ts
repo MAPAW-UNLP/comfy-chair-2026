@@ -10,6 +10,8 @@ export interface User {
   is_active?: boolean;
 }
 
+export type ChairSummary = Pick<User, 'id' | 'full_name' | 'email'>;
+
 export interface DisableConflict {
   type: 'conference' | 'session';
   id: number;

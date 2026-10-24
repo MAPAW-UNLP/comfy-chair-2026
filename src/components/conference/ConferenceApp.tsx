@@ -10,6 +10,7 @@ import {
 import { Route } from '@/routes/_auth/conference/view';
 import { useEffect, useState } from 'react';
 import { SearchBar } from './ConferenceSearch';
+import type { ChairSummary } from '@/services/userServices';
 
 type VISTA_CHOICES = 'single blind' | 'double blind';
 export type ALLOWED_EXTENSIONS_CHOICES = 'pdf' | 'docx' | 'txt';
@@ -26,6 +27,7 @@ export type Conference = {
   review_end?: string | null;
   blind_kind: VISTA_CHOICES;
   chairs?: number[];
+  chairs_detail?: ChairSummary[];
   sources_multiple: boolean;
   allowed_extensions: ALLOWED_EXTENSIONS_CHOICES[];
 };

@@ -1,6 +1,6 @@
 /* Componente para editar una sesión existente */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,6 @@ import SessionForm, { type SessionFormData } from './SessionForm';
 import { toast } from 'sonner';
 import { updateSession, type Session } from '@/services/sessionServices';
 import { Edit } from 'lucide-react';
-import { getCommonUsers, type User } from '@/services/userServices';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from '@tanstack/react-router';
 
@@ -34,7 +33,6 @@ export default function EditarSession({
 }: EditarSessionProps) {
   const [open, setOpen] = useState(initiallyOpen);
   const [isLoading, setIsLoading] = useState(false);
-  const [chairs, setChairs] = useState<User[] | []>([]);
   const {user}= useAuth()
   const navigate = useNavigate()
 
@@ -47,7 +45,7 @@ export default function EditarSession({
     selectionMethod: session.threshold_percentage ? 'corte_fijo' : 'mejores',
     percentage: session.threshold_percentage ?? undefined,
     threshold: session.improvement_threshold ?? undefined,
-    chairs: chairs, 
+    chairs: session.chairs_detail ?? [],
   };
 
   const handleSubmit = async (data: SessionFormData) => {
@@ -88,15 +86,6 @@ export default function EditarSession({
   const handleCancel = () => {
     setOpen(false);
   };
-
-    useEffect(() => {
-      const fetchChairs = async () => {
-        const data = await getCommonUsers();
-        setChairs(data.filter((user) => session.chairs?.includes(user.id)));
-      };
-      fetchChairs();
-
-    }, [session]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen} >

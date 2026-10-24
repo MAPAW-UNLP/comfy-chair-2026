@@ -10,7 +10,6 @@ import { Button } from '../ui/button';
 import ModalEliminar from './ModalDelete';
 import { useNavigate } from '@tanstack/react-router';
 import EditarSession from './SessionEdit';
-import { getCommonUsers, type User } from '@/services/userServices';
 import {
   getArticleBySessionId,
   type Article,
@@ -31,7 +30,6 @@ function ASession() {
   const [session, setSession] = useState<Session | null>(sessionInicial);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [verEstadisticas, setVerEstadisticas] = useState(false);
-  const [chairs, setChairs] = useState<User[] | []>([]);
   const [articles, setArticles] = useState<Article[] | []>([]);
   const [filteredArticles, setFilteredArticles] = useState<Article[] | []>([]);
   const navigate = useNavigate();
@@ -83,14 +81,6 @@ function ASession() {
   useEffect(() => {
     fetchSession();
   }, [fetchSession]);
-
-  useEffect(() => {
-    const fetchChairs = async () => {
-      const data = await getCommonUsers();
-      setChairs(data.filter((user) => session?.chairs?.includes(user.id)));
-    };
-    fetchChairs();
-  }, [session?.chairs]);
 
   useEffect(() => {
     const fetchArticles = async () => {
@@ -167,7 +157,7 @@ function ASession() {
         </span>
         <h2 className="text-1xl font-bold">Chairs</h2>
         <p>
-          {chairs.map((ch) => {
+          {session!.chairs_detail?.map((ch) => {
             return <span key={ch.id}>{ch.full_name} </span>;
           })}
         </p>

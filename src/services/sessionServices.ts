@@ -1,4 +1,5 @@
 import type { Conference } from '@/components/conference/ConferenceApp';
+import type { ChairSummary } from './userServices';
 
 import { axiosInstance as api } from './api';
 
@@ -11,6 +12,7 @@ export interface Session {
   threshold_percentage?: number | null;
   improvement_threshold?: number | null;
   chairs?: number[];
+  chairs_detail?: ChairSummary[];
 }
 
 const handleSessionError = (err: any, isCreate: boolean) => {
