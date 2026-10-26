@@ -15,6 +15,7 @@
 
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import ArticleDetail from '@/components/article/ArticleDetail';
+import ArticleDraftDetail from '@/components/article/ArticleDraftDetail';
 import { useFetchArticle } from "@/hooks/Grupo1/useFetchArticle";
 import { createFileRoute, useParams } from '@tanstack/react-router';
 
@@ -71,8 +72,8 @@ function RouteComponent() {
 
       {/* Contenido Detallado del Articulo */}
       <div className="flex flex-wrap gap-4 justify-center">
-          {/* Le envío al componente el articulo actual */}
-          <ArticleDetail article={article} />
+          {/* Le envío al componente el articulo actual (los borradores tienen su propio detalle) */}
+          {article.status === "draft" ? <ArticleDraftDetail article={article} /> : <ArticleDetail article={article} />}
       </div>
       
     </div>

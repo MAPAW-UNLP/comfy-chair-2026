@@ -17,11 +17,15 @@
 // -------------------------------------------------------------------------------------- 
 
 import Breadcrumb from '@/components/ui/Breadcrumb';
-import { useRouteContext } from '@tanstack/react-router';
+import { Button } from '@/components/ui/button';
+import { ClipboardPenLineIcon, PlusIcon } from 'lucide-react';
+import { useNavigate, useRouteContext } from '@tanstack/react-router';
 import ArticleCard from '@/components/article/ArticleCard';
+import ArticleDraftCard from '@/components/article/ArticleDraftCard';
 import { createFileRoute, useParams } from '@tanstack/react-router';
 import { useFetchConference } from "@/hooks/Grupo1/useFetchConference";
 import { useFetchConferenceArticles } from "@/hooks/Grupo1/useFetchConferenceArticles";
+import { useFetchReviewCounts } from "@/hooks/Grupo1/useFetchReviewCounts";
 
 export const Route = createFileRoute('/_auth/articles/$conferenceId')({
   component: RouteComponent,
@@ -31,6 +35,7 @@ function RouteComponent() {
 
   // Usuario Actual
   const { user } = useRouteContext({ from: '/_auth/articles/$conferenceId' });
+  const navigate = useNavigate();
 
   // Parametros de entrada (conferenceId)
   const { conferenceId } = useParams({ from: '/_auth/articles/$conferenceId' });
@@ -39,6 +44,9 @@ function RouteComponent() {
   //Hooks
   const { conference, loadingConference } = useFetchConference(id);
   const { articles, loadingArticles, setArticles } = useFetchConferenceArticles(id, user.email);
+
+  // Conteo de revisiones: una sola consulta por listado, no bloquea el spinner
+  const { getReviewCount } = useFetchReviewCounts(id, !loadingArticles);
 
   // Estado de carga
   const loading = loadingConference || loadingArticles;
@@ -74,16 +82,25 @@ function RouteComponent() {
       
       {/* Si no hay articulos muestra un mensaje, si hay entonces mapea cada uno como una card */}
       {articles.length === 0 ? (
-        <div className="flex flex-col items-center justify-center w-full min-h-[80vh]">
-          <h1 className="text-2xl font-bold italic text-slate-500 text-center">
-            No hay artículos para mostrar...
-          </h1>
+        <div className="w-full max-w-md rounded-2xl shadow-md border p-6 bg-white flex flex-col items-center gap-3 text-center">
+          <div className="grid place-items-center size-12 rounded-full bg-slate-100">
+            <ClipboardPenLineIcon className="size-6 text-slate-700" />
+          </div>
+          <h1 className="font-bold text-slate-900">Todavía no tenés artículos</h1>
+          <p className="text-sm text-slate-500">
+            Empezá a cargar uno. Podés guardarlo como borrador, completarlo cuando quieras y subirlo antes del deadline de la sesión.
+          </p>
+          <Button variant="outline" className="w-full bg-slate-900 text-white" onClick={() => navigate({ to: '/article/create', search: { conferenceId: id } })}>
+            <PlusIcon /> Nuevo artículo
+          </Button>
         </div>
       ) : (
         <div className="flex flex-wrap w-full gap-4 justify-center">
-          {/* Le envío a cada card el id del articulo y el objeto articulo correspondiente*/}
-          {articles.map((a) => (
-            <ArticleCard key={a.id} article={a} onDeleted={(id) => setArticles((prev) => prev.filter((art) => art.id !== id))}/>
+          {/* Le envío a cada card el id del articulo y el objeto articulo correspondiente; los borradores usan su propia card */}
+          {articles.map((a) => a.status === "draft" ? (
+            <ArticleDraftCard key={a.id} article={a} />
+          ) : (
+            <ArticleCard key={a.id} article={a} reviewCount={getReviewCount(a.id)} onDeleted={(id) => setArticles((prev) => prev.filter((art) => art.id !== id))}/>
           ))}
         </div>
       )}
