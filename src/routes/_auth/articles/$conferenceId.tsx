@@ -25,6 +25,7 @@ import ArticleDraftCard from '@/components/article/ArticleDraftCard';
 import { createFileRoute, useParams } from '@tanstack/react-router';
 import { useFetchConference } from "@/hooks/Grupo1/useFetchConference";
 import { useFetchConferenceArticles } from "@/hooks/Grupo1/useFetchConferenceArticles";
+import { useFetchReviewCounts } from "@/hooks/Grupo1/useFetchReviewCounts";
 
 export const Route = createFileRoute('/_auth/articles/$conferenceId')({
   component: RouteComponent,
@@ -43,6 +44,9 @@ function RouteComponent() {
   //Hooks
   const { conference, loadingConference } = useFetchConference(id);
   const { articles, loadingArticles, setArticles } = useFetchConferenceArticles(id, user.email);
+
+  // Conteo de revisiones: una sola consulta por listado, no bloquea el spinner
+  const { getReviewCount } = useFetchReviewCounts(id, !loadingArticles);
 
   // Estado de carga
   const loading = loadingConference || loadingArticles;
@@ -96,7 +100,7 @@ function RouteComponent() {
           {articles.map((a) => a.status === "draft" ? (
             <ArticleDraftCard key={a.id} article={a} />
           ) : (
-            <ArticleCard key={a.id} article={a} onDeleted={(id) => setArticles((prev) => prev.filter((art) => art.id !== id))}/>
+            <ArticleCard key={a.id} article={a} reviewCount={getReviewCount(a.id)} onDeleted={(id) => setArticles((prev) => prev.filter((art) => art.id !== id))}/>
           ))}
         </div>
       )}
