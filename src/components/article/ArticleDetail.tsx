@@ -29,6 +29,7 @@ const tipoTexto: Record<Type, string> = {
 
 // Textos asociados a cada estado
 const estadoTexto: Record<Status, string> = {
+  draft: "Borrador",
   accepted: "Aceptado",
   reception: "Recibido",
   bidding: "Bidding",

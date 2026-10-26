@@ -50,6 +50,13 @@ export const articleSchema = z.object({
   correspondingAuthor: z.string().min(1, "autor de notificacion requerido"),
 })
 
+// Grupo 2: para guardar un borrador alcanza con conferencia, sesión y título (articleSchema queda para el envío)
+export const articleDraftSchema = articleSchema.pick({
+  conference: true,
+  session: true,
+  title: true,
+})
+
 export type RegisterFormData = z.infer<typeof registerSchema>
 export type LoginFormData = z.infer<typeof loginSchema>
 export type UpdateUserDataFormData = z.infer<typeof updateUserDataSchema>
