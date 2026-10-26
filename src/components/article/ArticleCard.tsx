@@ -29,6 +29,7 @@ export interface ArticleCardProps {
 
 // Colores asociados a cada estado
 const estadoColor: Record<Status, string> = {
+  draft: "bg-amber-100 text-amber-900",
   accepted: "bg-lime-900",
   reception: "bg-slate-900",
   bidding: "bg-slate-900",
@@ -40,6 +41,7 @@ const estadoColor: Record<Status, string> = {
 
 // Textos asociados a cada estado
 const estadoTexto: Record<Status, string> = {
+  draft: "Borrador",
   accepted: "Aceptado",
   reception: "Recibido",
   bidding: "Bidding",
@@ -51,6 +53,7 @@ const estadoTexto: Record<Status, string> = {
 
 // Descripciones asociadas a cada estado
 const estadoDescripcion: Record<Status, string> = {
+  draft: "Su articulo es un borrador: todavía no fue enviado a la conferencia.",
   accepted: "Su articulo ha sido aceptado para la conferencia. ¡Felicitaciones!",
   reception: "Su articulo ha sido recibido y está pendiente de revisión.",
   bidding: "Su articulo está en proceso de bidding.",

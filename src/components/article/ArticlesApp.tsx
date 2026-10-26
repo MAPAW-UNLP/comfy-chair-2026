@@ -21,7 +21,8 @@ export const ArticlesApp = () => {
         }
 
         const data = await getArticleBySessionId(parseInt(sessionId));
-        setArticulos(data);
+        // El back incluye los borradores propios del usuario: no son artículos enviados
+        setArticulos(data.filter((a) => a.status !== 'draft'));
         
       } catch (error) {
         console.error('Error fetching articulos:', error);

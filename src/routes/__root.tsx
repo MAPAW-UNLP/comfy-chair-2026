@@ -103,7 +103,7 @@ const RootLayoutContent = () => {
 
         {/* Brand Link */}
         <Link
-          to="/"
+          to={user ? '/dashboard' : '/'}
           className="font-bold text-lg order-2 xl:order-2 ml-auto flex items-center gap-2 hover:underline focus:outline-none focus:ring-2 focus:ring-slate-400"
         >
           ComfyChair
