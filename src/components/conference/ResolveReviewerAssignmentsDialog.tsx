@@ -31,6 +31,7 @@ interface ResolveReviewerAssignmentsDialogProps {
   sessionTitle: string;
   conferenceTitle: string;
   assignedById: number;
+  onComplete: () => void;
   onClose: () => void;
 }
 
@@ -46,6 +47,7 @@ export default function ResolveReviewerAssignmentsDialog({
   sessionTitle,
   conferenceTitle,
   assignedById,
+  onComplete,
   onClose,
 }: ResolveReviewerAssignmentsDialogProps) {
   const [loading, setLoading] = useState(true);
@@ -71,6 +73,12 @@ export default function ResolveReviewerAssignmentsDialog({
         if (!active) return;
         setArticles(sessionArticles);
         setReviewersByArticle(Object.fromEntries(reviewerLists));
+        if (
+          sessionArticles.length > 0 &&
+          reviewerLists.every(([, reviewers]) => reviewers.some((reviewer) => reviewer.assigned))
+        ) {
+          onComplete();
+        }
       } catch (error) {
         if (!active) return;
         console.error('Error loading reviewers for session reassignment:', error);
@@ -84,7 +92,7 @@ export default function ResolveReviewerAssignmentsDialog({
     return () => {
       active = false;
     };
-  }, [sessionId]);
+  }, [onComplete, sessionId]);
 
   const handleAssign = async (article: Article) => {
     const reviewerId = Number(selectedReviewerByArticle[article.id]);
@@ -93,12 +101,23 @@ export default function ResolveReviewerAssignmentsDialog({
     setSavingArticleId(article.id);
     try {
       await assignReviewerToArticle(reviewerId, article.id, assignedById);
-      setReviewersByArticle((current) => ({
-        ...current,
-        [article.id]: (current[article.id] ?? []).map((reviewer) =>
-          reviewer.id === reviewerId ? { ...reviewer, assigned: true } : reviewer
-        ),
-      }));
+      const updatedReviewers = await getReviewersByArticle(article.id);
+      if (!updatedReviewers.some((reviewer) => reviewer.id === reviewerId && reviewer.assigned)) {
+        throw new Error('El servidor no confirmó que el revisor haya quedado asignado.');
+      }
+      const updatedReviewersByArticle = {
+        ...reviewersByArticle,
+        [article.id]: updatedReviewers,
+      };
+      setReviewersByArticle(updatedReviewersByArticle);
+      if (
+        articles.length > 0 &&
+        articles.every((sessionArticle) =>
+          (updatedReviewersByArticle[sessionArticle.id] ?? []).some((reviewer) => reviewer.assigned)
+        )
+      ) {
+        onComplete();
+      }
       setSelectedReviewerByArticle((current) => ({ ...current, [article.id]: '' }));
       toast.success(`Se asignó un nuevo revisor al artículo "${article.title}".`);
     } catch (error) {
@@ -144,7 +163,9 @@ export default function ResolveReviewerAssignmentsDialog({
         {!loading && !loadError && articles.length > 0 && (
           <div className="flex flex-col gap-3">
             {articles.map((article) => {
-              const eligibleReviewers = (reviewersByArticle[article.id] ?? []).filter(
+              const articleReviewers = reviewersByArticle[article.id] ?? [];
+              const assignedReviewers = articleReviewers.filter((reviewer) => reviewer.assigned);
+              const eligibleReviewers = articleReviewers.filter(
                 (reviewer) =>
                   !reviewer.assigned &&
                   !article.authors.some((author) => author.id === reviewer.id)
@@ -154,43 +175,53 @@ export default function ResolveReviewerAssignmentsDialog({
               return (
                 <section key={article.id} className="rounded-md border p-3">
                   <h3 className="font-medium">{article.title}</h3>
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                    <Select
-                      value={selectedReviewer}
-                      onValueChange={(value) =>
-                        setSelectedReviewerByArticle((current) => ({
-                          ...current,
-                          [article.id]: value,
-                        }))
-                      }
-                      disabled={savingArticleId !== null || eligibleReviewers.length === 0}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Seleccioná un revisor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {eligibleReviewers.map((reviewer) => (
-                          <SelectItem key={reviewer.id} value={String(reviewer.id)}>
-                            {reviewer.full_name} ({reviewer.email})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      type="button"
-                      disabled={!selectedReviewer || savingArticleId !== null}
-                      onClick={() => void handleAssign(article)}
-                    >
-                      {savingArticleId === article.id && (
-                        <Loader2 className="size-4 animate-spin" />
-                      )}
-                      Asignar revisor
-                    </Button>
-                  </div>
-                  {eligibleReviewers.length === 0 && (
+                  {assignedReviewers.length > 0 ? (
                     <p className="mt-2 text-sm text-muted-foreground">
-                      No hay revisores habilitados sin asignar disponibles para este artículo.
+                      Revisor{assignedReviewers.length > 1 ? 'es' : ''} asignado
+                      {assignedReviewers.length > 1 ? 's' : ''}:{' '}
+                      {assignedReviewers.map((reviewer) => reviewer.full_name).join(', ')}
                     </p>
+                  ) : (
+                    <>
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                        <Select
+                          value={selectedReviewer}
+                          onValueChange={(value) =>
+                            setSelectedReviewerByArticle((current) => ({
+                              ...current,
+                              [article.id]: value,
+                            }))
+                          }
+                          disabled={savingArticleId !== null || eligibleReviewers.length === 0}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Seleccioná un revisor" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {eligibleReviewers.map((reviewer) => (
+                              <SelectItem key={reviewer.id} value={String(reviewer.id)}>
+                                {reviewer.full_name} ({reviewer.email})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          disabled={!selectedReviewer || savingArticleId !== null}
+                          onClick={() => void handleAssign(article)}
+                        >
+                          {savingArticleId === article.id && (
+                            <Loader2 className="size-4 animate-spin" />
+                          )}
+                          Asignar revisor
+                        </Button>
+                      </div>
+                      {eligibleReviewers.length === 0 && (
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          No hay revisores habilitados sin asignar disponibles para este artículo.
+                        </p>
+                      )}
+                    </>
                   )}
                 </section>
               );

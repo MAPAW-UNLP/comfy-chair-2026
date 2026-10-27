@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { Edit, Loader2, LockKeyhole, Plus, Trash2, UserRoundCheck } from 'lucide-react';
+import { Edit, Loader2, Plus, Trash2, UserRoundCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -209,21 +209,6 @@ export default function ConferenceUserRoleEditor({
   const reviewerArticlesWithoutSession = articlesByReviewer.filter(
     (article) => !article.session
   );
-  const authorArticles = articles.filter((article) =>
-    article.authors.some((author) => author.id === user.id)
-  );
-  const sessionsWhereAuthor = sessions
-    .map((session) => ({
-      session,
-      authoredArticles: authorArticles.filter(
-        (article) => article.session?.id === session.id
-      ),
-    }))
-    .filter(({ authoredArticles }) => authoredArticles.length > 0);
-  const authorArticlesWithoutSession = authorArticles.filter(
-    (article) => !article.session
-  );
-
   const activeReplacementCandidates = availableUsers.filter(
     (candidate) =>
       !chairReplacement ||
@@ -499,49 +484,6 @@ export default function ConferenceUserRoleEditor({
                   </div>
                 )}
               </section>
-
-              {user.roles.includes('author') && (
-                <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-                  <div className="flex items-start gap-2">
-                    <LockKeyhole className="mt-0.5 size-4 shrink-0 text-emerald-700" />
-                    <div>
-                      <h3 className="font-semibold text-emerald-900">Autor (no editable)</h3>
-                      <p className="text-sm text-emerald-800">
-                        Este rol está vinculado a los artículos de la persona y no se puede quitar desde acá.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-3 border-t border-emerald-200 pt-3">
-                    <h4 className="text-sm font-semibold text-emerald-950">
-                      Sesiones donde es autor
-                    </h4>
-                    {sessionsWhereAuthor.length > 0 ? (
-                      <ul className="mt-2 flex flex-col gap-2">
-                        {sessionsWhereAuthor.map(({ session, authoredArticles }) => (
-                          <li key={session.id} className="text-sm text-emerald-900">
-                            <span className="font-medium">{session.title}</span>
-                            <span className="text-emerald-800">
-                              {' '}— {authoredArticles.map((article) => article.title).join(', ')}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="mt-1 text-sm text-emerald-800">
-                        No tiene artículos en sesiones de esta conferencia.
-                      </p>
-                    )}
-                    {authorArticlesWithoutSession.length > 0 && (
-                      <p className="mt-2 text-sm text-emerald-800">
-                        También tiene {authorArticlesWithoutSession.length}{' '}
-                        {authorArticlesWithoutSession.length === 1
-                          ? 'artículo sin sesión'
-                          : 'artículos sin sesión'}.
-                      </p>
-                    )}
-                  </div>
-                </section>
-              )}
 
               {chairReplacement && (
                 <section className="rounded-lg border-2 border-amber-400 bg-amber-50 p-4">

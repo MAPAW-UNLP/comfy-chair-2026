@@ -5,7 +5,7 @@ import type { Notification, NotificationType } from '@/services/userServices'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertCircle, Info, Check } from 'lucide-react'
 import { InvitationNotificationActions } from '@/components/reviewer/invitations/InvitationNotificationActions'
@@ -14,6 +14,19 @@ import { toast } from 'sonner'
 export const Route = createFileRoute('/_auth/notifications')({
   component: RouteComponent,
 })
+
+const reviewerResolutionTitles = new Set([
+  'Revisor deshabilitado',
+  'Reasignar revisiones pendientes',
+])
+
+function getNotificationSessionId(notification: Notification): number | null {
+  if (notification.session) return notification.session
+  if (notification.title !== 'Reasignar revisiones pendientes') return null
+
+  const sessionId = notification.message.match(/En la sesión ".*?" \(ID: (\d+)\)/)?.[1]
+  return sessionId ? Number(sessionId) : null
+}
 
 function RouteComponent() {
   const queryClient = useQueryClient()
@@ -45,7 +58,8 @@ function RouteComponent() {
   }
 
   const resolveSessionNotification = async (notification: Notification) => {
-    if (!notification.session) return
+    const sessionId = getNotificationSessionId(notification)
+    if (!sessionId) return
 
     if (!notification.read) {
       try {
@@ -57,17 +71,19 @@ function RouteComponent() {
     }
 
     void navigate({
-      to: `/conference/session/${notification.session}`,
-      search: notification.title === 'Revisor deshabilitado'
+      to: `/conference/session/${sessionId}`,
+      search: reviewerResolutionTitles.has(notification.title)
         ? {
             editar: undefined,
             deshabilitar: undefined,
             resolverRevisiones: 'true',
+            resolverNotificacion: String(notification.id),
           }
         : {
             editar: 'true',
             deshabilitar: undefined,
             resolverRevisiones: undefined,
+            resolverNotificacion: undefined,
           },
     })
   }
@@ -194,16 +210,15 @@ function NotificationCard({
   onResolveSession,
   onGoToUser,
 }: NotificationCardProps) {
-  const [isResolving, setIsResolving] = useState(() => {
+  const [isResolved] = useState(() => {
     if (typeof window === 'undefined') return false
     try {
-      return window.sessionStorage.getItem(`resolving-session-notification-${notification.id}`) === 'true'
+      return window.sessionStorage.getItem(`resolved-session-notification-${notification.id}`) === 'true'
     } catch (storageError) {
-      console.error('Could not read session notification resolution state:', storageError)
+      console.error('Could not read session notification completion state:', storageError)
       return false
     }
   })
-  const resolveClickHandled = useRef(false)
   const isCritical = notification.type === 'critical'
   const isRead = notification.read
   const formattedDate = new Date(notification.created_at).toLocaleString('es-ES', {
@@ -250,30 +265,19 @@ function NotificationCard({
         </div>
         <p className="text-sm whitespace-pre-wrap ml-6 text-muted-foreground">{notification.message}</p>
         {(notification.title === 'Sesión sin chair' ||
-          notification.title === 'Revisor deshabilitado') &&
-          notification.session && (
+          reviewerResolutionTitles.has(notification.title)) &&
+          getNotificationSessionId(notification) && (
           <div className="ml-6 mt-3 flex justify-end">
             <Button
               size="sm"
               onClick={() => {
-                if (resolveClickHandled.current) return
-                resolveClickHandled.current = true
-                setIsResolving(true)
-                try {
-                  window.sessionStorage.setItem(
-                    `resolving-session-notification-${notification.id}`,
-                    'true',
-                  )
-                } catch (storageError) {
-                  console.error('Could not persist session notification resolution:', storageError)
-                }
                 onResolveSession()
               }}
-              disabled={isResolving}
+              disabled={reviewerResolutionTitles.has(notification.title) && isResolved}
             >
-              {notification.title === 'Revisor deshabilitado'
+              {reviewerResolutionTitles.has(notification.title)
                 ? 'Reasignar revisiones'
-                : 'Resolver'}
+                : 'Ir a sesión'}
             </Button>
           </div>
         )}

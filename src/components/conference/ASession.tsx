@@ -35,7 +35,7 @@ function ASession() {
   const [filteredArticles, setFilteredArticles] = useState<Article[] | []>([]);
   const navigate = useNavigate();
   const navigateToSession = Route.useNavigate();
-  const { editar, deshabilitar, resolverRevisiones } = Route.useSearch();
+  const { editar, deshabilitar, resolverRevisiones, resolverNotificacion } = Route.useSearch();
   const { user } = useAuth();
   const { selectedRole } = useRole();
   const canManage = canManageSessions(user, session?.conference);
@@ -65,10 +65,27 @@ function ASession() {
 
   const closeReviewerResolution = async () => {
     await navigateToSession({
-      search: (previous) => ({ ...previous, resolverRevisiones: undefined }),
+      search: (previous) => ({
+        ...previous,
+        resolverRevisiones: undefined,
+        resolverNotificacion: undefined,
+      }),
       replace: true,
     });
   };
+
+  const markReviewerResolutionComplete = useCallback(() => {
+    if (!resolverNotificacion) return;
+    try {
+      window.sessionStorage.setItem(
+        `resolved-session-notification-${resolverNotificacion}`,
+        'true',
+      );
+    } catch (storageError) {
+      console.error('Could not persist session notification completion:', storageError);
+      toast.error('No se pudo guardar el estado de resolución de la notificación.');
+    }
+  }, [resolverNotificacion]);
 
   const handleEliminarSession = () => {
     setShowDeleteModal(true);
@@ -260,6 +277,7 @@ function ASession() {
           sessionTitle={session.title}
           conferenceTitle={session.conference?.title ?? 'Conferencia'}
           assignedById={Number(user.id)}
+          onComplete={markReviewerResolutionComplete}
           onClose={() => void closeReviewerResolution()}
         />
       )}

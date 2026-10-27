@@ -8,6 +8,9 @@ export const Route = createFileRoute('/_auth/conference/session/$id')({
     resolverRevisiones: typeof search.resolverRevisiones === 'string'
       ? search.resolverRevisiones
       : undefined,
+    resolverNotificacion: typeof search.resolverNotificacion === 'string'
+      ? search.resolverNotificacion
+      : undefined,
     deshabilitar: typeof search.deshabilitar === 'string'
       ? search.deshabilitar
       : undefined,
