@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { loginSchema, type LoginFormData } from '@/lib/validations'
 import { useAuth } from '@/contexts/AuthContext'
+import { ContactSupportDialog } from '@/components/auth/ContactSupportDialog'
 
 export const Route = createFileRoute('/login')({
   validateSearch: (search: Record<string, unknown>) => {
@@ -29,6 +30,9 @@ function LoginPage() {
   })
   const [errors, setErrors] = useState<Partial<LoginFormData>>({})
   const [formError, setFormError] = useState<string>('')
+  const [accountDisabled, setAccountDisabled] = useState(disabled === 'true')
+  const [disabledEmail, setDisabledEmail] = useState<string | null>(null)
+  const [supportOpen, setSupportOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   const handleInputChange = (field: keyof LoginFormData, value: string) => {
@@ -60,6 +64,8 @@ function LoginPage() {
     }
     setIsLoading(true)
     setFormError('')
+    setAccountDisabled(false)
+    setDisabledEmail(null)
     try {
       await login(formData.email, formData.password)
       console.log('Login successful')
@@ -68,7 +74,8 @@ function LoginPage() {
       if (axios.isAxiosError(error) &&
           error.response?.status === 403 &&
           error.response?.data?.code === 'account_disabled') {
-        setFormError('Su cuenta se encuentra deshabilitada.')
+        setAccountDisabled(true)
+        setDisabledEmail(formData.email)
         return
       }
 
@@ -105,9 +112,24 @@ function LoginPage() {
               ¡Cuenta creada exitosamente! Por favor, inicia sesión con tus credenciales.
             </div>
           )}
-          {disabled === 'true' && (
+          {accountDisabled && (
             <div className="mb-4 p-3 text-sm text-destructive bg-destructive/10 border border-destructive rounded-md">
-              Su cuenta se encuentra deshabilitada.
+              Su cuenta se encuentra deshabilitada.{' '}
+              {disabledEmail ? (
+                <>
+                  Si querés conocer el motivo o pedir que la habiliten,{' '}
+                  <button
+                    type="button"
+                    onClick={() => setSupportOpen(true)}
+                    className="font-medium underline cursor-pointer"
+                  >
+                    contactá al soporte
+                  </button>
+                  .
+                </>
+              ) : (
+                'Para contactar al soporte, ingresá con tu email y contraseña.'
+              )}
             </div>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -158,6 +180,13 @@ function LoginPage() {
           </div>
         </CardContent>
       </Card>
+      {disabledEmail && (
+        <ContactSupportDialog
+          open={supportOpen}
+          onOpenChange={setSupportOpen}
+          email={disabledEmail}
+        />
+      )}
     </div>
   )
 }

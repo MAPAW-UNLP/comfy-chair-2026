@@ -720,7 +720,7 @@ function UsersPage() {
                   ? (
                     <>
                       Esta acción suspenderá el acceso del usuario a la plataforma de inmediato.
-                      Sus sesiones JWT activas serán rechazadas automáticamente.
+                      Si tiene una sesión iniciada, se cerrará automáticamente.
                     </>
                   )
                   : 'Resolvé los conflictos siguientes antes de deshabilitar esta cuenta.'}
