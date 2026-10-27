@@ -1,19 +1,32 @@
-import { createRootRoute, Link, Outlet, useLocation } from '@tanstack/react-router';
+import { createRootRoute, Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { RoleProvider, useRole } from '@/contexts/RoleContext';
-
 import { Armchair, Menu, X } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { InvitationsNavLabel } from '@/components/reviewer/invitations/InvitationsNavLabel';
+import { Button } from '@/components/ui/button'
+import { NavConference } from '@/components/conference/NavConference';
 
 // Componente interno que usa el contexto de autenticación
 const RootLayoutContent = () => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const { user } = useAuth();
-  const { selectedRole } = useRole();
+  const { selectedRole, clearSelectedRole } = useRole();
+  const { logout } = useAuth()
+  const navigate = useNavigate()
+ 
+  const handleLogout = () => {
+      // limpiar la selección de rol al cerrar sesión (grupo4)
+      try {
+        clearSelectedRole()
+      } catch {}
+  
+      logout()
+      navigate({ to: '/login', search: { redirect: undefined, registered: undefined } })
+    }
 
   const roleKey = String(selectedRole?.role ?? "").toLowerCase().trim();
 
@@ -57,7 +70,6 @@ const RootLayoutContent = () => {
     }
 
     const commonAuthLinks = [
-      { to: '/dashboard', label: 'Inicio' },
       { to: '/notifications', label: 'Notificaciones' },
       { to: '/conference/view', label: 'Conferencias' },
     ];
@@ -83,16 +95,32 @@ const RootLayoutContent = () => {
   const normalize = (p: string) => (p ? p.replace(/\/+$/, '') || '/' : '/');
   const current = normalize(location?.pathname ?? '/');
 
+  function isLogged(){
+    if (user){
+      return true;
+    } else {
+      return false;
+    }
+  }
   return (
     <div className="flex flex-col h-screen">
 
-      {/* Navbar superior */}
-      <header className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
-        
+
         {/* Navegación visible en pantallas grandes */}
-        <nav className="hidden xl:flex gap-2 order-1 xl:order-1">
+      {/* Navbar superior */}
+      <header className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+        
+        <nav className="hidden xl:flex gap-2 items-center">
+        {/* Brand Link */}
+        <Link
+          to={user ? "/dashboard" : "/"}
+          className="font-bold text-lg  flex items-center gap-2 hover:underline focus:outline-none focus:ring-2 focus:ring-slate-400"
+        >
+          ComfyChair
+          <Armchair />
+        </Link>
           {links.map((link) => (
-            <Link
+            <Link 
               key={link.to}
               to={link.to}
               className="px-3 py-1 rounded-md hover:bg-gray-400 [&.active]:bg-slate-400 [&.active]:text-white"
@@ -102,20 +130,34 @@ const RootLayoutContent = () => {
           ))}
         </nav>
 
-        {/* Brand Link */}
-        <Link
-          to="/"
-          className="font-bold text-lg order-2 xl:order-2 ml-auto flex items-center gap-2 hover:underline focus:outline-none focus:ring-2 focus:ring-slate-400"
-        >
-          ComfyChair
-          <Armchair />
-        </Link>
+        
 
         {/* Botón menú móvil */}
         <button onClick={() => setIsOpen(true)} className="xl:hidden p-1 rounded hover:bg-gray-700 order-0">
           <Menu />
         </button>
+        <div className='flex'>
 
+        
+        {
+          isLogged() && <Button onClick={handleLogout} variant="destructive" size="sm" className="hidden xl:inline self-end mt-2">
+                  Cerrar Sesión
+                </Button>
+        }
+         
+        <Link
+          to={user ? "/dashboard" : "/"}
+          className="xl:hidden self-end font-bold text-lg  flex items-center gap-2 hover:underline focus:outline-none focus:ring-2 focus:ring-slate-400"
+
+        >
+          ComfyChair
+          <Armchair />
+        </Link>
+        </div>  
+
+        {roleKey && (
+          <NavConference opciones={roleRoutes[roleKey]} roles={} title={selectedRole?.conferenceName}/>
+        )}
       </header>
 
       {/* Cuerpo principal */}
@@ -147,9 +189,15 @@ const RootLayoutContent = () => {
                 </Link>
               );
             })}
+            {
+          isLogged() && <Button onClick={handleLogout} variant="destructive" size="sm" className="px-4 mx-2">
+                  Cerrar Sesión
+                </Button>
+        }
           </nav>
 
         </aside>
+            
 
         {/* Contenido principal */}
         <main className="flex-1 overflow-auto">

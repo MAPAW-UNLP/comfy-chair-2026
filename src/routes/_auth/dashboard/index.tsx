@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createFileRoute, Link, useNavigate, useRouteContext } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { useAuth } from '@/contexts/AuthContext'
 import { useRole } from '@/contexts/RoleContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,7 +15,7 @@ export const Route = createFileRoute('/_auth/dashboard/')({
 function DashboardPage() {
   const [savingRoleMsg, setSavingRoleMsg] = useState<string | null>(null)
 
-  const { logout } = useAuth()
+  
   const navigate = useNavigate()
 
   // Get user from the parent _auth route context
@@ -44,15 +43,7 @@ function DashboardPage() {
     return () => clearTimeout(t)
   }, [savingRoleMsg])
 
-  const handleLogout = () => {
-    // limpiar la selección de rol al cerrar sesión (grupo4)
-    try {
-      clearSelectedRole()
-    } catch {}
-
-    logout()
-    navigate({ to: '/login', search: { redirect: undefined, registered: undefined } })
-  }
+  
 
   const handleRoleClick = (conference: ProcessedConference, role: string) => {
     const roleKey = String(role ?? '').toLowerCase().trim()
@@ -125,10 +116,7 @@ function DashboardPage() {
                   <p className="text-sm text-muted-foreground">Afiliación</p>
                   <p className="font-medium">{user.affiliation}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Rol</p>
-                  <p className="font-medium">{user.role}</p>
-                </div>
+                
 
                 <Link to="/dashboard/update">
                   <Button variant="outline" size="sm" className="w-full mt-4">
@@ -136,9 +124,7 @@ function DashboardPage() {
                   </Button>
                 </Link>
 
-                <Button onClick={handleLogout} variant="destructive" size="sm" className="w-full mt-2">
-                  Cerrar Sesión
-                </Button>
+                
 
                 
               </CardContent>
