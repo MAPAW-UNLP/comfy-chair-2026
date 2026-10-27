@@ -22,6 +22,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useCountdown } from "@/utils/useCountdown";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
+import { BackButton } from "@/components/reviewer/BackButton";
 
 type InteresLocal = "interesado" | "quizas" | "no" | "no_select";
 
@@ -72,6 +73,8 @@ export default function BiddingPage() {
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [seleccion, setSeleccion] = useState<Record<number, InteresLocal>>({});
   const [saving, setSaving] = useState<Record<number, boolean>>({});
+
+  const goBack = () => window.history.back();
 
   // 🔢 paginación
   const [page, setPage] = useState(1);
@@ -367,6 +370,9 @@ export default function BiddingPage() {
 
   return (
     <div className="mx-auto w-full max-w-xl px-4 py-6">
+       <div>
+        <BackButton onClick={goBack} label="Volver" className="-ml-2 mb-3" />
+      </div>
       <h1 className="text-2xl font-semibold">Bidding</h1>
       {conferenceName && (
         <p className="mt-1 text-base font-medium">{conferenceName}</p>
@@ -597,15 +603,6 @@ export default function BiddingPage() {
             Siguiente
           </Button>
         </div>
-      </div>
-
-      <div className="sticky bottom-4 mt-8">
-        <Button
-          className="w-full py-6 text-base hover:bg-gray-600"
-          onClick={() => navigate({ to: "/reviewer" })}
-        >
-          Salir
-        </Button>
       </div>
     </div>
   );
