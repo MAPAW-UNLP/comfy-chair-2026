@@ -27,10 +27,10 @@ export default defineConfig({
       '.ngrok.io',
     ],
     proxy: {
-      '/api': 'http://localhost:8000/',
-      '/user': 'http://localhost:8000/',
-      '/notifications': 'http://localhost:8000/',
-      '/media': 'http://localhost:8000/',
+      '/api': { target: 'http://localhost:8000', changeOrigin: true },
+      '/user/': { target: 'http://localhost:8000', changeOrigin: true },
+      '/notifications/': { target: 'http://localhost:8000', changeOrigin: true },
+      '/media': { target: 'http://localhost:8000', changeOrigin: true },
     },
   },
 });
