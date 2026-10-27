@@ -9,6 +9,7 @@ import { Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { isAxiosError } from "axios";
+import { BackButton } from "@/components/reviewer/BackButton";
 
 import { getArticleById } from "@/services/articleServices";
 import {
@@ -66,6 +67,9 @@ export default function ReviewArticle(props?: ReviewArticleProps) {
     shouldThrow: false,
   });
   const articleId = props?.articleId ?? Number(routeParams?.articleId);
+
+  const goBack = () =>
+  navigate({ to: "/reviewer", search: { selected: String(articleId) } });
 
   const { user } = useAuth();
 
@@ -403,7 +407,10 @@ export default function ReviewArticle(props?: ReviewArticleProps) {
 
   if (!article) {
     return (
-      <p className="px-6 py-8 text-red-600">No se encontró el artículo.</p>
+      <div className="px-6 py-8">
+        <BackButton onClick={goBack} label="Volver" className="-ml-2 mb-3" />
+        <p className="text-red-600">No se encontró el artículo.</p>
+      </div>
     );
   }
 
@@ -413,8 +420,9 @@ export default function ReviewArticle(props?: ReviewArticleProps) {
     <div className="mx-auto max-w-3xl px-6 py-8">
       {/* Encabezado */}
       <div className="mb-2">
-        {/* Fila 1: estado, alineado a la derecha */}
-        <div className="flex justify-end">
+        {/* Fila 1: volver a la izquierda, estado a la derecha */}
+        <div className="flex items-center justify-between">
+          <BackButton onClick={goBack} label="Volver" className="-ml-2" />
           <span
             className={[
               "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium",

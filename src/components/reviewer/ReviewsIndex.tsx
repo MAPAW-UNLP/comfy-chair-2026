@@ -20,6 +20,7 @@ import {
 import { Button } from "../ui/button";
 import { Progress } from "../ui/progress";
 import ReviewerConferenceSwitcher from "./ReviewerConferenceSwitcher";
+import { BackButton } from "@/components/reviewer/BackButton";
 
 /* ====================== ENV + helpers de fechas ====================== */
 
@@ -298,6 +299,8 @@ export default function ReviewsIndex() {
   const auth = useAuth();
   const { selectedRole } = useRole();
 
+  const goBack = () => window.history.back();
+
   // normalizar rol y obtener conferenceId si el rol seleccionado es reviewer/revisor
   const roleKey = String(selectedRole?.role ?? "").toLowerCase().trim();
   const isReviewerRole =
@@ -510,21 +513,17 @@ export default function ReviewsIndex() {
   ]);
 
   /* ============================ Render principal ============================ */
-
   return (
     <div className="mx-auto w-full max-w-md px-4 py-6 md:max-w-2xl">
       <div className="mb-6 flex items-center justify-between">
+        <div>
+          <BackButton onClick={goBack} label="Volver" className="-ml-2 mb-3" />
+        </div>
         <h1 className="text-2xl font-semibold">Bienvenido, Revisor</h1>
         <div className="mt-2">
           <ReviewerConferenceSwitcher />
         </div>
-        <Button
-          onClick={() => navigate({ to: "/reviewer/history" })}
-          className="bg-slate-700 hover:bg-slate-600 text-white font-medium"
-        >
-          Ver historial
-        </Button>
-      </div>
+    </div>  
 
       {phase === "review" ? (
         <>
