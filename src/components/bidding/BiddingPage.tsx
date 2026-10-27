@@ -108,8 +108,13 @@ export default function BiddingPage() {
   });
 
   const articulos = useMemo(
-    () => articlesQuery.data ?? [],
-    [articlesQuery.data]
+    () =>
+      (articlesQuery.data ?? []).filter(
+        (a) =>
+          a.corresponding_author?.id !== reviewerId &&
+          !a.authors.some((autor) => autor.id === reviewerId)
+      ),
+    [articlesQuery.data, reviewerId]
   );
   const sesiones = sessionsQuery.data ?? [];
   const bidPorArticulo = useMemo(
