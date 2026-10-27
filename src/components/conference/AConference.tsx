@@ -82,10 +82,6 @@ function AConference() {
     }
   };
 
-  const irNuevoSubmission = () => {
-    navigate({ to: '/article/create', search: { conferenceId: conferencia.id } });
-  };
-
   const hasActiveSessions = sessions.some(
     (session) => session.deadline !== undefined && new Date(session.deadline) > new Date()
   );
@@ -239,15 +235,6 @@ function AConference() {
                         }
                       />
                     )}
-                    <Button
-                      size={'sm'}
-                      className="cursor-pointer"
-                      disabled={!hasActiveSessions}
-                      onClick={irNuevoSubmission}
-                    >
-                      <Plus />
-                      Nuevo submission
-                    </Button>
                   </div>
                   {!loadingSessions && !hasActiveSessions && (
                     <p className="text-xs text-muted-foreground">
