@@ -69,7 +69,10 @@ function isDisableConflict(value: unknown): value is DisableConflict {
 
 function getConflictDescription(conflict: DisableConflict): string {
   if (conflict.type === 'session') {
-    return `Este usuario es el único chair de la sesión "${conflict.title}". Asigná un nuevo chair a esa sesión antes de deshabilitarlo.`
+    const conferenceDescription = conflict.conference_title
+      ? ` de la conferencia "${conflict.conference_title}"`
+      : ''
+    return `Este usuario es el único chair de la sesión "${conflict.title}"${conferenceDescription}. Asigná un nuevo chair a esa sesión antes de deshabilitarlo.`
   }
   return `Este usuario es el único chair de la conferencia "${conflict.title}". Asigná un nuevo chair a esa conferencia antes de deshabilitarlo.`
 }

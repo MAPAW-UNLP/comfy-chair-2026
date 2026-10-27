@@ -23,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Breadcrumb from '../ui/Breadcrumb';
 import { useRole } from '@/contexts/RoleContext';
 import { canManageSessions } from './sessionPermissions';
+import ResolveReviewerAssignmentsDialog from './ResolveReviewerAssignmentsDialog';
 
 function ASession() {
   const sessionInicial = Route.useLoaderData();
@@ -34,7 +35,7 @@ function ASession() {
   const [filteredArticles, setFilteredArticles] = useState<Article[] | []>([]);
   const navigate = useNavigate();
   const navigateToSession = Route.useNavigate();
-  const { editar, deshabilitar } = Route.useSearch();
+  const { editar, deshabilitar, resolverRevisiones } = Route.useSearch();
   const { user } = useAuth();
   const { selectedRole } = useRole();
   const canManage = canManageSessions(user, session?.conference);
@@ -60,6 +61,13 @@ function ASession() {
       });
     }
     await fetchSession();
+  };
+
+  const closeReviewerResolution = async () => {
+    await navigateToSession({
+      search: (previous) => ({ ...previous, resolverRevisiones: undefined }),
+      replace: true,
+    });
   };
 
   const handleEliminarSession = () => {
@@ -244,6 +252,15 @@ function ASession() {
           title={session!.title}
           isConference={false}
           cerrar={() => setShowDeleteModal(false)}
+        />
+      )}
+      {canManage && resolverRevisiones === 'true' && user && session && (
+        <ResolveReviewerAssignmentsDialog
+          sessionId={session.id}
+          sessionTitle={session.title}
+          conferenceTitle={session.conference?.title ?? 'Conferencia'}
+          assignedById={Number(user.id)}
+          onClose={() => void closeReviewerResolution()}
         />
       )}
     </div>

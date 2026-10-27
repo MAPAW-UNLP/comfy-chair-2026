@@ -49,7 +49,17 @@ function RouteComponent() {
 
     void navigate({
       to: `/conference/session/${notification.session}`,
-      search: { editar: 'true', deshabilitar: undefined },
+      search: notification.title === 'Revisor deshabilitado'
+        ? {
+            editar: undefined,
+            deshabilitar: undefined,
+            resolverRevisiones: 'true',
+          }
+        : {
+            editar: 'true',
+            deshabilitar: undefined,
+            resolverRevisiones: undefined,
+          },
     })
   }
 
@@ -227,7 +237,9 @@ function NotificationCard({
           )}
         </div>
         <p className="text-sm whitespace-pre-wrap ml-6 text-muted-foreground">{notification.message}</p>
-        {notification.title === 'Sesión sin chair' && notification.session && (
+        {(notification.title === 'Sesión sin chair' ||
+          notification.title === 'Revisor deshabilitado') &&
+          notification.session && (
           <div className="ml-6 mt-3 flex justify-end">
             <Button
               size="sm"
@@ -247,7 +259,9 @@ function NotificationCard({
               }}
               disabled={isResolving}
             >
-              Resolver
+              {notification.title === 'Revisor deshabilitado'
+                ? 'Reasignar revisiones'
+                : 'Resolver'}
             </Button>
           </div>
         )}

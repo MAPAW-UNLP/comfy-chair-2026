@@ -16,7 +16,6 @@ import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import Statistics from './Statistics';
 import Breadcrumb from '../ui/Breadcrumb';
 import { getArticlesByConferenceId, type Article } from '@/services/articleServices';
-import { isAdmin } from '@/lib/permissions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
 import ConferenceUsers from './ConferenceUsers';
@@ -41,7 +40,7 @@ function AConference() {
 
   const [verUsuarios, setVerUsuarios] = useState<boolean>(false);
   const esAdmin = user?.role === 'admin';
-  const esChair = user?.id !== undefined && conferencia.chairs?.includes(user.id);
+  const esChair = Boolean(user?.id !== undefined && conferencia.chairs?.includes(user.id));
   const puedeVerUsuarios = esAdmin || esChair;
 
   const irEditarConferencia = () => {
@@ -175,7 +174,11 @@ function AConference() {
       </div>
 
       <div className="flex flex-col bg-card rounded shadow border border-gray-200 p-5 w-full gap-8">
-        {verUsuarios ? ( <ConferenceUsers conferenceId={Number(conferencia.id)} />
+        {verUsuarios ? ( <ConferenceUsers
+          conferenceId={Number(conferencia.id)}
+          canEditRoles={puedeVerUsuarios}
+          isAdmin={esAdmin}
+        />
       )
         : verEstadisticas ? (
           <Statistics 

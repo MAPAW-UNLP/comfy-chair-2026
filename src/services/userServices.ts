@@ -245,6 +245,60 @@ export interface ConferenceUsersFilters {
   role?: string;
 }
 
+export type ConferenceUserRole =
+  | 'conference_chair'
+  | 'session_chair'
+  | 'reviewer'
+  | 'author';
+
+export interface UpdateConferenceUserRolePayload {
+  role: ConferenceUserRole;
+  action: 'add' | 'remove';
+  session_id?: number;
+  article_id?: number;
+}
+
+export interface UpdateConferenceUserRoleResponse {
+  conference_id?: number;
+  user_id?: number;
+  role: ConferenceUserRole;
+  action: 'add' | 'remove';
+  changed?: boolean;
+  detail?: string;
+  removed_assignments?: number;
+  pending_assignments_to_reassign?: number;
+}
+
+export const updateConferenceUserRole = async (
+  conferenceId: number,
+  userId: number,
+  payload: UpdateConferenceUserRolePayload
+): Promise<UpdateConferenceUserRoleResponse> => {
+  const response = await api.patch(
+    `/api/conference/${conferenceId}/users/${userId}/role/`,
+    payload
+  );
+  return response.data;
+};
+
+export const getReviewerAssignedArticleIds = async (
+  reviewerId: number
+): Promise<number[]> => {
+  const response = await api.get(`/api/reviewers/${reviewerId}/`);
+  const assignments: unknown = response.data?.assigned_articles;
+  if (!Array.isArray(assignments)) {
+    throw new Error('La respuesta de asignaciones del revisor no tiene el formato esperado.');
+  }
+
+  return assignments.map((assignment: { article?: unknown }) => {
+    const articleId = Number(assignment?.article);
+    if (!Number.isInteger(articleId) || articleId <= 0) {
+      throw new Error('La respuesta contiene una asignación de artículo inválida.');
+    }
+    return articleId;
+  });
+};
+
 export const getConferenceUsers = async (
   conferenceId: number,
   filters?: ConferenceUsersFilters
