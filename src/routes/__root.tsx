@@ -155,9 +155,9 @@ const RootLayoutContent = () => {
         </Link>
         </div>  
 
-        {roleKey && (
+        {/*roleKey && (
           <NavConference opciones={roleRoutes[roleKey]} roles={} title={selectedRole?.conferenceName}/>
-        )}
+        )*/}
       </header>
 
       {/* Cuerpo principal */}
