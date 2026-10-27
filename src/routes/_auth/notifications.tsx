@@ -35,6 +35,15 @@ function RouteComponent() {
     },
   })
 
+  const goToRelatedUser = (notification: Notification) => {
+    if (!notification.related_user) return
+    if (!notification.read) markAsReadMutation.mutate(notification.id)
+    void navigate({
+      to: '/users',
+      search: { deshabilitar: String(notification.related_user) },
+    })
+  }
+
   const resolveSessionNotification = async (notification: Notification) => {
     if (!notification.session) return
 
@@ -160,6 +169,7 @@ function RouteComponent() {
                 onMarkAsRead={() => markAsReadMutation.mutate(notification.id)}
                 isMarking={markAsReadMutation.isPending}
                 onResolveSession={() => void resolveSessionNotification(notification)}
+                onGoToUser={() => goToRelatedUser(notification)}
               />
             ))
           )}
@@ -174,6 +184,7 @@ interface NotificationCardProps {
   onMarkAsRead: () => void
   isMarking: boolean
   onResolveSession: () => void
+  onGoToUser: () => void
 }
 
 function NotificationCard({
@@ -181,6 +192,7 @@ function NotificationCard({
   onMarkAsRead,
   isMarking,
   onResolveSession,
+  onGoToUser,
 }: NotificationCardProps) {
   const [isResolving, setIsResolving] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -262,6 +274,13 @@ function NotificationCard({
               {notification.title === 'Revisor deshabilitado'
                 ? 'Reasignar revisiones'
                 : 'Resolver'}
+            </Button>
+          </div>
+        )}
+        {notification.title === 'Conflicto resuelto' && notification.related_user && (
+          <div className="ml-6 mt-3 flex justify-end">
+            <Button size="sm" onClick={onGoToUser}>
+              Ir al usuario
             </Button>
           </div>
         )}

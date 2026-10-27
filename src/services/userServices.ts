@@ -154,6 +154,7 @@ export interface Notification {
   user: number; // User ID (foreign key)
   article: number | null; // Article ID (foreign key, can be null)
   session: number | null; // Session ID for actionable session notifications
+  related_user: number | null;
   title: string; // max 100 characters
   message: string;
   type: NotificationType;
