@@ -47,7 +47,7 @@ function DashboardPage() {
 
   const handleRoleClick = (conference: ProcessedConference, role: string) => {
     const roleKey = String(role ?? '').toLowerCase().trim()
-
+    console.log(conferences);
     // Guardar selección (grupo4) para rutas que dependan de rol/conferencia
     try {
       setSelectedRole({
