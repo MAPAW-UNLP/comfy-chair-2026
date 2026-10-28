@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query'
 import { useRole } from '@/contexts/RoleContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import AuthorConferencesSection from '@/components/author/AuthorConferencesSection'
 import { getUserFullData, type ProcessedConference } from '@/services/userServices'
 
@@ -199,17 +198,19 @@ function DashboardPage() {
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-2">
-                            <p className="text-sm font-medium text-muted-foreground mb-2">Accesos rápidos:</p>
+                            <p className="text-sm font-medium text-muted-foreground mb-2">Acceso rápido:</p>
                             <div className="flex flex-wrap gap-2">
                               {conference.roles.map((role) => (
-                                <Badge
+                                <Button
                                   key={role}
-                                  variant="secondary"
-                                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="cursor-pointer capitalize transition-colors hover:bg-primary hover:text-primary-foreground active:scale-[0.98]"
                                   onClick={() => handleRoleClick(conference, role)}
                                 >
                                   {role}
-                                </Badge>
+                                </Button>
                               ))}
                             </div>
                           </div>
