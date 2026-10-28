@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { NavConference } from '@/components/conference/NavConference';
 import { useQuery } from '@tanstack/react-query';
 import { getAllNotifications, getUserFullData } from '@/services/userServices';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
+import { ChevronDown } from 'lucide-react';
 
 const RootLayoutContent = () => {
   const location = useLocation();
@@ -95,37 +97,11 @@ const RootLayoutContent = () => {
     ]
   };
 
-  // Enlaces principales del navbar superior
+  // Enlaces principales del navbar superior para usuarios autenticados
   const links = useMemo(() => {
-    if (!user) {
-      return [
-        { to: '/login', label: 'Ingresar' },
-        { to: '/register', label: 'Registrarse' },
-      ];
-    }
+    if (!user) return [];
 
     const commonAuthLinks = [
-      {
-        to: '/notifications',
-        label: (
-          <>
-            <span className="relative inline-flex">
-              <Bell aria-hidden="true" />
-              {unreadCount > 0 && (
-                <span
-                  aria-hidden="true"
-                  className="absolute -right-2 -top-2 inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] leading-4 text-white"
-                >
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-            </span>
-            <span className="sr-only">
-              Notificaciones{unreadCount > 0 ? `, ${unreadCount} sin leer` : ''}
-            </span>
-          </>
-        ),
-      },
       { to: '/conference/view', label: 'Conferencias' },
     ];
 
@@ -134,124 +110,241 @@ const RootLayoutContent = () => {
     }
 
     return commonAuthLinks;
-  }, [user, unreadCount]);
+  }, [user]);
 
   const normalize = (p: string) => (p ? p.replace(/\/+$/, '') || '/' : '/');
   const current = normalize(location?.pathname ?? '/');
 
+  // Color de fondo del header basado en si es Admin principal o no
+  const headerBgClass = user?.role === 'admin' && !roleKey ? 'bg-teal-900' : 'bg-slate-900';
+
   return (
     <div className="flex flex-col h-screen">
-      {/* Navbar Superior Principal (Slate 900) */}
-      <header className="bg-slate-900 text-white flex flex-col">
+      {/* Navbar Superior Principal */}
+      <header className={`${headerBgClass} text-white flex flex-col`}>
         <div className="px-6 py-4 flex justify-between items-center">
-          <nav className="hidden xl:flex gap-2 items-center">
+          {/* Izquierda: Botón menú móvil y Logo */}
+          <div className="flex items-center gap-4">
+            <button onClick={() => setIsOpen(true)} className="xl:hidden p-1 rounded hover:bg-gray-800">
+              <Menu className="h-6 w-6" />
+            </button>
+
             <Link
               to={user ? "/dashboard" : "/"}
-              className="font-bold text-lg flex items-center gap-2 hover:underline focus:outline-none focus:ring-2 focus:ring-slate-400 mr-4"
+              className="font-bold text-lg flex items-center gap-2 hover:underline focus:outline-none focus:ring-2 focus:ring-slate-400 mr-2"
             >
               ComfyChair
               <Armchair />
             </Link>
-            {links.map((link) => (
-              <Link 
-                key={link.to}
-                to={link.to}
-                className="inline-flex items-center justify-center px-3 py-1 rounded-md hover:bg-gray-800 [&.active]:bg-slate-700 [&.active]:text-white"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
 
-          {/* Botón menú móvil */}
-          <button onClick={() => setIsOpen(true)} className="xl:hidden p-1 rounded hover:bg-gray-800 order-0">
-            <Menu />
-          </button>
+            {/* Links de navegación desktop (ej. Conferencias / Usuarios) */}
+            <nav className="hidden xl:flex gap-2 items-center">
+              {links.map((link) => (
+                <Link 
+                  key={link.to}
+                  to={link.to}
+                  className="inline-flex items-center justify-center px-3 py-1 rounded-md hover:bg-gray-800 [&.active]:bg-slate-700 [&.active]:text-white text-sm"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
 
-          <div className="flex items-center gap-3">
-            {user && (
-              <Button onClick={handleLogout} variant="destructive" size="sm" className="hidden xl:inline self-center">
-                Cerrar Sesión
-              </Button>
+          {/* Derecha: Acciones en Escritorio */}
+          <div className="hidden xl:flex items-center gap-4">
+            {user ? (
+              <>
+                <Link to="/notifications" className="p-1.5 hover:bg-slate-800 rounded-full relative transition-colors">
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] leading-4 text-white">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </Link>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-white hover:bg-slate-800 hover:text-white h-8 px-2 flex items-center gap-1.5 font-normal"
+                    >
+                      Hola, {user.full_name}
+                      <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-slate-900 border border-slate-800 text-white min-w-[160px] p-1 shadow-lg rounded-md z-50">
+                    <DropdownMenuItem asChild>
+                      <Link to='/profile' className='w-full block px-3 py-2 text-sm hover:bg-slate-800 rounded cursor-pointer'>
+                        Mi perfil
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-slate-800 my-1" />
+                    <DropdownMenuItem asChild>
+                      <button onClick={handleLogout} className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-950/50 hover:text-red-300 rounded cursor-pointer font-medium">
+                        Cerrar sesión
+                      </button>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <>
+                <Link 
+                  to="/login"
+                  className="inline-flex items-center justify-center px-3 py-1.5 rounded-md hover:bg-slate-800 text-sm transition-colors"
+                >
+                  Ingresar
+                </Link>
+                <Link 
+                  to="/register"
+                  className="inline-flex items-center justify-center px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-sm font-medium transition-colors"
+                >
+                  Registrarse
+                </Link>
+              </>
             )}
-            
-            <Link
-              to={user ? "/dashboard" : "/"}
-              className="xl:hidden self-end font-bold text-lg flex items-center gap-2 hover:underline focus:outline-none focus:ring-2 focus:ring-slate-400"
-            >
-              ComfyChair
-              <Armchair />
-            </Link>
+          </div>
+
+          {/* Derecha en Móvil: Solo campana de notificaciones si está logueado */}
+          <div className="xl:hidden flex items-center gap-2">
+            {user && (
+              <Link to="/notifications" className="p-1.5 hover:bg-slate-800 rounded-full relative">
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] leading-4 text-white">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </Link>
+            )}
           </div>
         </div>
 
-        {/* Segundo Nivel (Barra Negra): Se muestra únicamente cuando hay un rol/conferencia seleccionado */}
+        {/* Segundo Nivel (Barra inferior): Se muestra únicamente cuando hay un rol/conferencia seleccionado en escritorio */}
         {roleKey && selectedRole?.conferenceName && (
-          <NavConference 
-            title={selectedRole.conferenceName}
-            conferenceId={currentConferenceId}
-            currentRole={roleKey}
-            availableRoles={currentConferenceRoles}
-            opciones={roleRoutes[roleKey] ?? []}
-            onSelectRole={handleRoleChange}
-          />
+          <div className="hidden xl:block">
+            <NavConference 
+              title={selectedRole.conferenceName}
+              conferenceId={currentConferenceId}
+              currentRole={roleKey}
+              availableRoles={currentConferenceRoles}
+              opciones={roleRoutes[roleKey] ?? []}
+              onSelectRole={handleRoleChange}
+            />
+          </div>
         )}
       </header>
 
       {/* Cuerpo principal */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar móvil */}
-        <aside className={`fixed z-20 top-0 left-0 h-full bg-slate-900 text-white w-64 transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'} xl:hidden`}>
+        <aside className={`fixed z-50 top-0 left-0 h-full bg-slate-900 text-white w-64 transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'} xl:hidden flex flex-col shadow-2xl border-r border-slate-800`}>
           <div className="flex items-center justify-between p-4 border-b border-slate-800">
-            <span className="font-bold text-lg">Menu</span>
-            <button onClick={() => setIsOpen(false)}>
-              <X />
+            <span className="font-bold text-lg flex items-center gap-2">
+              ComfyChair <Armchair className="h-5 w-5" />
+            </span>
+            <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-slate-800 rounded">
+              <X className="h-5 w-5" />
             </button>
           </div>
 
-          <nav className="flex flex-col mt-4 gap-2">
-            {links.map((link) => {
-              const isActive = normalize(link.to) === current;
-              const base = 'px-4 mx-2 py-2 rounded-md hover:bg-gray-800';
-              const activeCls = isActive ? 'bg-slate-700 text-white' : '';
-              return (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className={`${base} ${activeCls}`}
-                  onClick={() => setIsOpen(false)}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-            
-            {/* Si hay rol seleccionado en móvil, mostrar enlaces del rol actual en el menú */}
-            {roleKey && roleRoutes[roleKey] && (
-              <div className="border-t border-slate-800 my-2 pt-2 px-2">
-                <p className="text-xs text-slate-400 px-2 mb-1 uppercase tracking-wider">
-                  Rol: {roleKey} ({selectedRole?.conferenceName})
-                </p>
-                {roleRoutes[roleKey].map((subLink) => (
-                  <Link
-                    key={subLink.to}
-                    to={subLink.to}
-                    className="block px-4 py-2 rounded-md hover:bg-gray-800 text-sm text-slate-200"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    {subLink.label}
-                  </Link>
-                ))}
-              </div>
-            )}
+          <nav className="flex flex-col p-4 gap-2 flex-1 overflow-y-auto">
+            {/* Si hay conferencia/rol seleccionado en móvil: Mostrar bloque de Conferencia y opciones de rol */}
+            {roleKey && selectedRole?.conferenceName ? (
+              <div className="space-y-4">
+                <div className="bg-slate-800/60 p-3 rounded-lg border border-slate-700/50">
+                  <div className="font-medium text-sm text-white mb-2">{selectedRole.conferenceName}</div>
+                  <div className="flex items-center justify-between text-xs text-slate-300 bg-slate-900 px-2.5 py-1.5 rounded border border-slate-700">
+                    <span>Rol: {selectedRole.role.charAt(0).toUpperCase() + selectedRole.role.slice(1)}</span>
+                    <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                  </div>
+                </div>
 
-            {user && (
-              <Button onClick={handleLogout} variant="destructive" size="sm" className="px-4 mx-2 mt-4">
-                Cerrar Sesión
-              </Button>
+                <div className="flex flex-col space-y-1">
+                  {roleRoutes[roleKey]?.map((subLink) => (
+                    <Link
+                      key={subLink.to}
+                      to={subLink.to}
+                      className="px-3 py-2 rounded-md hover:bg-slate-800 text-sm text-slate-200 transition-colors"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {subLink.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              /* Menú Inicial Móvil */
+              <div className="flex flex-col space-y-1">
+                {user ? (
+                  <>
+                    <div className="px-3 py-2 font-medium text-white border-b border-slate-800 mb-2">
+                      Hola, {user.full_name}
+                    </div>
+                    
+                    {links.map((link) => (
+                      <Link
+                        key={link.to}
+                        to={link.to}
+                        className="px-3 py-2 rounded-md hover:bg-slate-800 text-sm text-slate-200"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+
+                    <Link
+                      to="/profile"
+                      className="px-3 py-2 rounded-md hover:bg-slate-800 text-sm text-slate-200"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      Mi perfil
+                    </Link>
+
+                    <div className="pt-4 mt-auto">
+                      <Button 
+                        onClick={() => { setIsOpen(false); handleLogout(); }} 
+                        variant="destructive" 
+                        size="sm" 
+                        className="w-full bg-red-600 hover:bg-red-700 text-white font-medium"
+                      >
+                        Cerrar Sesión
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      to="/login"
+                      className="px-3 py-2 rounded-md hover:bg-slate-800 text-sm text-slate-200"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      Ingresar
+                    </Link>
+                    <Link
+                      to="/register"
+                      className="px-3 py-2 rounded-md hover:bg-slate-800 text-sm text-slate-200"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      Registrarse
+                    </Link>
+                  </>
+                )}
+              </div>
             )}
           </nav>
         </aside>
+
+        {/* Backdrop para móvil */}
+        {isOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 xl:hidden backdrop-blur-sm"
+            onClick={() => setIsOpen(false)}
+          />
+        )}
 
         {/* Contenido principal */}
         <main className="flex-1 overflow-auto">

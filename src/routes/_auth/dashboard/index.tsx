@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createFileRoute, Link, useNavigate, useRouteContext } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, useRouteContext } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useRole } from '@/contexts/RoleContext'
 import { Button } from '@/components/ui/button'
@@ -100,41 +100,7 @@ function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* User Info Card - Small card on the side */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Información Personal</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <p className="text-sm text-muted-foreground">Nombre</p>
-                  <p className="font-medium">{user.full_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Email</p>
-                  <p className="font-medium text-sm">{user.email}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Afiliación</p>
-                  <p className="font-medium">{user.affiliation}</p>
-                </div>
-                
-
-                <Link to="/dashboard/update">
-                  <Button variant="outline" size="sm" className="w-full mt-4">
-                    Actualizar Datos
-                  </Button>
-                </Link>
-
-                
-
-                
-              </CardContent>
-            </Card>
-          </div>
-
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Conferences Section */}
           <div className="lg:col-span-3 space-y-6">
             <Card>
@@ -187,9 +153,9 @@ function DashboardPage() {
                 )}
 
                 {!isLoading && !isError && conferences && conferences.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {conferences.map((conference) => (
-                      <Card key={conference.conference_id} className="border-2 hover:border-primary/50 transition-colors">
+                      <Card key={conference.conference_id} className="border-2">
                         <CardHeader>
                           <CardTitle className="text-lg">{conference.conference_name}</CardTitle>
                           <CardDescription>
