@@ -1,12 +1,16 @@
 import { useEffect, useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
 import {
   getArticleBySessionId,
   getArticlesByConferenceId,
 } from "@/services/articleServices";
-import { getMyBids, saveBid } from "@/services/biddingServices";
+import {
+  getMyBids,
+  saveBid,
+  type BiddingPreference,
+} from "@/services/biddingServices";
 import { getSessionsByConference } from "@/services/sessionServices";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +29,13 @@ import { useRole } from "@/contexts/RoleContext";
 import { BackButton } from "@/components/reviewer/BackButton";
 
 type InteresLocal = "interesado" | "quizas" | "no" | "no_select";
+type EstadoGuardado = "guardando" | "guardado" | "error";
+
+const ESTADO_UI: Record<EstadoGuardado, { texto: string; clase: string }> = {
+  guardando: { texto: "Guardando…", clase: "text-slate-500" },
+  guardado: { texto: "Guardado", clase: "font-medium text-emerald-700" },
+  error: { texto: "Error al guardar", clase: "font-medium text-red-600" },
+};
 
 // Fechas desde .env
 const BIDDING_START = import.meta.env
@@ -72,7 +83,7 @@ function errorDelBackend(e: unknown, porDefecto: string): string {
 export default function BiddingPage() {
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [seleccion, setSeleccion] = useState<Record<number, InteresLocal>>({});
-  const [saving, setSaving] = useState<Record<number, boolean>>({});
+  const [estado, setEstado] = useState<Record<number, EstadoGuardado>>({});
 
   const goBack = () => window.history.back();
 
@@ -81,6 +92,7 @@ export default function BiddingPage() {
   const [pageSize, setPageSize] = useState(5);
 
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const auth = useAuth();
   const reviewerId = auth.user ? Number(auth.user.id) : null;
 
@@ -111,8 +123,13 @@ export default function BiddingPage() {
   });
 
   const articulos = useMemo(
-    () => articlesQuery.data ?? [],
-    [articlesQuery.data]
+    () =>
+      (articlesQuery.data ?? []).filter(
+        (a) =>
+          a.corresponding_author?.id !== reviewerId &&
+          !a.authors.some((autor) => autor.id === reviewerId)
+      ),
+    [articlesQuery.data, reviewerId]
   );
   const sesiones = sessionsQuery.data ?? [];
   const bidPorArticulo = useMemo(
@@ -209,18 +226,34 @@ export default function BiddingPage() {
     setSeleccion((s) =>
       s[articleId] === nextLocal ? s : { ...s, [articleId]: nextLocal }
     );
-    setSaving((s) => ({ ...s, [articleId]: true }));
+    setEstado((s) => ({ ...s, [articleId]: "guardando" }));
     try {
-      await saveBid({
+      const guardado = await saveBid({
         article: articleId,
         value: backendChoice,
       });
+      queryClient.setQueryData<BiddingPreference[]>(
+        ["reviewer", "bids", conferenceId, sessionId],
+        (prev) => [
+          ...(prev ?? []).filter((b) => b.article !== articleId),
+          guardado,
+        ]
+      );
+      queryClient.removeQueries({
+        queryKey: ["reviewer", "bids"],
+        type: "inactive",
+      });
+      setSeleccion((s) => ({
+        ...s,
+        [articleId]: mapChoiceToLocal(guardado.choice),
+      }));
+      setEstado((s) => ({ ...s, [articleId]: "guardado" }));
+      toast.success("Preferencia guardada");
     } catch (e) {
-      toast.error(errorDelBackend(e, "No se pudo guardar el bid."));
+      toast.error(errorDelBackend(e, "No se pudo guardar la preferencia."));
       // rollback
       setSeleccion((s) => ({ ...s, [articleId]: current }));
-    } finally {
-      setSaving((s) => ({ ...s, [articleId]: false }));
+      setEstado((s) => ({ ...s, [articleId]: "error" }));
     }
   };
 
@@ -532,7 +565,7 @@ export default function BiddingPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={!!saving[a.id] || !isEditable}
+                  disabled={estado[a.id] === "guardando" || !isEditable}
                   aria-pressed={interes === "interesado"}
                   className={cn(
                     "min-w-[100px] justify-center transition-colors",
@@ -547,7 +580,7 @@ export default function BiddingPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={!!saving[a.id] || !isEditable}
+                  disabled={estado[a.id] === "guardando" || !isEditable}
                   aria-pressed={interes === "quizas"}
                   className={cn(
                     "min-w-[100px] justify-center transition-colors",
@@ -562,7 +595,7 @@ export default function BiddingPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={!!saving[a.id] || !isEditable}
+                  disabled={estado[a.id] === "guardando" || !isEditable}
                   aria-pressed={interes === "no"}
                   className={cn(
                     "min-w-[100px] justify-center transition-colors",
@@ -573,6 +606,19 @@ export default function BiddingPage() {
                 >
                   No interesado
                 </Button>
+                <span
+                  role="status"
+                  className={cn(
+                    "ml-auto self-center text-sm",
+                    estado[a.id]
+                      ? ESTADO_UI[estado[a.id]].clase
+                      : "text-slate-400"
+                  )}
+                >
+                  {estado[a.id]
+                    ? ESTADO_UI[estado[a.id]].texto
+                    : interes === "no_select" && "Sin preferencia elegida"}
+                </span>
               </div>
             </article>
           );
