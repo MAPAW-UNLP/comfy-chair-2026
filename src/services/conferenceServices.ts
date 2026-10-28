@@ -2,6 +2,8 @@ import { type User } from './userServices';
 import { axiosInstance as api } from './api';
 import { type Conference } from '@/components/conference/ConferenceApp';
 
+export type { Conference };
+
 const errorMessages: Record<string, string> = {
   'conference with this title already exists.':
     'Ya existe una conferencia con ese título',
