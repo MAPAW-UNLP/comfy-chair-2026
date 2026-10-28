@@ -70,6 +70,11 @@ function DashboardPage() {
       return
     }
 
+    if (roleKey === 'chair') {
+      navigate({ to: '/chairs/select-session' })
+      return
+    }
+
     // Mantener fallback informativo de main (otros roles aún en desarrollo)
     alert(
       `🚧 MOCK - Funcionalidad en desarrollo\n\n` +
