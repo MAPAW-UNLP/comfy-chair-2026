@@ -13,7 +13,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useArticleFiles } from "@/hooks/Grupo1/useArticleFiles";
 import { completenessLabels, getArticleMissingFields, getDeadlineInfo, type CompletenessField } from "@/lib/articleDraft";
 import { ApiError, downloadMainFile, submitArticle, type Article } from "@/services/articleServices";
-import { CompletenessBadge, DeadlineBanner, DraftStatusBadge } from "./ArticleDraftBadges";
+import { DeadlineBanner, DraftStatusBadge } from "./ArticleDraftBadges";
 import { SubmitConfirmDialog } from "./ArticleDraftDialogs";
 
 // Lo que espera recibir el componente
@@ -100,10 +100,9 @@ const ArticleDraftDetail : React.FC<ArticleDraftDetailProps> = ({ article }) => 
           </h2>
           <hr className="bg-slate-100" />
 
-          {/* Estado, completitud y deadline */}
+          {/* Estado y deadline */}
           <div className="flex flex-row gap-2">
             <DraftStatusBadge />
-            <CompletenessBadge missing={missingFields} />
           </div>
           <DeadlineBanner deadline={article.session?.deadline} />
 
