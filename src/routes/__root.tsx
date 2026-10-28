@@ -2,14 +2,14 @@ import { createRootRoute, Link, Outlet, useLocation, useNavigate } from '@tansta
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { RoleProvider, useRole } from '@/contexts/RoleContext';
-import { Armchair, Menu, X } from 'lucide-react';
+import { Armchair, Bell, Menu, X } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { InvitationsNavLabel } from '@/components/reviewer/invitations/InvitationsNavLabel';
 import { Button } from '@/components/ui/button';
 import { NavConference } from '@/components/conference/NavConference';
 import { useQuery } from '@tanstack/react-query';
-import { getUserFullData } from '@/services/userServices';
+import { getAllNotifications, getUserFullData } from '@/services/userServices';
 
 const RootLayoutContent = () => {
   const location = useLocation();
@@ -24,6 +24,13 @@ const RootLayoutContent = () => {
     queryFn: getUserFullData,
     enabled: !!user,
   });
+
+  const { data: notifications = [] } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: getAllNotifications,
+    enabled: !!user,
+  });
+  const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   const handleLogout = () => {
     try {
@@ -98,7 +105,27 @@ const RootLayoutContent = () => {
     }
 
     const commonAuthLinks = [
-      { to: '/notifications', label: 'Notificaciones' },
+      {
+        to: '/notifications',
+        label: (
+          <>
+            <span className="relative inline-flex">
+              <Bell aria-hidden="true" />
+              {unreadCount > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-2 -top-2 inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] leading-4 text-white"
+                >
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </span>
+            <span className="sr-only">
+              Notificaciones{unreadCount > 0 ? `, ${unreadCount} sin leer` : ''}
+            </span>
+          </>
+        ),
+      },
       { to: '/conference/view', label: 'Conferencias' },
     ];
 
@@ -107,7 +134,7 @@ const RootLayoutContent = () => {
     }
 
     return commonAuthLinks;
-  }, [user]);
+  }, [user, unreadCount]);
 
   const normalize = (p: string) => (p ? p.replace(/\/+$/, '') || '/' : '/');
   const current = normalize(location?.pathname ?? '/');
@@ -129,7 +156,7 @@ const RootLayoutContent = () => {
               <Link 
                 key={link.to}
                 to={link.to}
-                className="px-3 py-1 rounded-md hover:bg-gray-800 [&.active]:bg-slate-700 [&.active]:text-white"
+                className="inline-flex items-center justify-center px-3 py-1 rounded-md hover:bg-gray-800 [&.active]:bg-slate-700 [&.active]:text-white"
               >
                 {link.label}
               </Link>
