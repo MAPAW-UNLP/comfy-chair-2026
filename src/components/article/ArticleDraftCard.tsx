@@ -10,8 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from '@tanstack/react-router';
 import { EyeIcon, FilePenLineIcon } from "lucide-react";
 import { type Article } from "@/services/articleServices";
-import { getArticleMissingFields } from "@/lib/articleDraft";
-import { CompletenessBadge, DeadlineBanner, DraftStatusBadge } from "./ArticleDraftBadges";
+import { DeadlineBanner, DraftStatusBadge } from "./ArticleDraftBadges";
 
 // Lo que espera recibir el componente
 export interface ArticleDraftCardProps {
@@ -25,8 +24,6 @@ const ArticleDraftCard : React.FC<ArticleDraftCardProps> = ({ article }) => {
   const navigate = useNavigate();
   const navigateEditArticle = () => {navigate({ to: `/article/edit/${article.id}` });};
   const navigateDetailArticle = () => {navigate({ to: `/article/detail/${article.id}` });};
-
-  const missingFields = getArticleMissingFields(article);
 
   //------------------------------------------------------------
   // Renderizado del componente
@@ -59,16 +56,10 @@ const ArticleDraftCard : React.FC<ArticleDraftCardProps> = ({ article }) => {
         Continuar edición
       </Button>
 
-      {/* Estado y completitud */}
-      <div className="flex gap-2">
-        <div className="flex-1 flex flex-col gap-1">
-          <span className="text-sm text-slate-900 font-medium text-start">Estado</span>
-          <DraftStatusBadge />
-        </div>
-        <div className="flex-1 flex flex-col gap-1">
-          <span className="text-sm text-slate-900 font-medium text-start">Para subir</span>
-          <CompletenessBadge missing={missingFields} />
-        </div>
+      {/* Estado */}
+      <div className="flex flex-col gap-1">
+        <span className="text-sm text-slate-900 font-medium text-start">Estado</span>
+        <DraftStatusBadge />
       </div>
 
       <DeadlineBanner deadline={article.session?.deadline} />

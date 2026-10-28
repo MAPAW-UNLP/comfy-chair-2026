@@ -1,15 +1,13 @@
 // --------------------------------------------------------------------------------------
 //
 // Grupo 2 - Badges y banners que se muestran en un artículo en borrador:
-// estado ("Borrador"), completitud ("Faltan N campos" / "Listo para subir") y deadline.
+// estado ("Borrador") y deadline.
 //
 // --------------------------------------------------------------------------------------
 
-import { useState } from "react";
-import { AlarmClockIcon, CheckIcon } from "lucide-react";
+import { AlarmClockIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { completenessLabels, getDeadlineInfo, type CompletenessField } from "@/lib/articleDraft";
+import { getDeadlineInfo } from "@/lib/articleDraft";
 
 const pillBase = "flex-1 flex items-center justify-center gap-1 rounded-md border px-3 py-2 text-sm";
 
@@ -19,41 +17,6 @@ export function DraftStatusBadge({ label = "Borrador", className }: { label?: st
     <span className={cn(pillBase, "border-dashed border-amber-400 bg-amber-100 text-amber-900", className)}>
       {label}
     </span>
-  );
-}
-
-// Badge de completitud: cuántos campos faltan para poder subir.
-// Al tocarlo (o pasar el mouse) muestra cuáles son.
-export function CompletenessBadge({ missing, className }: { missing: CompletenessField[]; className?: string }) {
-  const [open, setOpen] = useState<boolean>(false);
-
-  if (missing.length === 0) {
-    return (
-      <span className={cn(pillBase, "border-green-300 bg-green-50 text-green-800", className)}>
-        <CheckIcon className="size-4" /> Listo para subir
-      </span>
-    );
-  }
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          // Hover solo con mouse: en pantallas táctiles el toque ya abre/cierra el popover
-          onPointerEnter={(e) => e.pointerType === "mouse" && setOpen(true)}
-          onPointerLeave={(e) => e.pointerType === "mouse" && setOpen(false)}
-          className={cn(pillBase, "cursor-pointer border-orange-300 bg-orange-50 text-orange-800", className)}
-        >
-          {missing.length === 1 ? "Falta 1 para subir" : `Faltan ${missing.length} para subir`}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto max-w-64 text-sm">
-        <p className="font-semibold">Para subir, completá:</p>
-        <ul className="list-disc pl-5">
-          {missing.map((field) => <li key={field}>{completenessLabels[field]}</li>)}
-        </ul>
-      </PopoverContent>
-    </Popover>
   );
 }
 

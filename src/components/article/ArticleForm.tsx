@@ -26,7 +26,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { downloadMainFile, downloadSourceFile } from "@/services/articleServices";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CompletenessBadge, DeadlineBanner, DraftStatusBadge } from "./ArticleDraftBadges";
+import { DeadlineBanner, DraftStatusBadge } from "./ArticleDraftBadges";
 import { SubmitConfirmDialog, UnsavedChangesDialog } from "./ArticleDraftDialogs";
 
 // Importaciones de servicios
@@ -616,7 +616,6 @@ const extensionesFormateadas = (() => {
         <div className="flex flex-col gap-2">
           <div className="flex flex-row gap-2">
             <DraftStatusBadge label={editMode ? "Borrador" : "Sin guardar"} />
-            <CompletenessBadge missing={missingFields} />
           </div>
           <DeadlineBanner deadline={currentSession?.deadline} />
         </div>
