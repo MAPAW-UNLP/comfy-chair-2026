@@ -44,7 +44,6 @@ type CompleteReviewerInfo = Omit<ReviewerInfo, "email" | "interest"> & {
   assigned?: boolean
 }
 
-const MAX_ASSIGNED = 3
 const ITEMS_PER_PAGE = 5
 
 const interestLabels: Record<CompleteReviewerInfo["interest"], string> = {
@@ -165,11 +164,6 @@ export function PanelSessionChair() {
 
     if (!user) {
       toast.error("No se pudo identificar al usuario autenticado.")
-      return
-    }
-
-    if (assignedCount >= MAX_ASSIGNED) {
-      toast.error(`El máximo permitido es de ${MAX_ASSIGNED} revisores.`)
       return
     }
 
@@ -448,8 +442,7 @@ export function PanelSessionChair() {
           <div className="flex-1 overflow-y-auto px-6 py-5">
 
             {/* Resumen de asignaciones */}
-            <div className="grid grid-cols-2 gap-3 mb-7">
-
+            <div className="mb-7">
               <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <Users className="h-4 w-4" />
@@ -462,41 +455,9 @@ export function PanelSessionChair() {
                   </span>
 
                   <span className="text-sm text-gray-400">
-                    de {MAX_ASSIGNED}
+                    {assignedCount === 1 ? "revisor asignado" : "revisores asignados"}
                   </span>
                 </div>
-
-                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                  <div
-                    className="h-full rounded-full bg-gray-800 transition-all duration-300"
-                    style={{
-                      width: `${(assignedCount / MAX_ASSIGNED) * 100}%`,
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <Plus className="h-4 w-4" />
-                  Lugares disponibles
-                </div>
-
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-3xl font-bold tracking-tight text-gray-900">
-                    {Math.max(MAX_ASSIGNED - assignedCount, 0)}
-                  </span>
-
-                  <span className="text-sm text-gray-400">
-                    disponibles
-                  </span>
-                </div>
-
-                <p className="mt-3 text-xs text-gray-500">
-                  {assignedCount >= MAX_ASSIGNED
-                    ? "Se alcanzó el máximo de asignaciones."
-                    : "Podés asignar más revisores."}
-                </p>
               </div>
             </div>
 
@@ -556,8 +517,8 @@ export function PanelSessionChair() {
                     <div
                       key={reviewer.id}
                       className={`flex items-center justify-between gap-3 p-4 transition-colors ${index !== visibleReviewers.length - 1
-                          ? "border-b border-gray-100"
-                          : ""
+                        ? "border-b border-gray-100"
+                        : ""
                         } ${isAssigned
                           ? "bg-gray-50/70"
                           : "bg-white hover:bg-gray-50"
@@ -567,8 +528,8 @@ export function PanelSessionChair() {
                       <div className="flex min-w-0 items-center gap-3">
                         <div
                           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${isAssigned
-                              ? "bg-gray-800 text-white"
-                              : "bg-gray-100 text-gray-600"
+                            ? "bg-gray-800 text-white"
+                            : "bg-gray-100 text-gray-600"
                             }`}
                         >
                           {reviewer.full_name
@@ -609,18 +570,15 @@ export function PanelSessionChair() {
                         type="button"
                         variant={isAssigned ? "outline" : "default"}
                         size="sm"
-                        disabled={
-                          processingReviewerId !== null ||
-                          (!isAssigned && assignedCount >= MAX_ASSIGNED)
-                        }
+                        disabled={processingReviewerId !== null}
                         onClick={() =>
                           isAssigned
                             ? handleRemove(reviewer.id)
                             : handleAssign(reviewer.id)
                         }
                         className={`shrink-0 transition-colors ${isAssigned
-                            ? "border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
-                            : "bg-gray-800 text-white hover:bg-gray-700"
+                          ? "border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+                          : "bg-gray-800 text-white hover:bg-gray-700"
                           }`}
                       >
                         {isProcessing ? (
@@ -691,7 +649,7 @@ export function PanelSessionChair() {
           {/* Pie del modal */}
           <div className="flex items-center justify-between gap-4 border-t border-gray-200 bg-gray-50 px-6 py-4">
             <p className="hidden text-xs text-gray-500 sm:block">
-              Máximo {MAX_ASSIGNED} revisores por artículo.
+              Gestioná los revisores asignados a este artículo.
             </p>
 
             <Button
