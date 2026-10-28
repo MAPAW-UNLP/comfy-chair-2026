@@ -11,13 +11,14 @@ function formatDate(value?: string) {
 
 type AuthorConferenceCardProps = {
   conference: Conference;
+  esAutor?: boolean;
 };
 
-function AuthorConferenceCard({ conference }: AuthorConferenceCardProps) {
+function AuthorConferenceCard({ conference, esAutor }: AuthorConferenceCardProps) {
   return (
     <Link
-      to="/conference/$id"
-      params={{ id: String(conference.id) }}
+      to={esAutor ? '/articles/$conferenceId' : '/conference/$id'}
+      params={esAutor ? { conferenceId: String(conference.id) } : { id: String(conference.id) }}
       className="block h-full min-w-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <Card className="h-full w-full min-w-0 cursor-pointer gap-3 py-4 transition-colors hover:border-primary/50 hover:bg-card/60">
