@@ -88,11 +88,12 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [authors, setAuthors] = useState<User[]>([]);
   const [correspondingAuthor, setCorrespondingAuthor] = useState<string>("");
+
+
   // Obtener la conferencia actual seleccionada
   const currentConference = conferences.find((c) => c.id === selectedConference);
   // Ajusta 'accepts_multiple_sources' según la propiedad real de tu modelo Conference
   const acceptsMultipleSources = currentConference?.sources_multiple === true;
-
 
   // Manejo de archivos
   const mainFileRef = useRef<HTMLInputElement>(null);
@@ -112,6 +113,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const handleMainFileClick = () => mainFileRef.current?.click();
 
   const handleMainFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log(sourceFiles);
     const file = event.target.files?.[0];
     if (file) {
       setMainFile(file);
@@ -459,7 +461,7 @@ const extensionesFormateadas = (() => {
 
       {/* Titulo del Form */}
       <h2 className="text-lg font-bold italic text-slate-500 text-center">
-        {!editMode ? "Alta de Submission" : "Editar Submission"}
+        {!editMode ? "Alta de Articulo" : "Editar Articulo"}
       </h2>
 
       <hr className="bg-slate-100" />
@@ -648,7 +650,7 @@ const extensionesFormateadas = (() => {
 
       {/* Combobox de autores */}
       <div className="flex-1 flex flex-col gap-2">
-        <Label htmlFor="autor">Autores del Submission {errors.authors && <p className="text-destructive">{errors.authors}</p>}</Label>
+        <Label htmlFor="autor">Autores del Articulo {errors.authors && <p className="text-destructive">{errors.authors}</p>}</Label>
         <UserCombobox onValueChange={handleAgregarAutor} backgroundWhite={true} users={availableUsers} />
       </div>
 
