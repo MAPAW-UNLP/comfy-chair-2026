@@ -19,18 +19,4 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  server: {
-    allowedHosts: [
-      '.ngrok-free.app',
-      '.ngrok-free.dev',
-      '.ngrok.app',
-      '.ngrok.io',
-    ],
-    proxy: {
-      '/api': { target: 'http://localhost:8000', changeOrigin: true },
-      '/user/': { target: 'http://localhost:8000', changeOrigin: true },
-      '/notifications/': { target: 'http://localhost:8000', changeOrigin: true },
-      '/media': { target: 'http://localhost:8000', changeOrigin: true },
-    },
-  },
 });
