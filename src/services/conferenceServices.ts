@@ -89,7 +89,7 @@ export const createConference = async (
   try {
 
     //prueba para agregar admin
-    // const response = await api.post('/user/register-admin/', {
+    // const response = await api.post('/api/user/register-admin/', {
     //   full_name: "nicolas admin",
     //   affiliation: "unlp",
     //   email: "nicoarditi13@gmail.com",

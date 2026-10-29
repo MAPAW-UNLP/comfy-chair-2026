@@ -90,7 +90,7 @@ export interface ProcessedConference {
 // GRUPO 1: Trae una lista de usuarios registrados - Usado también por el grupo 3
 //------------------------------------------------------------
 export const getAllUsers = async (): Promise<User[]> => {
-  const response = await api.get('/user/getUsers');
+  const response = await api.get('/api/user/getUsers');
   return response.data;
 }
 
@@ -122,7 +122,7 @@ export const requestChairReplacement = async (
 }
 
 export const getUserFullData = async (): Promise<ProcessedConference[]> => {
-  const response = await api.get('/user/user-full-data/');
+  const response = await api.get('/api/user/user-full-data/');
   const conferences: UserConference[] = response.data.conferences;
   
   // Procesar la respuesta para extraer roles únicos por conferencia
@@ -176,24 +176,24 @@ export interface MarkAsReadResponse {
 
 // Get all notifications for authenticated user
 export const getAllNotifications = async (): Promise<Notification[]> => {
-  const response = await api.get('/notifications/');
+  const response = await api.get('/api/notifications/');
   return response.data;
 }
 
 // Mark notification as read
 export const markNotificationAsRead = async (notificationId: number): Promise<MarkAsReadResponse> => {
-  const response = await api.post(`/notifications/${notificationId}/read/`);
+  const response = await api.post(`/api/notifications/${notificationId}/read/`);
   return response.data;
 }
 
 // Necesario para grupo 3
 export const getCommonUsers= async (): Promise<User[]> =>{
-  const response = await api.get('/user/getCommonUsers');
+  const response = await api.get('/api/user/getCommonUsers');
   return response.data;
 }
 
 export const getUserById= async (id: number): Promise<User> =>{
-  const response = await api.get(`/user/getUserById/${id}`);
+  const response = await api.get(`/api/user/getUserById/${id}`);
   return response.data;
 }
 
@@ -210,7 +210,7 @@ export interface UpdateUserDataResponse {
 }
 
 export const updateUserData = async (data: UpdateUserDataPayload): Promise<UpdateUserDataResponse> => {
-  const response = await api.put('/user/update/', data);
+  const response = await api.put('/api/user/update/', data);
   return response.data;
 }
 
@@ -226,7 +226,7 @@ export interface UpdatePasswordResponse {
 }
 
 export const updateUserPassword = async (data: UpdatePasswordPayload): Promise<UpdatePasswordResponse> => {
-  const response = await api.put('/user/update-password/', data);
+  const response = await api.put('/api/user/update-password/', data);
   return response.data;
 }
 
