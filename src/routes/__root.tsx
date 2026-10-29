@@ -62,6 +62,8 @@ const RootLayoutContent = () => {
       navigate({ to: `/articles/${selectedRole.conferenceId}`, replace: true });
     } else if (normalizedRole === 'revisor') {
       navigate({ to: '/reviewer' });
+    }else if (normalizedRole === 'chair') {
+      navigate({ to: '/chairs/select-session' });
     }
   };
 
