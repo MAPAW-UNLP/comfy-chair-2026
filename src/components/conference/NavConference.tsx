@@ -1,3 +1,5 @@
+// src/components/conference/NavConference.tsx
+
 import { Link } from '@tanstack/react-router';
 import { 
   DropdownMenu, 
@@ -32,7 +34,6 @@ export function NavConference({
     return role.charAt(0).toUpperCase() + role.slice(1);
   };
 
-  // Definir la ruta según el rol o la landing de la conferencia
   const getConferenceHomeRoute = () => {
     const role = currentRole.toLowerCase().trim();
     if (role === 'autor') {
@@ -41,70 +42,27 @@ export function NavConference({
     if (role === 'revisor') {
       return '/reviewer';
     }
-    // Enlace por defecto al dashboard o vista principal de la conferencia
     return `/articles/${conferenceId}`;
   };
 
+  // Filtrar los otros roles disponibles para cambiar
+  const otherRoles = availableRoles.filter(
+    (r) => r.toLowerCase().trim() !== currentRole.toLowerCase().trim()
+  );
+
   return (
-    <div className="bg-black text-white px-6 py-2.5 flex justify-between items-center border-t border-slate-800 text-sm">
-      {/* Izquierda: Nombre de la conferencia como enlace */}
+    <div className="bg-slate-950 text-white px-4 md:px-6 py-2 flex justify-between items-center border-t border-slate-800 text-sm">
+      {/* Izquierda: Nombre de la conferencia */}
       <Link 
         to={getConferenceHomeRoute()} 
-        className="font-semibold text-base hover:underline focus:outline-none focus:ring-1 focus:ring-slate-400 rounded px-1 -ml-1 transition-all"
+        className="font-semibold text-sm md:text-base hover:underline focus:outline-none focus:ring-1 focus:ring-slate-400 rounded px-1 -ml-1 transition-all"
       >
         {title}
       </Link>
 
-      {/* Derecha: Selector de Rol y enlaces */}
+      {/* Derecha: Opciones y Selector de Rol */}
       <div className="flex items-center gap-4">
-        {/* Selector Dropdown de Rol */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-white hover:bg-slate-800 hover:text-white h-8 px-2 flex items-center gap-1.5 font-normal"
-            >
-              Rol: {formatRoleName(currentRole)} <ChevronDown className="h-3.5 w-3.5 opacity-70" />
-            </Button>
-          </DropdownMenuTrigger>
-          
-          <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-white min-w-[160px]">
-            {/* 📱 En Mobile: Opciones dentro del dropdown */}
-            <div className="md:hidden">
-              {opciones.map((link) => (
-                <DropdownMenuItem key={link.to} asChild className="focus:bg-slate-800 focus:text-white cursor-pointer">
-                  <Link to={link.to} className="w-full block">
-                    {link.label}
-                  </Link>
-                </DropdownMenuItem>
-              ))}
-              
-              {opciones.length > 0 && <DropdownMenuSeparator className="bg-slate-800" />}
-              
-              <DropdownMenuLabel className="text-xs text-slate-400 font-normal">
-                Cambiar rol
-              </DropdownMenuLabel>
-            </div>
-
-            {/* Listado de roles para cambiar */}
-            {availableRoles.map((role) => {
-              const formatted = formatRoleName(role);
-              const isCurrent = role.toLowerCase() === currentRole.toLowerCase();
-              return (
-                <DropdownMenuItem 
-                  key={role}
-                  onClick={() => onSelectRole(role)}
-                  className={`cursor-pointer focus:bg-slate-800 focus:text-white ${isCurrent ? 'bg-slate-800 font-medium' : ''}`}
-                >
-                  {formatted}
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* 🖥️ En Desktop: Opciones horizontales afuera del dropdown */}
+        {/* En Desktop: Links horizontales visibles */}
         <div className="hidden md:flex items-center gap-2">
           {opciones.map((link) => (
             <Link 
@@ -116,6 +74,51 @@ export function NavConference({
             </Link>
           ))}
         </div>
+
+        {/* Dropdown de Rol (Visible tanto en Desktop como Mobile) */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-white hover:bg-slate-800 hover:text-white h-8 px-2 flex items-center gap-1.5 font-normal text-xs md:text-sm"
+            >
+              Rol: {formatRoleName(currentRole)} <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+            </Button>
+          </DropdownMenuTrigger>
+          
+          <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-white min-w-[160px] z-50">
+            {/* Opciones propias del rol (ej: Mis artículos) */}
+            {opciones.map((link) => (
+              <DropdownMenuItem key={link.to} asChild className="focus:bg-slate-800 focus:text-white cursor-pointer">
+                <Link to={link.to} className="w-full block px-2 py-1.5 text-sm">
+                  {link.label}
+                </Link>
+              </DropdownMenuItem>
+            ))}
+            
+            {opciones.length > 0 && <DropdownMenuSeparator className="bg-slate-800" />}
+            
+            {/* Sección Cambiar rol */}
+            {otherRoles.length > 0 && (
+              <>
+                <DropdownMenuLabel className="text-xs text-slate-400 font-normal px-2 py-1">
+                  Cambiar rol
+                </DropdownMenuLabel>
+
+                {otherRoles.map((role) => (
+                  <DropdownMenuItem 
+                    key={role}
+                    onClick={() => onSelectRole(role)}
+                    className="cursor-pointer focus:bg-slate-800 focus:text-white px-2 py-1.5 text-sm"
+                  >
+                    {formatRoleName(role)}
+                  </DropdownMenuItem>
+                ))}
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
