@@ -81,7 +81,16 @@ function DashboardPage() {
         `Rol: ${role}\n\n` +
         `Esta funcionalidad redirigirá a la página correspondiente del rol una vez que las rutas estén completamente implementadas.`
     )
+    
   }
+  const handleConferenceClick = (conferenceId: number) => {
+    localStorage.setItem("selectedConference", String(conferenceId));
+    
+    navigate({
+      to: "/chairs/conference/$conferenceId/sessions",
+      params: { conferenceId: String(conferenceId) },
+    });
+  };
 
   return (
     <div className="min-h-[calc(100dvh-64px)] bg-background p-4 md:p-8">
@@ -193,7 +202,21 @@ function DashboardPage() {
                 {!isLoading && !isError && conferences && conferences.length > 0 && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {conferences.map((conference) => (
-                      <Card key={conference.conference_id} className="border-2 hover:border-primary/50 transition-colors">
+                      <Card 
+                      key={conference.conference_id} 
+                      // Condicionamos las clases: solo tendrá cursor-pointer si es chair
+                      className={`border-2 transition-colors shadow-sm ${
+                        conference.roles.map(r => r.toLowerCase()).includes('chair') 
+                          ? 'cursor-pointer hover:border-primary/50 hover:shadow-md' 
+                          : ''
+                      }`}
+                      // Condicionamos el clic: solo ejecuta la redirección si es chair
+                      onClick={() => {
+                        if (conference.roles.map(r => r.toLowerCase()).includes('chair')) {
+                          handleConferenceClick(conference.conference_id)
+                        }
+                      }}
+                        >
                         <CardHeader>
                           <CardTitle className="text-lg">{conference.conference_name}</CardTitle>
                           <CardDescription>
@@ -209,8 +232,11 @@ function DashboardPage() {
                                   key={role}
                                   variant="secondary"
                                   className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-                                  onClick={() => handleRoleClick(conference, role)}
-                                >
+                                  onClick={(e) => {
+                                    e.stopPropagation(); 
+                                    handleRoleClick(conference, role);
+                                  }}
+                                  >
                                   {role}
                                 </Badge>
                               ))}
