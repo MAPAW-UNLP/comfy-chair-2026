@@ -10,6 +10,7 @@ import {
 import { Route } from '@/routes/_auth/conference/view';
 import { useEffect, useState } from 'react';
 import { SearchBar } from './ConferenceSearch';
+import type { ChairSummary } from '@/services/userServices';
 
 type VISTA_CHOICES = 'single blind' | 'double blind';
 export type ALLOWED_EXTENSIONS_CHOICES = 'pdf' | 'docx' | 'txt';
@@ -26,6 +27,7 @@ export type Conference = {
   review_end?: string | null;
   blind_kind: VISTA_CHOICES;
   chairs?: number[];
+  chairs_detail?: ChairSummary[];
   sources_multiple: boolean;
   allowed_extensions: ALLOWED_EXTENSIONS_CHOICES[];
 };
@@ -61,10 +63,10 @@ function ConferenceApp() {
   }, [confTerminadas]);
 
   return (
-    <div className="flex flex-col justify-start items-center gap-5 mt-3">
-      <h1 className="text-3xl font-bold">Conferencias</h1>
+    <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-start gap-4 px-3 py-4 sm:gap-5 sm:px-5">
+      <h1 className="text-2xl font-bold sm:text-3xl">Conferencias</h1>
 
-      <div className="flex justify-center items-center gap-2 px-5 w-full">
+      <div className="flex w-full items-center justify-center gap-2">
         <SearchBar
           datos={verActivas ? confActivas : confTerminadas}
           setResultados={setConferencias}
@@ -72,33 +74,32 @@ function ConferenceApp() {
         />
       </div>
 
-      <div className="flex flex-col sm:flex-row justify-between items-center w-full px-5 gap-2">
-        <div className="flex-1"></div>
+      <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Tabs
           value={verActivas ? 'activas' : 'terminadas'}
           onValueChange={(v) => setVerActivas(v === 'activas')}
-          className="flex items-center"
+          className="flex w-full items-center sm:w-auto"
         >
-          <TabsList className="py-5 shadow">
+          <TabsList className="grid h-11 w-full grid-cols-2 shadow sm:h-10 sm:w-auto">
             <TabsTrigger
               value="activas"
-              className="cursor-pointer data-[state=active]:font-bold p-4 text-lg"
+              className="cursor-pointer px-4 py-2 text-sm data-[state=active]:font-bold sm:text-base"
             >
               Activas
             </TabsTrigger>
             <TabsTrigger
               value="terminadas"
-              className="cursor-pointer data-[state=active]:font-bold p-4 text-lg"
+              className="cursor-pointer px-4 py-2 text-sm data-[state=active]:font-bold sm:text-base"
             >
               Terminadas
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="flex-1 flex justify-end">
+        <div className="flex w-full sm:w-auto sm:justify-end">
           <Button
             size={'lg'}
             onClick={irAltaConferencia}
-            className="cursor-pointer text-md "
+            className="w-full cursor-pointer text-base sm:w-auto"
           >
             <Plus size={16} />
             Conferencia
@@ -106,12 +107,12 @@ function ConferenceApp() {
         </div>
       </div>
 
-      <div className="flex flex-col items-center sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full px-5">
+      <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {conferencias.length > 0 ? (
           conferencias.map((c) => {
             return <ConferenceBox key={c.id} conferencia={c} />;
           })
-        ) : <p>No hay conferencias.</p>}
+        ) : <p className="col-span-full py-8 text-center text-sm text-muted-foreground">No hay conferencias.</p>}
       </div>
     </div>
   );

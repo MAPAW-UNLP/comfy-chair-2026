@@ -5,7 +5,7 @@
 // -------------------------------------------------------------------------------------- 
 
 import { useEffect, useState } from "react";
-import { getAllUsers, type User } from "@/services/userServices";
+import { getCommonUsers, type User } from "@/services/userServices";
 
 export function useFetchUsers() {
   const [userList, setUsers] = useState<User[]>([]);
@@ -14,7 +14,7 @@ export function useFetchUsers() {
   useEffect(() => {
     async function fetch() {
       try {
-        const data = await getAllUsers();
+        const data = await getCommonUsers();
         setUsers(data);
       } catch {
         console.error("Error al obtener los usuarios");

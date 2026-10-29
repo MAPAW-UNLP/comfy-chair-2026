@@ -1,6 +1,6 @@
 /* Componente que muestra una sesión individual */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { axiosInstance as api } from '@/services/api';
 import { deleteSession, type Session } from '@/services/sessionServices';
 import { Loader2, Trash2 } from 'lucide-react';
@@ -10,7 +10,6 @@ import { Button } from '../ui/button';
 import ModalEliminar from './ModalDelete';
 import { useNavigate } from '@tanstack/react-router';
 import EditarSession from './SessionEdit';
-import { getAllUsers, type User } from '@/services/userServices';
 import {
   getArticleBySessionId,
   type Article,
@@ -24,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Breadcrumb from '../ui/Breadcrumb';
 import { useRole } from '@/contexts/RoleContext';
 import { canManageSessions } from './sessionPermissions';
+import ResolveReviewerAssignmentsDialog from './ResolveReviewerAssignmentsDialog';
 
 function ASession() {
   const sessionInicial = Route.useLoaderData();
@@ -31,15 +31,17 @@ function ASession() {
   const [session, setSession] = useState<Session | null>(sessionInicial);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [verEstadisticas, setVerEstadisticas] = useState(false);
-  const [chairs, setChairs] = useState<User[] | []>([]);
   const [articles, setArticles] = useState<Article[] | []>([]);
   const [filteredArticles, setFilteredArticles] = useState<Article[] | []>([]);
   const navigate = useNavigate();
+  const navigateToSession = Route.useNavigate();
+  const { editar, deshabilitar, resolverRevisiones, resolverNotificacion } = Route.useSearch();
   const { user } = useAuth();
   const { selectedRole } = useRole();
   const canManage = canManageSessions(user, session?.conference);
+  const conferenceId = session?.conference?.id;
 
-  const fetchSession = async () => {
+  const fetchSession = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get(`/api/session/${sessionInicial.id}/`);
@@ -49,7 +51,41 @@ function ASession() {
     } finally {
       setLoading(false);
     }
+  }, [sessionInicial.id]);
+
+  const handleSessionUpdated = async () => {
+    if (editar === 'true') {
+      await navigateToSession({
+        search: (previous) => ({ ...previous, editar: undefined }),
+        replace: true,
+      });
+    }
+    await fetchSession();
   };
+
+  const closeReviewerResolution = async () => {
+    await navigateToSession({
+      search: (previous) => ({
+        ...previous,
+        resolverRevisiones: undefined,
+        resolverNotificacion: undefined,
+      }),
+      replace: true,
+    });
+  };
+
+  const markReviewerResolutionComplete = useCallback(() => {
+    if (!resolverNotificacion) return;
+    try {
+      window.sessionStorage.setItem(
+        `resolved-session-notification-${resolverNotificacion}`,
+        'true',
+      );
+    } catch (storageError) {
+      console.error('Could not persist session notification completion:', storageError);
+      toast.error('No se pudo guardar el estado de resolución de la notificación.');
+    }
+  }, [resolverNotificacion]);
 
   const handleEliminarSession = () => {
     setShowDeleteModal(true);
@@ -69,15 +105,7 @@ function ASession() {
 
   useEffect(() => {
     fetchSession();
-  }, []);
-
-  useEffect(() => {
-    const fetchChairs = async () => {
-      const data = await getAllUsers();
-      setChairs(data.filter((user) => session?.chairs.includes(user.id)));
-    };
-    fetchChairs();
-  }, []);
+  }, [fetchSession]);
 
   useEffect(() => {
     const fetchArticles = async () => {
@@ -116,19 +144,27 @@ function ASession() {
           </h1>
 
           {canManage && (
-            <EditarSession session={session!} onSessionUpdated={fetchSession} />
+            <EditarSession
+              session={session!}
+              onSessionUpdated={handleSessionUpdated}
+              initiallyOpen={editar === 'true'}
+              returnToUserId={deshabilitar}
+            />
           )}
         </div>
-        <p className="text-sm">Deadline {formatearFecha(session!.deadline)}</p>
+        <p className="text-sm">
+          Deadline {session!.deadline ? formatearFecha(session!.deadline) : 'Sin fecha'}
+        </p>
         {selectedRole?.role === 'revisor' &&
-          selectedRole.conferenceId === session!.conference?.id && (
+          conferenceId !== undefined &&
+          selectedRole.conferenceId === conferenceId && (
             <Button
               size={'sm'}
               className="w-fit cursor-pointer"
               onClick={() =>
                 navigate({
                   to: '/reviewer/bidding',
-                  search: { conferenceId: session!.conference?.id, sessionId: session!.id },
+                  search: { conferenceId, sessionId: session!.id },
                 })
               }
             >
@@ -146,7 +182,7 @@ function ASession() {
         </span>
         <h2 className="text-1xl font-bold">Chairs</h2>
         <p>
-          {chairs.map((ch) => {
+          {session!.chairs_detail?.map((ch) => {
             return <span key={ch.id}>{ch.full_name} </span>;
           })}
         </p>
@@ -233,6 +269,16 @@ function ASession() {
           title={session!.title}
           isConference={false}
           cerrar={() => setShowDeleteModal(false)}
+        />
+      )}
+      {canManage && resolverRevisiones === 'true' && user && session && (
+        <ResolveReviewerAssignmentsDialog
+          sessionId={session.id}
+          sessionTitle={session.title}
+          conferenceTitle={session.conference?.title ?? 'Conferencia'}
+          assignedById={Number(user.id)}
+          onComplete={markReviewerResolutionComplete}
+          onClose={() => void closeReviewerResolution()}
         />
       )}
     </div>

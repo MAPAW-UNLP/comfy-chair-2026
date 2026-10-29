@@ -21,16 +21,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Configure navigation callback for API interceptor
-    setNavigateToLogin(() => {
+    setNavigateToLogin((accountDisabled) => {
       setUser(null);
-      router.navigate({ to: '/login', search: { redirect: undefined, registered: undefined } });
+      router.navigate({
+        to: '/login',
+        search: {
+          redirect: undefined,
+          registered: undefined,
+          disabled: accountDisabled ? 'true' : undefined,
+        },
+      });
     });
 
     const checkAuth = async () => {
       // Check if user is logged in on mount
-      const currentUser = await authService.getCurrentUser();
-      setUser(currentUser);
-      setIsLoading(false);
+      try {
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
+      } catch (error) {
+        console.error('Error checking current user:', error);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
     };
     
     checkAuth();
@@ -65,4 +78,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
