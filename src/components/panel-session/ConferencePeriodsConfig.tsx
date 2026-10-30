@@ -1,11 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { toast } from 'sonner';
-import { getSession, type Session } from '@/services/sessionServices';
-import { updateConferencePeriods } from '@/services/conferenceServices';
+import { getConferenceById, updateConferencePeriods, type Conference } from '@/services/conferenceServices';
 import { Button } from '@/components/ui/button';
 import CustomCalendar from '@/components/conference/CustomCalendar';
 import { useAuth } from '@/contexts/AuthContext';
+import { canManageSessions } from '@/components/conference/sessionPermissions';
 
 type Periods = {
   submission_start: string;
@@ -31,7 +31,8 @@ function formatDate(value?: Date): string {
 export function ConferencePeriodsConfig() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [session, setSession] = useState<Session | null>(null);
+  const { conferenceId } = useSearch({ from: '/_auth/chairs/configuration' });
+  const [conference, setConference] = useState<Conference | null>(null);
   const [submissionStart, setSubmissionStart] = useState<Date>();
   const [submissionEnd, setSubmissionEnd] = useState<Date>();
   const [reviewStart, setReviewStart] = useState<Date>();
@@ -39,29 +40,47 @@ export function ConferencePeriodsConfig() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const goToSessions = (id: string) => {
+    navigate({
+      to: '/chairs/conference/$conferenceId/sessions',
+      params: { conferenceId: id },
+    });
+  };
+
   useEffect(() => {
-    const selectedSession = localStorage.getItem('selectedSession');
-    if (!selectedSession) {
+    if (!conferenceId) {
       navigate({ to: '/chairs/select-session' });
       return;
     }
 
-    getSession(selectedSession)
+    getConferenceById(Number(conferenceId))
       .then((data) => {
-        setSession(data);
-        const conference = data.conference;
-        setSubmissionStart(parseDate(conference?.submission_start));
-        setSubmissionEnd(parseDate(conference?.submission_end));
-        setReviewStart(parseDate(conference?.review_start));
-        setReviewEnd(parseDate(conference?.review_end));
+        if (!data) {
+          toast.error('No se pudo cargar la conferencia.');
+          navigate({ to: '/chairs/select-session' });
+          return;
+        }
+        if (!canManageSessions(user, data)) {
+          toast.error('No tenés permiso para configurar las fechas de esta conferencia.');
+          navigate({
+            to: '/chairs/conference/$conferenceId/sessions',
+            params: { conferenceId: String(data.id) },
+          });
+          return;
+        }
+        setConference(data);
+        setSubmissionStart(parseDate(data.submission_start));
+        setSubmissionEnd(parseDate(data.submission_end));
+        setReviewStart(parseDate(data.review_start));
+        setReviewEnd(parseDate(data.review_end));
       })
       .catch(() => toast.error('No se pudo cargar la conferencia.'))
       .finally(() => setLoading(false));
-  }, [navigate]);
+  }, [conferenceId, navigate, user]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!session?.conference?.id) return;
+    if (!conference?.id) return;
     if (!user?.id) {
       toast.error('No se pudo identificar al usuario.');
       return;
@@ -93,9 +112,9 @@ export function ConferencePeriodsConfig() {
 
     setSaving(true);
     try {
-      await updateConferencePeriods(session.conference.id, periods, String(user.id));
+      await updateConferencePeriods(conference.id, periods, String(user.id));
       toast.success('Configuración guardada.');
-      navigate({ to: '/chairs/panel-session' });
+      goToSessions(String(conference.id));
     } catch {
       toast.error('No se pudo guardar la configuración.');
     } finally {
@@ -137,7 +156,19 @@ export function ConferencePeriodsConfig() {
       </fieldset>
 
       <div className="flex justify-end gap-3">
-        <Button type="button" variant="outline" onClick={() => navigate({ to: '/chairs/panel-session' })}>Cancelar</Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            if (!conference?.id) {
+              navigate({ to: '/chairs/select-session' });
+              return;
+            }
+            goToSessions(String(conference.id));
+          }}
+        >
+          Cancelar
+        </Button>
         <Button type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</Button>
       </div>
     </form>

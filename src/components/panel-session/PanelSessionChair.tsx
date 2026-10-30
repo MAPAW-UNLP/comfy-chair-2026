@@ -3,7 +3,6 @@ import { Link, useNavigate } from "@tanstack/react-router"
 import {
   ClipboardCheck,
   UserSearch,
-  Settings,
   Plus,
   Trash2,
   ChevronLeft,
@@ -251,31 +250,6 @@ export function PanelSessionChair() {
 
       {/* Acciones de la sesión */}
       <div className="flex flex-col gap-4 mb-10">
-        {/* Configuración de fechas */}
-        <div className="bg-white border border-gray-300 rounded-xl shadow-sm p-6 flex items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="bg-gray-100 rounded-lg p-3">
-              <Settings size={32} className="text-gray-700" />
-            </div>
-
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">
-                Configuración de fechas
-              </h2>
-              <p className="text-sm text-gray-500 mt-1">
-                Configurá las ventanas de envío y revisión de artículos.
-              </p>
-            </div>
-          </div>
-
-          <Link
-            to="/chairs/configuration"
-            className="shrink-0 bg-gray-800 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-gray-700 transition"
-          >
-            Configurar
-          </Link>
-        </div>
-
         {/* Corte de sesión */}
         <div className="bg-white border border-gray-300 rounded-xl shadow-sm p-6 flex items-center justify-between gap-6">
           <div className="flex items-center gap-4">

@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Calendar, Loader2, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Loader2, Settings, Users } from 'lucide-react';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { getConferenceById, type Conference } from '@/services/conferenceServices';
 import { getSessionsByConference, type Session } from '@/services/sessionServices';
+import { useAuth } from '@/contexts/AuthContext';
+import { canManageSessions } from '@/components/conference/sessionPermissions';
 
 export function ChairConferenceSessions() {
   const { conferenceId } = useParams({ strict: false });
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [conference, setConference] = useState<Conference | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,9 +30,16 @@ export function ChairConferenceSessions() {
       .finally(() => setLoading(false));
   }, [conferenceId]);
 
+  const canConfigurePeriods = canManageSessions(user, conference);
+
   const selectSession = (sessionId: number) => {
     localStorage.setItem('selectedSession', String(sessionId));
     navigate({ to: '/chairs/panel-session' });
+  };
+
+  const openConfiguration = () => {
+    if (!conferenceId) return;
+    navigate({ to: '/chairs/configuration', search: { conferenceId } });
   };
 
   if (loading) {
@@ -51,16 +61,29 @@ export function ChairConferenceSessions() {
           <ArrowLeft className="h-4 w-4" />
           Volver a conferencias
         </button>
-        <div className="mb-8 rounded-2xl bg-slate-900 p-8 text-white">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-indigo-300">
-            Sesiones de la conferencia
-          </p>
-          <h1 className="mt-2 text-3xl font-bold">
-            {conference?.title ?? 'Conferencia'}
-          </h1>
-          <p className="mt-3 text-slate-300">
-            Seleccioná una sesión para abrir su panel de configuración.
-          </p>
+        <div className="mb-8 flex items-start justify-between gap-4 rounded-2xl bg-slate-900 p-8 text-white">
+          <div>
+            <p className="text-sm font-medium uppercase tracking-[0.2em] text-indigo-300">
+              Sesiones de la conferencia
+            </p>
+            <h1 className="mt-2 text-3xl font-bold">
+              {conference?.title ?? 'Conferencia'}
+            </h1>
+            <p className="mt-3 text-slate-300">
+              Seleccioná una sesión para abrir su panel de configuración.
+            </p>
+          </div>
+          {canConfigurePeriods && (
+            <button
+              type="button"
+              aria-label="Configurar fechas"
+              title="Configurar fechas"
+              onClick={openConfiguration}
+              className="rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
+            >
+              <Settings className="h-6 w-6" />
+            </button>
+          )}
         </div>
 
         {error ? (
