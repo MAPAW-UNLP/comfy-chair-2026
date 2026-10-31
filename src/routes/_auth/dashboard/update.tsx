@@ -175,9 +175,9 @@ function UpdateProfilePage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate({ to: '/dashboard' })}
+            onClick={() => navigate({ to: '/profile' })}
           >
-            ← Volver al Panel
+            ← Volver
           </Button>
           <div>
             <h1 className="text-3xl font-bold">Actualizar Datos</h1>
