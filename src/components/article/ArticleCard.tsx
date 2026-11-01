@@ -209,25 +209,28 @@ const ArticleCard : React.FC<ArticleCardProps> = ({ article, onDeleted }) => {
         <div className="basis-1/4 flex justify-center items-center">
           <DropdownMenu>
             <DropdownMenuTrigger>
-              <Button variant="outline" className="bg-slate-900 text-white flex items-center gap-2">
+              <Button variant="outline" className="cursor-pointer bg-slate-900 text-white flex items-center gap-2">
                 <span className="hidden sm:inline">Opciones</span>
                 <SettingsIcon className="rounded" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem onClick={navigateDetailArticle}>
+              <DropdownMenuItem onClick={navigateDetailArticle} className="cursor-pointer">
                 <EyeIcon/> Ver Detalle
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={irArticleHistoryPage} className="cursor-pointer">
+                <ClockIcon/> Ver Historial
+              </DropdownMenuItem>
               {((tiempoRestante !== "invalido") && (article.status === "reception")) && (
-                <DropdownMenuItem onClick={navigateEditArticle}>
+                <DropdownMenuItem onClick={navigateEditArticle} className="cursor-pointer">
                   <PencilIcon/> Editar Articulo
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => downloadMainFile(article.id, mainFileName!)}>
+              <DropdownMenuItem onClick={() => downloadMainFile(article.id, mainFileName!)} className="cursor-pointer">
                 <FileDownIcon/> Descargar Articulo
               </DropdownMenuItem>
               {article.type === "poster" && (
-                <DropdownMenuItem onClick={() => downloadSourceFile(article.id, sourceFileName!)}>
+                <DropdownMenuItem onClick={() => downloadSourceFile(article.id, sourceFileName!)} className="cursor-pointer">
                   <FileDownIcon/> Descargar Fuentes
                 </DropdownMenuItem>
               )}
@@ -241,11 +244,6 @@ const ArticleCard : React.FC<ArticleCardProps> = ({ article, onDeleted }) => {
                   onConfirm={() => handleDelete(article.id)}
                 />
               )}
-              
-              <DropdownMenuItem onClick={irArticleHistoryPage} className="cursor-pointer">
-                <ClockIcon/> Ver Historial
-              </DropdownMenuItem>
-                 
               
               {/* Opción de "Solicitar Baja": Solo visible si NO se ha solicitado aún */}
               {(article.status === "accepted") && !deletionRequested && (
@@ -275,7 +273,7 @@ const ArticleCard : React.FC<ArticleCardProps> = ({ article, onDeleted }) => {
           <span className="text-sm text-slate-900 font-medium text-start">Estado</span>
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="outline" className={`${estadoColor[article.status] ?? "bg-slate-900"} text-white w-full`}>
+              <Button variant="outline" className={`cursor-pointer ${estadoColor[article.status] ?? "bg-slate-900"} text-white w-full`}>
                 {estadoTexto[article.status] ?? "Desconocido"}
               </Button>
             </DialogTrigger>
@@ -295,7 +293,7 @@ const ArticleCard : React.FC<ArticleCardProps> = ({ article, onDeleted }) => {
           <span className="text-sm text-slate-900 font-medium text-start">Deadline</span>
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="outline" disabled={article.status !== "reception" || tiempoRestante === "invalido"} className={`w-full ${article.status === "reception" ? "bg-slate-900 text-white" : "bg-zinc-500 text-white"}`}>
+              <Button variant="outline" disabled={article.status !== "reception" || tiempoRestante === "invalido"} className={`cursor-pointer w-full ${article.status === "reception" ? "bg-slate-900 text-white" : "bg-zinc-500 text-white"}`}>
                 {article.status === "reception" && tiempoRestante !== "invalido" ? tiempoRestante || "..." : "Expirado"}
               </Button>
             </DialogTrigger>

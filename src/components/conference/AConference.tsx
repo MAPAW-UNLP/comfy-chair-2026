@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { SearchBar } from './ConferenceSearch';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import Statistics from './Statistics';
-import Breadcrumb from '../ui/Breadcrumb';
+import Breadcrumb from '../ui/breadcrumb';
 import { getArticlesByConferenceId, type Article } from '@/services/articleServices';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
@@ -40,7 +40,9 @@ function AConference() {
 
   const [verUsuarios, setVerUsuarios] = useState<boolean>(false);
   const esAdmin = user?.role === 'admin';
-  const esChair = Boolean(user?.id !== undefined && conferencia.chairs?.includes(user.id));
+  const esChair = Boolean(
+    user?.id !== undefined && conferencia.chairs?.includes(Number(user.id))
+  );
   const puedeVerUsuarios = esAdmin || esChair;
 
   const irEditarConferencia = () => {
@@ -65,7 +67,7 @@ function AConference() {
   };
 
   const onDelete = async () => {
-    await deleteConference(conferencia.id, user!.id);
+    await deleteConference(String(conferencia.id), user!.id);
     toast.warning('Conferencia eliminada');
     navigate({ to: '/conference/view' });
   };

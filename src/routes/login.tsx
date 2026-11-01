@@ -70,7 +70,15 @@ function LoginPage() {
       await login(formData.email, formData.password)
       console.log('Login successful')
     } catch (error) {
-      console.error('Login failed:', error)
+      if (axios.isAxiosError(error)) {
+        console.error('Login failed:', {
+          status: error.response?.status,
+          code: error.code,
+        })
+      } else {
+        console.error('Login failed with an unexpected error')
+      }
+
       if (axios.isAxiosError(error) &&
           error.response?.status === 403 &&
           error.response?.data?.code === 'account_disabled') {
@@ -79,13 +87,22 @@ function LoginPage() {
         return
       }
 
-      // Check if it's a 5xx server error
-      const axiosError = error as { response?: { status?: number } }
-      if (axiosError.response?.status && axiosError.response.status >= 500) {
+      if (axios.isAxiosError(error) && !error.response) {
+        setFormError(
+          'No se pudo conectar con el servidor. Verifica que el backend esté funcionando e inténtalo nuevamente.'
+        )
+        return
+      }
+
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined
+      if (status && status >= 500) {
         window.alert('Error del servidor. Por favor, intenta nuevamente más tarde.')
-      } else {
-        // For 4xx errors (wrong credentials, etc.), show a generic form error
+      } else if (status === 401) {
         setFormError('Email o contraseña incorrectos. Por favor, verifica tus datos.')
+      } else {
+        setFormError(
+          'No se pudo completar el inicio de sesión. Inténtalo nuevamente o contacta al soporte.'
+        )
       }
     } finally {
       setIsLoading(false)

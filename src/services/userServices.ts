@@ -76,6 +76,7 @@ export interface Session {
 export interface UserConference {
   conference_id: number;
   conference_name: string;
+  roles?: string[];
   sessions: Session[];
 }
 
@@ -128,6 +129,8 @@ export const getUserFullData = async (): Promise<ProcessedConference[]> => {
   const processedConferences: ProcessedConference[] = conferences.map((conference) => {
     // Recopilar todos los roles únicos de todas las sesiones
     const rolesSet = new Set<string>();
+
+    conference.roles?.forEach((role) => rolesSet.add(role));
     
     conference.sessions.forEach((session) => {
       session.roles.forEach((roleObj) => {

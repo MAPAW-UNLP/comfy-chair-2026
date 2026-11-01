@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react'
-import { createFileRoute, Link, useNavigate, useRouteContext } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, useRouteContext } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { useAuth } from '@/contexts/AuthContext'
 import { useRole } from '@/contexts/RoleContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import AuthorConferencesSection from '@/components/author/AuthorConferencesSection'
 import { getUserFullData, type ProcessedConference } from '@/services/userServices'
 
@@ -16,7 +14,7 @@ export const Route = createFileRoute('/_auth/dashboard/')({
 function DashboardPage() {
   const [savingRoleMsg, setSavingRoleMsg] = useState<string | null>(null)
 
-  const { logout } = useAuth()
+
   const navigate = useNavigate()
 
   // Get user from the parent _auth route context
@@ -31,6 +29,12 @@ function DashboardPage() {
     queryFn: getUserFullData,
   })
 
+  useEffect(() => {
+    try {
+      clearSelectedRole()
+    } catch {}
+  }, [])
+
   // Auto-hide the banner
   useEffect(() => {
     if (!savingRoleMsg) return
@@ -38,19 +42,11 @@ function DashboardPage() {
     return () => clearTimeout(t)
   }, [savingRoleMsg])
 
-  const handleLogout = () => {
-    // limpiar la selección de rol al cerrar sesión (grupo4)
-    try {
-      clearSelectedRole()
-    } catch {}
 
-    logout()
-    navigate({ to: '/login', search: { redirect: undefined, registered: undefined } })
-  }
 
   const handleRoleClick = (conference: ProcessedConference, role: string) => {
     const roleKey = String(role ?? '').toLowerCase().trim()
-
+    console.log(conferences);
     // Guardar selección (grupo4) para rutas que dependan de rol/conferencia
     try {
       setSelectedRole({
@@ -70,6 +66,11 @@ function DashboardPage() {
     // Comportamiento real de grupo4 para Revisor
     if (roleKey === 'revisor') {
       navigate({ to: '/reviewer' })
+      return
+    }
+
+    if (roleKey === 'chair') {
+      navigate({ to: '/chairs/select-session' })
       return
     }
 
@@ -99,46 +100,7 @@ function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* User Info Card - Small card on the side */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Información Personal</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <p className="text-sm text-muted-foreground">Nombre</p>
-                  <p className="font-medium">{user.full_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Email</p>
-                  <p className="font-medium text-sm">{user.email}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Afiliación</p>
-                  <p className="font-medium">{user.affiliation}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Rol</p>
-                  <p className="font-medium">{user.role}</p>
-                </div>
-
-                <Link to="/dashboard/update">
-                  <Button variant="outline" size="sm" className="w-full mt-4">
-                    Actualizar Datos
-                  </Button>
-                </Link>
-
-                <Button onClick={handleLogout} variant="destructive" size="sm" className="w-full mt-2">
-                  Cerrar Sesión
-                </Button>
-
-                
-              </CardContent>
-            </Card>
-          </div>
-
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Conferences Section */}
           <div className="lg:col-span-3 space-y-6">
             <Card>
@@ -191,9 +153,9 @@ function DashboardPage() {
                 )}
 
                 {!isLoading && !isError && conferences && conferences.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {conferences.map((conference) => (
-                      <Card key={conference.conference_id} className="border-2 hover:border-primary/50 transition-colors">
+                      <Card key={conference.conference_id} className="border-2">
                         <CardHeader>
                           <CardTitle className="text-lg">{conference.conference_name}</CardTitle>
                           <CardDescription>
@@ -202,17 +164,19 @@ function DashboardPage() {
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-2">
-                            <p className="text-sm font-medium text-muted-foreground mb-2">Accesos rápidos:</p>
+                            <p className="text-sm font-medium text-muted-foreground mb-2">Acceso rápido:</p>
                             <div className="flex flex-wrap gap-2">
                               {conference.roles.map((role) => (
-                                <Badge
+                                <Button
                                   key={role}
-                                  variant="secondary"
-                                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="cursor-pointer capitalize transition-colors hover:bg-primary hover:text-primary-foreground active:scale-[0.98]"
                                   onClick={() => handleRoleClick(conference, role)}
                                 >
                                   {role}
-                                </Badge>
+                                </Button>
                               ))}
                             </div>
                           </div>
