@@ -14,7 +14,7 @@ export const Route = createFileRoute('/_auth/dashboard/')({
 function DashboardPage() {
   const [savingRoleMsg, setSavingRoleMsg] = useState<string | null>(null)
 
-  
+
   const navigate = useNavigate()
 
   // Get user from the parent _auth route context
@@ -28,7 +28,7 @@ function DashboardPage() {
     queryKey: ['user-full-data'],
     queryFn: getUserFullData,
   })
- 
+
   useEffect(() => {
     try {
       clearSelectedRole()
@@ -42,7 +42,7 @@ function DashboardPage() {
     return () => clearTimeout(t)
   }, [savingRoleMsg])
 
-  
+
 
   const handleRoleClick = (conference: ProcessedConference, role: string) => {
     const roleKey = String(role ?? '').toLowerCase().trim()

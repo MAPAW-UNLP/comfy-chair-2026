@@ -1,17 +1,20 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { loginSchema, type LoginFormData } from '@/lib/validations'
 import { useAuth } from '@/contexts/AuthContext'
+import { ContactSupportDialog } from '@/components/auth/ContactSupportDialog'
 
 export const Route = createFileRoute('/login')({
   validateSearch: (search: Record<string, unknown>) => {
     return {
       redirect: (search.redirect as string) || undefined,
       registered: (search.registered as string) || undefined,
+      ...(search.disabled === 'true' ? { disabled: 'true' } : {}),
     }
   },
   component: LoginPage,
@@ -19,7 +22,7 @@ export const Route = createFileRoute('/login')({
 
 function LoginPage() {
   const navigate = useNavigate()
-  const { redirect, registered } = Route.useSearch()
+  const { redirect, registered, disabled } = Route.useSearch()
   const { login, user } = useAuth()
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -27,6 +30,9 @@ function LoginPage() {
   })
   const [errors, setErrors] = useState<Partial<LoginFormData>>({})
   const [formError, setFormError] = useState<string>('')
+  const [accountDisabled, setAccountDisabled] = useState(disabled === 'true')
+  const [disabledEmail, setDisabledEmail] = useState<string | null>(null)
+  const [supportOpen, setSupportOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   const handleInputChange = (field: keyof LoginFormData, value: string) => {
@@ -58,19 +64,45 @@ function LoginPage() {
     }
     setIsLoading(true)
     setFormError('')
+    setAccountDisabled(false)
+    setDisabledEmail(null)
     try {
       await login(formData.email, formData.password)
       console.log('Login successful')
     } catch (error) {
-      console.error('Login failed:', error)
-      
-      // Check if it's a 5xx server error
-      const axiosError = error as { response?: { status?: number } }
-      if (axiosError.response?.status && axiosError.response.status >= 500) {
-        window.alert('Error del servidor. Por favor, intenta nuevamente más tarde.')
+      if (axios.isAxiosError(error)) {
+        console.error('Login failed:', {
+          status: error.response?.status,
+          code: error.code,
+        })
       } else {
-        // For 4xx errors (wrong credentials, etc.), show a generic form error
+        console.error('Login failed with an unexpected error')
+      }
+
+      if (axios.isAxiosError(error) &&
+          error.response?.status === 403 &&
+          error.response?.data?.code === 'account_disabled') {
+        setAccountDisabled(true)
+        setDisabledEmail(formData.email)
+        return
+      }
+
+      if (axios.isAxiosError(error) && !error.response) {
+        setFormError(
+          'No se pudo conectar con el servidor. Verifica que el backend esté funcionando e inténtalo nuevamente.'
+        )
+        return
+      }
+
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined
+      if (status && status >= 500) {
+        window.alert('Error del servidor. Por favor, intenta nuevamente más tarde.')
+      } else if (status === 401) {
         setFormError('Email o contraseña incorrectos. Por favor, verifica tus datos.')
+      } else {
+        setFormError(
+          'No se pudo completar el inicio de sesión. Inténtalo nuevamente o contacta al soporte.'
+        )
       }
     } finally {
       setIsLoading(false)
@@ -95,6 +127,26 @@ function LoginPage() {
           {registered === 'true' && (
             <div className="mb-4 p-3 text-sm text-green-800 bg-green-100 border border-green-300 rounded-md">
               ¡Cuenta creada exitosamente! Por favor, inicia sesión con tus credenciales.
+            </div>
+          )}
+          {accountDisabled && (
+            <div className="mb-4 p-3 text-sm text-destructive bg-destructive/10 border border-destructive rounded-md">
+              Su cuenta se encuentra deshabilitada.{' '}
+              {disabledEmail ? (
+                <>
+                  Si querés conocer el motivo o pedir que la habiliten,{' '}
+                  <button
+                    type="button"
+                    onClick={() => setSupportOpen(true)}
+                    className="font-medium underline cursor-pointer"
+                  >
+                    contactá al soporte
+                  </button>
+                  .
+                </>
+              ) : (
+                'Para contactar al soporte, ingresá con tu email y contraseña.'
+              )}
             </div>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -145,6 +197,13 @@ function LoginPage() {
           </div>
         </CardContent>
       </Card>
+      {disabledEmail && (
+        <ContactSupportDialog
+          open={supportOpen}
+          onOpenChange={setSupportOpen}
+          email={disabledEmail}
+        />
+      )}
     </div>
   )
 }

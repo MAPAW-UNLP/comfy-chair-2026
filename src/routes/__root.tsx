@@ -1,8 +1,8 @@
-import { createRootRoute, Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
+import { createRootRoute, Link, Outlet, useNavigate } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { RoleProvider, useRole } from '@/contexts/RoleContext';
-import { Armchair, Bell, Menu, X } from 'lucide-react';
+import { Armchair, Bell, Menu } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { InvitationsNavLabel } from '@/components/reviewer/invitations/InvitationsNavLabel';
@@ -14,7 +14,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { ChevronDown } from 'lucide-react';
 
 const RootLayoutContent = () => {
-  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const { user, logout } = useAuth();
   const { selectedRole, setSelectedRole, clearSelectedRole } = useRole();
@@ -34,16 +33,12 @@ const RootLayoutContent = () => {
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   const handleLogout = () => {
-    try {
-      clearSelectedRole();
-    } catch {}
+    clearSelectedRole();
     logout();
     navigate({ to: '/login', search: { redirect: undefined, registered: undefined } });
   };
 
   const roleKey = String(selectedRole?.role ?? "").toLowerCase().trim();
-  const currentConferenceId = selectedRole?.conferenceId ?? (selectedRole as any)?.conference_id;
-
   const currentConferenceRoles = useMemo(() => {
     if (!conferences || !selectedRole?.conferenceId) return [selectedRole?.role].filter(Boolean) as string[];
     const conf = conferences.find((c) => c.conference_id === selectedRole.conferenceId);
@@ -75,7 +70,7 @@ const RootLayoutContent = () => {
     ],
     autor: [
       { to: '/article/create', label: 'Crear articulo' },
-    
+
     ],
     chair: [
       { to: '/article/select', label: 'Artículos' },
@@ -88,9 +83,6 @@ const RootLayoutContent = () => {
       { to: '/article/create', label: 'Artículos' },
       { to: '/chairs/select-session', label: 'Sesiones' },
     ],
-    users: [
-      { to: '/users', label: 'Ver usuarios' }
-    ]
   };
 
   const links = useMemo(() => {
@@ -128,7 +120,7 @@ const RootLayoutContent = () => {
 
             <nav className="hidden xl:flex gap-2 items-center">
               {links.map((link) => (
-                <Link 
+                <Link
                   key={link.to}
                   to={link.to}
                   className="inline-flex items-center justify-center px-3 py-1 rounded-md hover:bg-black/20 [&.active]:bg-black/40 [&.active]:text-white text-sm"
@@ -164,8 +156,8 @@ const RootLayoutContent = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      variant="ghost" 
-                      size="sm" 
+                      variant="ghost"
+                      size="sm"
                       className="text-white hover:bg-black/20 hover:text-white h-8 px-2 flex items-center gap-1.5 font-normal"
                     >
                       Hola, {user.full_name}
@@ -189,7 +181,7 @@ const RootLayoutContent = () => {
               </>
             ) : (
               <>
-                <Link to="/login" className="inline-flex items-center justify-center px-3 py-1.5 rounded-md hover:bg-black/20 text-sm">
+                <Link to="/login" search={{ redirect: undefined, registered: undefined }} className="inline-flex items-center justify-center px-3 py-1.5 rounded-md hover:bg-black/20 text-sm">
                   Ingresar
                 </Link>
                 <Link to="/register" className="inline-flex items-center justify-center px-3 py-1.5 rounded-md bg-black/20 hover:bg-black/40 text-sm font-medium">
@@ -198,7 +190,7 @@ const RootLayoutContent = () => {
               </>
             )}
           </div>
-            
+
           {/* Derecha en Móvil */}
           <div className="xl:hidden flex items-center gap-2 z-10">
             {user && (
@@ -217,9 +209,9 @@ const RootLayoutContent = () => {
         {/* Segundo Nav: Ahora visible SIEMPRE (tanto en Desktop como en Mobile) cuando hay rol/conferencia */}
         {roleKey && selectedRole?.conferenceName && (
           <div>
-            <NavConference 
+            <NavConference
               title={selectedRole.conferenceName}
-              conferenceId={currentConferenceId}
+              conferenceId={selectedRole.conferenceId}
               currentRole={roleKey}
               availableRoles={currentConferenceRoles}
               opciones={roleRoutes[roleKey] ?? []}
@@ -239,7 +231,7 @@ const RootLayoutContent = () => {
                 <div className="px-3 py-2 font-medium text-white border-b border-white/10 mb-2">
                   Hola, {user.full_name}
                 </div>
-                
+
                 {links.map((link) => (
                   <Link
                     key={link.to}
@@ -260,10 +252,10 @@ const RootLayoutContent = () => {
                 </Link>
 
                 <div className="pt-4 mt-auto">
-                  <Button 
-                    onClick={() => { setIsOpen(false); handleLogout(); }} 
-                    variant="destructive" 
-                    size="sm" 
+                  <Button
+                    onClick={() => { setIsOpen(false); handleLogout(); }}
+                    variant="destructive"
+                    size="sm"
                     className="w-full bg-red-500/90 hover:bg-red-600 text-white font-medium"
                   >
                     Cerrar Sesión
@@ -274,6 +266,7 @@ const RootLayoutContent = () => {
               <>
                 <Link
                   to="/login"
+                  search={{ redirect: undefined, registered: undefined }}
                   className="px-3 py-2 rounded-md hover:bg-black/20 text-sm text-slate-100"
                   onClick={() => setIsOpen(false)}
                 >
@@ -293,7 +286,7 @@ const RootLayoutContent = () => {
 
         {/* Backdrop para móvil */}
         {isOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-40 xl:hidden backdrop-blur-sm"
             onClick={() => setIsOpen(false)}
           />

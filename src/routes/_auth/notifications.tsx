@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getAllNotifications, markNotificationAsRead } from '@/services/userServices'
 import type { Notification, NotificationType } from '@/services/userServices'
@@ -9,13 +9,28 @@ import { useState, useMemo } from 'react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertCircle, Info, Check } from 'lucide-react'
 import { InvitationNotificationActions } from '@/components/reviewer/invitations/InvitationNotificationActions'
+import { toast } from 'sonner'
 
 export const Route = createFileRoute('/_auth/notifications')({
   component: RouteComponent,
 })
 
+const reviewerResolutionTitles = new Set([
+  'Revisor deshabilitado',
+  'Reasignar revisiones pendientes',
+])
+
+function getNotificationSessionId(notification: Notification): number | null {
+  if (notification.session) return notification.session
+  if (notification.title !== 'Reasignar revisiones pendientes') return null
+
+  const sessionId = notification.message.match(/En la sesión ".*?" \(ID: (\d+)\)/)?.[1]
+  return sessionId ? Number(sessionId) : null
+}
+
 function RouteComponent() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all')
   const [typeFilter, setTypeFilter] = useState<'all' | NotificationType>('all')
 
@@ -32,6 +47,46 @@ function RouteComponent() {
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
     },
   })
+
+  const goToRelatedUser = (notification: Notification) => {
+    if (!notification.related_user) return
+    if (!notification.read) markAsReadMutation.mutate(notification.id)
+    void navigate({
+      to: '/users',
+      search: { deshabilitar: String(notification.related_user) },
+    })
+  }
+
+  const resolveSessionNotification = async (notification: Notification) => {
+    const sessionId = getNotificationSessionId(notification)
+    if (!sessionId) return
+
+    if (!notification.read) {
+      try {
+        await markAsReadMutation.mutateAsync(notification.id)
+      } catch (markError) {
+        console.error('Could not mark session notification as read:', markError)
+        toast.error('No se pudo marcar la notificación como leída.')
+      }
+    }
+
+    void navigate({
+      to: `/conference/session/${sessionId}`,
+      search: reviewerResolutionTitles.has(notification.title)
+        ? {
+            editar: undefined,
+            deshabilitar: undefined,
+            resolverRevisiones: 'true',
+            resolverNotificacion: String(notification.id),
+          }
+        : {
+            editar: 'true',
+            deshabilitar: undefined,
+            resolverRevisiones: undefined,
+            resolverNotificacion: undefined,
+          },
+    })
+  }
 
   // Client-side filtering
   const filteredNotifications = useMemo(() => {
@@ -129,6 +184,8 @@ function RouteComponent() {
                 notification={notification}
                 onMarkAsRead={() => markAsReadMutation.mutate(notification.id)}
                 isMarking={markAsReadMutation.isPending}
+                onResolveSession={() => void resolveSessionNotification(notification)}
+                onGoToUser={() => goToRelatedUser(notification)}
               />
             ))
           )}
@@ -142,9 +199,26 @@ interface NotificationCardProps {
   notification: Notification
   onMarkAsRead: () => void
   isMarking: boolean
+  onResolveSession: () => void
+  onGoToUser: () => void
 }
 
-function NotificationCard({ notification, onMarkAsRead, isMarking }: NotificationCardProps) {
+function NotificationCard({
+  notification,
+  onMarkAsRead,
+  isMarking,
+  onResolveSession,
+  onGoToUser,
+}: NotificationCardProps) {
+  const [isResolved] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try {
+      return window.sessionStorage.getItem(`resolved-session-notification-${notification.id}`) === 'true'
+    } catch (storageError) {
+      console.error('Could not read session notification completion state:', storageError)
+      return false
+    }
+  })
   const isCritical = notification.type === 'critical'
   const isRead = notification.read
   const formattedDate = new Date(notification.created_at).toLocaleString('es-ES', {
@@ -190,6 +264,30 @@ function NotificationCard({ notification, onMarkAsRead, isMarking }: Notificatio
           )}
         </div>
         <p className="text-sm whitespace-pre-wrap ml-6 text-muted-foreground">{notification.message}</p>
+        {(notification.title === 'Sesión sin chair' ||
+          reviewerResolutionTitles.has(notification.title)) &&
+          getNotificationSessionId(notification) && (
+          <div className="ml-6 mt-3 flex justify-end">
+            <Button
+              size="sm"
+              onClick={() => {
+                onResolveSession()
+              }}
+              disabled={reviewerResolutionTitles.has(notification.title) && isResolved}
+            >
+              {reviewerResolutionTitles.has(notification.title)
+                ? 'Reasignar revisiones'
+                : 'Ir a sesión'}
+            </Button>
+          </div>
+        )}
+        {notification.title === 'Conflicto resuelto' && notification.related_user && (
+          <div className="ml-6 mt-3 flex justify-end">
+            <Button size="sm" onClick={onGoToUser}>
+              Ir al usuario
+            </Button>
+          </div>
+        )}
         {notification.article && (
           <p className="text-xs text-muted-foreground mt-1 ml-6">
             Artículo ID: {notification.article}

@@ -1,10 +1,10 @@
 // src/components/conference/NavConference.tsx
 
 import { Link } from '@tanstack/react-router';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel
@@ -14,20 +14,20 @@ import { ChevronDown } from 'lucide-react';
 
 type NavConferenceProps = {
   title: string;
-  conferenceId: string;
+  conferenceId: number;
   currentRole: string;
   availableRoles: string[];
   opciones: { to: string; label: React.ReactNode }[];
   onSelectRole: (role: string) => void;
 };
 
-export function NavConference({ 
-  title, 
+export function NavConference({
+  title,
   conferenceId,
-  currentRole, 
-  availableRoles, 
-  opciones, 
-  onSelectRole 
+  currentRole,
+  availableRoles,
+  opciones,
+  onSelectRole
 }: NavConferenceProps) {
   const formatRoleName = (role: string) => {
     if (!role) return '';
@@ -53,8 +53,8 @@ export function NavConference({
   return (
     <div className="bg-slate-950 text-white px-4 md:px-6 py-2 flex justify-between items-center border-t border-slate-800 text-sm">
       {/* Izquierda: Nombre de la conferencia */}
-      <Link 
-        to={getConferenceHomeRoute()} 
+      <Link
+        to={getConferenceHomeRoute()}
         className="font-semibold text-sm md:text-base hover:underline focus:outline-none focus:ring-1 focus:ring-slate-400 rounded px-1 -ml-1 transition-all"
       >
         {title}
@@ -65,7 +65,7 @@ export function NavConference({
         {/* En Desktop: Links horizontales visibles */}
         <div className="hidden md:flex items-center gap-2">
           {opciones.map((link) => (
-            <Link 
+            <Link
               key={link.to}
               to={link.to}
               className="px-3 py-1 rounded-md text-slate-300 hover:text-white hover:bg-slate-800 transition-colors [&.active]:bg-slate-800 [&.active]:text-white font-medium"
@@ -78,15 +78,15 @@ export function NavConference({
         {/* Dropdown de Rol (Visible tanto en Desktop como Mobile) */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="text-white hover:bg-slate-800 hover:text-white h-8 px-2 flex items-center gap-1.5 font-normal text-xs md:text-sm"
             >
               Rol: {formatRoleName(currentRole)} <ChevronDown className="h-3.5 w-3.5 opacity-70" />
             </Button>
           </DropdownMenuTrigger>
-          
+
           <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-white min-w-[160px] z-50">
             {/* Opciones propias del rol (ej: Mis artículos) */}
             {opciones.map((link) => (
@@ -96,9 +96,9 @@ export function NavConference({
                 </Link>
               </DropdownMenuItem>
             ))}
-            
+
             {opciones.length > 0 && <DropdownMenuSeparator className="bg-slate-800" />}
-            
+
             {/* Sección Cambiar rol */}
             {otherRoles.length > 0 && (
               <>
@@ -107,7 +107,7 @@ export function NavConference({
                 </DropdownMenuLabel>
 
                 {otherRoles.map((role) => (
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     key={role}
                     onClick={() => onSelectRole(role)}
                     className="cursor-pointer focus:bg-slate-800 focus:text-white px-2 py-1.5 text-sm"

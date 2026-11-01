@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // ✅ MIN: baseURL robusto con fallback y normalización
-const rawBase = (import.meta as any)?.env?.VITE_API_BASE as string | undefined;
+const rawBase = import.meta.env.VITE_API_BASE as string | undefined;
 let baseURL =
   (rawBase && rawBase.trim()) ||
   (() => {
@@ -24,9 +24,9 @@ export const axiosInstance = axios.create({
 });
 
 // Navigation callback for handling unauthorized access
-let navigateToLogin: (() => void) | null = null;
+let navigateToLogin: (accountDisabled: boolean) => void = () => {};
 
-export const setNavigateToLogin = (callback: () => void) => {
+export const setNavigateToLogin = (callback: (accountDisabled: boolean) => void) => {
   navigateToLogin = callback;
 };
 
@@ -56,9 +56,7 @@ axiosInstance.interceptors.response.use(
       localStorage.removeItem('user');
 
       // Use TanStack Router navigation if available
-      if (navigateToLogin) {
-        navigateToLogin();
-      }
+      navigateToLogin(error.response?.data?.code === 'account_disabled');
     }
     return Promise.reject(error);
   }
