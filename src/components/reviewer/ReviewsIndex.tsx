@@ -15,61 +15,22 @@ import { useRole } from "@/contexts/RoleContext";
 import { useCountdown } from "@/utils/useCountdown";
 import {
   getMyAssignments,
+  type Period,
   type ReviewerAssignment,
 } from "@/services/reviewerServices";
+import { getErrorStatus } from "@/components/reviewer/invitations/invitationsQuery";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Progress } from "../ui/progress";
 import ReviewerConferenceSwitcher from "./ReviewerConferenceSwitcher";
-
-/* ====================== ENV + helpers de fechas ====================== */
-
-const BIDDING_START =
-  (import.meta.env.VITE_BIDDING_START as string | undefined) ?? null;
-const BIDDING_END =
-  (import.meta.env.VITE_BIDDING_END as string | undefined) ?? null;
-const REVIEW_START =
-  (import.meta.env.VITE_REVIEW_START as string | undefined) ?? null;
-const REVIEW_END =
-  (import.meta.env.VITE_REVIEW_END as string | undefined) ?? null;
+import { BackButton } from "@/components/reviewer/BackButton";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-function parseDate(s: string | null): Date | null {
-  if (!s) return null;
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
-}
-
-const biddingStartDate = parseDate(BIDDING_START);
-const biddingEndDate = parseDate(BIDDING_END);
-const reviewStartDate = parseDate(REVIEW_START);
-const reviewEndDate = parseDate(REVIEW_END);
-
-type Phase =
-  | "pre-bidding"
-  | "bidding"
-  | "between-bidding-review"
-  | "review"
-  | "post-review";
-
-function getPhase(now: Date): Phase {
-  if (
-    !biddingStartDate ||
-    !biddingEndDate ||
-    !reviewStartDate ||
-    !reviewEndDate
-  ) {
-    return "pre-bidding";
-  }
-
-  if (now < biddingStartDate) return "pre-bidding";
-  if (now >= biddingStartDate && now <= biddingEndDate) return "bidding";
-  if (now > biddingEndDate && now < reviewStartDate)
-    return "between-bidding-review";
-  if (now >= reviewStartDate && now <= reviewEndDate) return "review";
-
-  return "post-review";
-}
+const formatClose = (iso: string) =>
+  new Date(iso)
+    .toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+    .replace(",", "");
 
 /* =========================== UI auxiliar =========================== */
 
@@ -100,6 +61,13 @@ function backendErrorMessage(err: unknown): string | null {
     if (typeof msg === "string" && msg.trim()) return msg;
   }
   return null;
+}
+
+function loadErrorMessage(err: unknown): string | null {
+  const status = getErrorStatus(err);
+  if (status === 404) return "No se encontraron asignaciones para la conferencia seleccionada";
+  if (status != null && status >= 500) return "Error al cargar las revisiones asignadas";
+  return backendErrorMessage(err);
 }
 
 // Tarjeta para los estados de la lista: sin conferencia, sin asignaciones y error.
@@ -146,6 +114,7 @@ interface UiRow {
   id: number;
   title: string;
   status: ReviewStatus;
+  period: Period;
 }
 
 interface ArticleCardProps {
@@ -187,6 +156,7 @@ const toRow = (r: ReviewerAssignment): UiRow => ({
   id: r.article.id,
   title: r.article.title,
   status: STATUS_FROM_API[r.review_status],
+  period: r.review_period,
 });
 
 /* -------------- ArticleCard con badge + botón alineados -------------- */
@@ -198,6 +168,7 @@ function ArticleCard({
   flashing,
 }: ArticleCardProps) {
   const conf = STATUS_UI[article.status];
+  const { is_open, end } = article.period;
 
   return (
     <div
@@ -215,21 +186,30 @@ function ArticleCard({
       </h3>
 
       {/* FILA: estado + botón */}
-      <div className="flex items-center justify-between">
-        <span
-          className={
-            "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium " +
-            conf.badgeClass
-          }
-        >
-          {conf.label}
-        </span>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={
+              "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium " +
+              conf.badgeClass
+            }
+          >
+            {conf.label}
+          </span>
+          {!is_open ? (
+            <Badge variant="destructive">Plazo vencido</Badge>
+          ) : end ? (
+            <Badge variant="secondary">Cierra el {formatClose(end)}</Badge>
+          ) : (
+            <Badge variant="outline">Sin fecha límite</Badge>
+          )}
+        </div>
 
         <Button
           onClick={() => onAction?.(article)}
           className="h-full min-w-[150px] justify-center rounded-md px-4 text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 active:bg-slate-950"
         >
-          {conf.cta}
+          {is_open ? conf.cta : "Ver revisión"}
         </Button>
       </div>
     </div>
@@ -298,6 +278,8 @@ export default function ReviewsIndex() {
   const auth = useAuth();
   const { selectedRole } = useRole();
 
+  const goBack = () => window.history.back();
+
   // normalizar rol y obtener conferenceId si el rol seleccionado es reviewer/revisor
   const roleKey = String(selectedRole?.role ?? "").toLowerCase().trim();
   const isReviewerRole =
@@ -305,21 +287,11 @@ export default function ReviewsIndex() {
   const selectedConferenceId = isReviewerRole ? selectedRole?.conferenceId : undefined;
   const conferenceName = isReviewerRole ? selectedRole?.conferenceName : undefined;
 
-  const phase = getPhase(new Date());
-
-  const reviewCountdown = useCountdown(REVIEW_END || undefined);
-
-  const reviewDhm = `${pad(reviewCountdown.days)}:${pad(
-    reviewCountdown.hours
-  )}:${pad(reviewCountdown.minutes)}`;
-
   /* ---- Carga de datos: un solo request al backend ---- */
 
-  // Las asignaciones se piden solo con usuario, fase de revisión y conferencia
-  // elegida. Al cambiar la conferencia cambia la queryKey y se vuelve a pedir.
+  // Las asignaciones se piden solo con usuario y conferencia elegida. Al cambiar la conferencia cambia la queryKey y se vuelve a pedir.
   // El revisor lo identifica el backend por el token: no se manda su id.
-  const queryEnabled =
-    !!auth.user && phase === "review" && selectedConferenceId != null;
+  const queryEnabled = !!auth.user && selectedConferenceId != null;
 
   const {
     data: assignmentsData,
@@ -332,6 +304,7 @@ export default function ReviewsIndex() {
     queryKey: ["reviewer", "assignments", selectedConferenceId],
     queryFn: () => getMyAssignments({ conferenceId: selectedConferenceId }),
     enabled: queryEnabled,
+    retry: (failureCount, err) => getErrorStatus(err) !== 404 && failureCount < 3,
     // Al volver desde el formulario de revisión siempre se actualiza el estado.
     refetchOnMount: "always",
   });
@@ -340,8 +313,22 @@ export default function ReviewsIndex() {
 
   // Un toast por cada fallo de carga (React Query ya agotó sus reintentos).
   useEffect(() => {
-    if (isError) toast.error(backendErrorMessage(error) ?? LOAD_ERROR_TITLE);
+    if (isError && getErrorStatus(error) !== 401)
+      toast.error(loadErrorMessage(error) ?? LOAD_ERROR_TITLE);
   }, [isError, error]);
+
+  const nextDeadline = useMemo(() => {
+    const ends = (assignmentsData?.results ?? []).flatMap((r) =>
+      r.review_period.is_open && r.review_period.end ? [r.review_period.end] : []
+    );
+    return ends.sort((a, b) => Date.parse(a) - Date.parse(b))[0];
+  }, [assignmentsData]);
+
+  const reviewCountdown = useCountdown(nextDeadline);
+
+  const reviewDhm = `${pad(reviewCountdown.days)}:${pad(
+    reviewCountdown.hours
+  )}:${pad(reviewCountdown.minutes)}`;
 
   // Lista plana: se usa para saber si hay algo que mostrar.
   const data: UiRow[] = useMemo(
@@ -443,7 +430,7 @@ export default function ReviewsIndex() {
         <StateCard
           tone="error"
           title={LOAD_ERROR_TITLE}
-          description={backendErrorMessage(error) ?? undefined}
+          description={loadErrorMessage(error) ?? undefined}
           action={
             <Button
               onClick={() => refetch()}
@@ -510,87 +497,68 @@ export default function ReviewsIndex() {
   ]);
 
   /* ============================ Render principal ============================ */
-
   return (
     <div className="mx-auto w-full max-w-md px-4 py-6 md:max-w-2xl">
       <div className="mb-6 flex items-center justify-between">
+        <div>
+          <BackButton onClick={goBack} label="Volver" className="-ml-2 mb-3" />
+        </div>
         <h1 className="text-2xl font-semibold">Bienvenido, Revisor</h1>
         <div className="mt-2">
           <ReviewerConferenceSwitcher />
         </div>
-        <Button
-          onClick={() => navigate({ to: "/reviewer/history" })}
-          className="bg-slate-700 hover:bg-slate-600 text-white font-medium"
-        >
-          Ver historial
-        </Button>
+    </div>  
+
+      <div className={`grid gap-4 ${nextDeadline ? "grid-cols-2" : "grid-cols-1"}`}>
+        {/* No clickable */}
+        {nextDeadline && (
+          <SoftCard>
+            <div className="flex h-full flex-col items-center justify-center">
+              <div className="text-3xl font-semibold tracking-tight">
+                {reviewDhm}
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">
+                Días | Horas | Minutos
+              </div>
+              <div className="mt-1 text-sm text-slate-600">
+                Para finalizar revisión
+              </div>
+            </div>
+          </SoftCard>
+        )}
+
+        <SoftCard>
+          <div className="flex h-full flex-col items-center justify-center">
+            <div className="text-3xl font-semibold tracking-tight">
+              {reviewedCount}/{assignedCount}
+            </div>
+            <div className="mt-1 text-sm text-slate-600">
+              Artículos revisados
+            </div>
+            <Progress
+              className="mt-3"
+              value={percent(reviewedCount, assignedCount)}
+              aria-label="Progreso de la conferencia"
+            />
+            <div className="mt-2 text-center text-xs text-slate-500">
+              Pendientes: {pendingCount} · Borradores: {draftCount}
+            </div>
+          </div>
+        </SoftCard>
       </div>
 
-      {phase === "review" ? (
-        <>
-          <div className="grid grid-cols-2 gap-4">
-            {/* No clickable */}
-            <SoftCard>
-              <div className="flex h-full flex-col items-center justify-center">
-                <div className="text-3xl font-semibold tracking-tight">
-                  {reviewDhm}
-                </div>
-                <div className="mt-1 text-[11px] text-slate-400">
-                  Días | Horas | Minutos
-                </div>
-                <div className="mt-1 text-sm text-slate-600">
-                  Para finalizar revisión
-                </div>
-              </div>
-            </SoftCard>
+      <section className="mt-8">
+        <h2 className="mb-4 text-2xl font-semibold">Tus Artículos</h2>
+        <hr className="mb-4 border-slate-200" />
 
-            <SoftCard>
-              <div className="flex h-full flex-col items-center justify-center">
-                <div className="text-3xl font-semibold tracking-tight">
-                  {reviewedCount}/{assignedCount}
-                </div>
-                <div className="mt-1 text-sm text-slate-600">
-                  Artículos revisados
-                </div>
-                <Progress
-                  className="mt-3"
-                  value={percent(reviewedCount, assignedCount)}
-                  aria-label="Progreso de la conferencia"
-                />
-                <div className="mt-2 text-center text-xs text-slate-500">
-                  Pendientes: {pendingCount} · Borradores: {draftCount}
-                </div>
-              </div>
-            </SoftCard>
-          </div>
-
-          <section className="mt-8">
-            <h2 className="mb-4 text-2xl font-semibold">Tus Artículos</h2>
-            <hr className="mb-4 border-slate-200" />
-
-            {auth.isLoading ? (
-              <p className="text-slate-600">Verificando usuario…</p>
-            ) : !auth.user ? (
-              <p>Debes iniciar sesión.</p>
-            ) : (
-              content
-            )}
-          </section>
-        </>
-      ) : null}
-
-      {phase !== "review" &&
-        phase !== "bidding" &&
-        phase !== "between-bidding-review" && (
-          <div className="mt-10 rounded-2xl bg-slate-50 px-6 py-8 text-center text-slate-700 shadow-sm">
-            <p className="text-lg font-semibold">
-              No hay nada para hacer por ahora…
-            </p>
-            <p className="text-sm text-slate-500">
-              Cuando se habilite un nuevo ciclo, tus artículos aparecerán aquí.
-            </p>
-          </div>
+        {auth.isLoading ? (
+          <p className="text-slate-600">Verificando usuario…</p>
+        ) : !auth.user ? (
+          <p>Debes iniciar sesión.</p>
+        ) : (
+          content
         )}
+      </section>
     </div>
   );
 }

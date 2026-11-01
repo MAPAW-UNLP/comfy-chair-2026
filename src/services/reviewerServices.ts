@@ -155,6 +155,18 @@ export async function getMyAssignments({
   return data;
 }
 
+export interface SessionPeriods {
+  session_id: number;
+  server_now: string;
+  bidding: Period;
+  review: Period;
+}
+
+export async function getSessionPeriods(sessionId: number): Promise<SessionPeriods> {
+  const { data } = await api.get<SessionPeriods>(`/api/reviewer/sessions/${sessionId}/periods/`);
+  return data;
+}
+
 function isFilledReview(r: Partial<Review> | null | undefined) {
   return !!(r && typeof r.score === 'number' && String(r.opinion ?? '').trim());
 }
@@ -431,8 +443,9 @@ export async function getMyInvitationNotifications(): Promise<InvitationNotifica
  *  - 200 → puede revisar
  *  - 403 → no está asignado; 404 → el artículo no existe (el error se propaga)
  */
-export async function checkReviewAssignment(articleId: number): Promise<void> {
-  await api.get(`/api/reviewer/articles/${articleId}/assignment/`);
+export async function checkReviewAssignment(articleId: number): Promise<{ assigned: boolean }> {
+  const { data } = await api.get<{ assigned: boolean }>(`/api/reviewer/articles/${articleId}/assignment/`);
+  return data;
 }
 
 //export async function getMyReviewHistory(
