@@ -1,10 +1,10 @@
-// --------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------- 
 //
 // Grupo 1 - Componente tipo formulario que permite tanto el alta como edición de articulos.
 // Grupo 2 - Agrega el guardado como borrador: "Guardar borrador" persiste sin exigir
 // completitud y "Subir" envía el artículo (en un borrador: PATCH + submit).
 //
-// --------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------- 
 
 // Importaciones de funcionalidades y librerías
 import { useEffect, useRef, useState } from "react";
@@ -109,11 +109,12 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [authors, setAuthors] = useState<User[]>([]);
   const [correspondingAuthor, setCorrespondingAuthor] = useState<string>("");
+
+
   // Obtener la conferencia actual seleccionada
   const currentConference = conferences.find((c) => c.id === selectedConference);
   // Ajusta 'accepts_multiple_sources' según la propiedad real de tu modelo Conference
   const acceptsMultipleSources = currentConference?.sources_multiple === true;
-
 
   // Manejo de archivos
   const mainFileRef = useRef<HTMLInputElement>(null);
@@ -677,7 +678,7 @@ const extensionesFormateadas = (() => {
         <Label htmlFor="titulo">Título {errors.title && <p className="text-destructive">{errors.title}</p>}</Label>
         <Input type="text" id="title" placeholder="Título del submission..." maxLength={100} value={title} onChange={(e) => withDirty(setTitle)(e.target.value)}/>
       </div>
-
+      
       {/* Campo de Abstract */}
       <div className="flex-1 flex flex-col gap-2">
         <Label htmlFor="abstract">Abstract {errors.abstract && <p className="text-destructive">{errors.abstract}</p>}</Label>
@@ -709,7 +710,7 @@ const extensionesFormateadas = (() => {
 
       {/* Archivos */}
       <div className="flex flex-col md:flex-row gap-4 w-full">
-
+        
         {/* Archivo principal */}
         <div className="flex-1 grid items-start gap-2">
           <div className="flex justify-between items-center">

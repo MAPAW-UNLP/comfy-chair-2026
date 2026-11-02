@@ -21,9 +21,12 @@ import {
   getConferenceUsers,
   type ConferenceUser,
 } from '@/services/userServices';
+import ConferenceUserRoleEditor from './ConferenceUserRoleEditor';
 
 interface ConferenceUsersProps {
   conferenceId: number;
+  canEditRoles: boolean;
+  isAdmin: boolean;
 }
 
 const PAGE_SIZE = 8;
@@ -164,6 +167,8 @@ function getRoleCount(
 
 export default function ConferenceUsers({
   conferenceId,
+  canEditRoles,
+  isAdmin,
 }: ConferenceUsersProps) {
   const [searchedUsers, setSearchedUsers] = useState<ConferenceUser[]>([]);
 
@@ -472,8 +477,18 @@ export default function ConferenceUsers({
                     </div>
                   </div>
 
-                  <div className="hidden shrink-0 flex-wrap justify-end gap-2 pt-1 sm:flex">
-                    <RoleBadges roles={user.roles} />
+                  <div className="flex shrink-0 flex-col items-end gap-2 pt-1">
+                    <div className="hidden flex-wrap justify-end gap-2 sm:flex">
+                      <RoleBadges roles={user.roles} />
+                    </div>
+                    {canEditRoles && (
+                      <ConferenceUserRoleEditor
+                        conferenceId={conferenceId}
+                        user={user}
+                        isAdmin={isAdmin}
+                        onUpdated={loadUsers}
+                      />
+                    )}
                   </div>
                 </div>
               ))}

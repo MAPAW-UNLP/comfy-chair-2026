@@ -1,4 +1,5 @@
 import {axiosInstance} from './api'
+import axios from 'axios'
 import type { RegisterFormData, LoginFormData } from '@/lib/validations'
 
 export interface User {
@@ -60,7 +61,11 @@ export const authService = {
     try {
       const response = await authService.verifyToken(token)
       return response.user
-    } catch {
+    } catch (error) {
+      if (axios.isAxiosError(error) &&
+          error.response?.data?.code === 'account_disabled') {
+        throw error
+      }
       localStorage.removeItem('authToken')
       return null
     }

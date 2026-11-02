@@ -3,7 +3,7 @@ import CustomCalendar from './CustomCalendar';
 import type { Conference } from './ConferenceApp';
 import { Button } from '../ui/button';
 import { ConferenceView } from './ConferenceView';
-import { getCommonUsers, type User } from '@/services/userServices';
+import { getCommonUsers, type ChairSummary, type User } from '@/services/userServices';
 import { UserCombobox } from '../combobox/UserCombobox';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -23,9 +23,9 @@ function parseDateSinOffset(fecha: string): Date {
 }
 
 type ConferenceFormProps = {
-  handleSubmit: (conf: Omit<Conference, 'id'>, chairs: User[]) => Promise<void>;
+  handleSubmit: (conf: Omit<Conference, 'id'>, chairs: ChairSummary[]) => Promise<void>;
   valorConferencia?: Omit<Conference, 'id'>;
-  valorChairs?: User[];
+  valorChairs?: ChairSummary[];
 };
 
 function ConferenceForm({
@@ -42,7 +42,7 @@ function ConferenceForm({
     sources_multiple: false,
     allowed_extensions: ['pdf'],
   });
-  const [chairs, setChairs] = useState<User[]>([]);
+  const [chairs, setChairs] = useState<ChairSummary[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [start_date, setStartDate] = useState<Date | undefined>(undefined);
   const [end_date, setEndDate] = useState<Date | undefined>(undefined);
