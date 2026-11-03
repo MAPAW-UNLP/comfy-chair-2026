@@ -12,6 +12,8 @@ type Periods = {
   submission_end: string;
   review_start: string;
   review_end: string;
+  bidding_start: string;
+  bidding_end: string;
 };
 
 function parseDate(value?: string | null): Date | undefined {
@@ -37,6 +39,8 @@ export function ConferencePeriodsConfig() {
   const [submissionEnd, setSubmissionEnd] = useState<Date>();
   const [reviewStart, setReviewStart] = useState<Date>();
   const [reviewEnd, setReviewEnd] = useState<Date>();
+  const [biddingStart, setBiddingStart] = useState<Date>();
+  const [biddingEnd, setBiddingEnd] = useState<Date>();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -73,6 +77,8 @@ export function ConferencePeriodsConfig() {
         setSubmissionEnd(parseDate(data.submission_end));
         setReviewStart(parseDate(data.review_start));
         setReviewEnd(parseDate(data.review_end));
+        setBiddingStart(parseDate(data.bidding_start));
+        setBiddingEnd(parseDate(data.bidding_end));
       })
       .catch(() => toast.error('No se pudo cargar la conferencia.'))
       .finally(() => setLoading(false));
@@ -91,6 +97,8 @@ export function ConferencePeriodsConfig() {
       submission_end: formatDate(submissionEnd),
       review_start: formatDate(reviewStart),
       review_end: formatDate(reviewEnd),
+      bidding_start: formatDate(biddingStart),
+      bidding_end: formatDate(biddingEnd),
     };
 
     if (
@@ -107,6 +115,14 @@ export function ConferencePeriodsConfig() {
       periods.review_end < periods.review_start
     ) {
       toast.error('El cierre de revisión no puede ser anterior al inicio.');
+      return;
+    }
+    if (
+      periods.bidding_start &&
+      periods.bidding_end &&
+      periods.bidding_end < periods.bidding_start
+    ) {
+      toast.error('El cierre de bidding no puede ser anterior al inicio.');
       return;
     }
 
@@ -140,6 +156,18 @@ export function ConferencePeriodsConfig() {
         <label className="flex flex-col gap-1">
           Cierre
           <CustomCalendar date={submissionEnd} setDate={setSubmissionEnd} />
+        </label>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-4 rounded-xl border border-gray-300 p-5">
+        <legend className="px-1 font-semibold">Ventana de bidding</legend>
+        <label className="flex flex-col gap-1">
+          Inicio
+          <CustomCalendar date={biddingStart} setDate={setBiddingStart} />
+        </label>
+        <label className="flex flex-col gap-1">
+          Cierre
+          <CustomCalendar date={biddingEnd} setDate={setBiddingEnd} />
         </label>
       </fieldset>
 
