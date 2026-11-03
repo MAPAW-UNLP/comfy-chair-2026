@@ -1,8 +1,16 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { authService } from '@/services/auth'
 
 export const Route = createFileRoute('/')({
+  beforeLoad: async () => {
+    // Con la sesión iniciada, la página de bienvenida no tiene sentido: ir al inicio
+    const user = await authService.getCurrentUser()
+    if (user) {
+      throw redirect({ to: '/dashboard' })
+    }
+  },
   component: RouteComponent,
 })
 

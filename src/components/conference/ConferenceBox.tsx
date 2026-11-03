@@ -7,13 +7,18 @@ import { getSessionsByConference } from '@/services/sessionServices';
 
 type ConferenceBoxProps = {
   conferencia: Conference;
+  esAutor?: boolean;
 };
 
-function ConferenceBox({ conferencia }: ConferenceBoxProps) {
+function ConferenceBox({ conferencia, esAutor }: ConferenceBoxProps) {
   const navigate = useNavigate();
   const [sessionAmount, setSessionAmount] = useState<number | null>(null);
 
   const irUnaConferencia = () => {
+    if (esAutor) {
+      navigate({ to: `/articles/${conferencia.id}` });
+      return;
+    }
     navigate({ to: `/conference/${conferencia.id}` });
   };
 

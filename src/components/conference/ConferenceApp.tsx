@@ -11,6 +11,8 @@ import { Route } from '@/routes/_auth/conference/view';
 import { useEffect, useState } from 'react';
 import { SearchBar } from './ConferenceSearch';
 import type { ChairSummary } from '@/services/userServices';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAuthorConferenceIds } from '@/hooks/useAuthorConferenceIds';
 
 type VISTA_CHOICES = 'single blind' | 'double blind';
 export type ALLOWED_EXTENSIONS_CHOICES = 'pdf' | 'docx' | 'txt';
@@ -40,6 +42,9 @@ function ConferenceApp() {
   const [confActivas, setConfActivas] = useState<Conference[]>([]);
   const [confTerminadas, setConfTerminadas] = useState<Conference[]>([]);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const esAdmin = user?.role === 'admin';
+  const autorConferenceIds = useAuthorConferenceIds(!esAdmin);
 
   const irAltaConferencia = async () => {
     navigate({ to: '/conference/create' });
@@ -110,7 +115,13 @@ function ConferenceApp() {
       <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {conferencias.length > 0 ? (
           conferencias.map((c) => {
-            return <ConferenceBox key={c.id} conferencia={c} />;
+            return (
+              <ConferenceBox
+                key={c.id}
+                conferencia={c}
+                esAutor={autorConferenceIds.has(c.id)}
+              />
+            );
           })
         ) : <p className="col-span-full py-8 text-center text-sm text-muted-foreground">No hay conferencias.</p>}
       </div>

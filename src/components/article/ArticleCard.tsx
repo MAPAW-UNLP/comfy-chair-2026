@@ -14,6 +14,7 @@ import { deleteArticle } from "@/services/articleServices";
 import ArticleDeleteAccepted from './ArticleDeleteAccepted';
 import ArticleDeleteReception from "./ArticleDeleteReception";
 import { useArticleFiles } from "@/hooks/Grupo1/useArticleFiles";
+import type { ReviewCountState } from "@/hooks/Grupo1/useFetchReviewCounts";
 import { type Article, type Status } from "@/services/articleServices";
 import { checkDeletionRequestExists } from "@/services/articleServices";
 import { downloadMainFile, downloadSourceFile } from "@/services/articleServices";
@@ -24,11 +25,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 // Lo que espera recibir el componente
 export interface ArticleCardProps {
   article: Article;
+  reviewCount?: ReviewCountState;
   onDeleted?: (id: number) => void 
 }
 
 // Colores asociados a cada estado
 const estadoColor: Record<Status, string> = {
+  draft: "bg-amber-100 text-amber-900",
   accepted: "bg-lime-900",
   reception: "bg-slate-900",
   bidding: "bg-slate-900",
@@ -40,6 +43,7 @@ const estadoColor: Record<Status, string> = {
 
 // Textos asociados a cada estado
 const estadoTexto: Record<Status, string> = {
+  draft: "Borrador",
   accepted: "Aceptado",
   reception: "Recibido",
   bidding: "Bidding",
@@ -51,6 +55,7 @@ const estadoTexto: Record<Status, string> = {
 
 // Descripciones asociadas a cada estado
 const estadoDescripcion: Record<Status, string> = {
+  draft: "Su articulo es un borrador: todavía no fue enviado a la conferencia.",
   accepted: "Su articulo ha sido aceptado para la conferencia. ¡Felicitaciones!",
   reception: "Su articulo ha sido recibido y está pendiente de revisión.",
   bidding: "Su articulo está en proceso de bidding.",
@@ -82,7 +87,7 @@ function formatearTiempo(msRestante: number): string {
 }
 
 //Cuerpo del Componente
-const ArticleCard : React.FC<ArticleCardProps> = ({ article, onDeleted }) => {
+const ArticleCard : React.FC<ArticleCardProps> = ({ article, reviewCount, onDeleted }) => {
 
   // Navegación
   const navigate = useNavigate();
@@ -205,6 +210,14 @@ const ArticleCard : React.FC<ArticleCardProps> = ({ article, onDeleted }) => {
           <p className="text-md text-slate-500"><b>Tipo:</b> {article.type ? article.type.charAt(0).toUpperCase() + article.type.slice(1) : "Desconocido"}</p>
           <p className="text-md text-slate-500"><b>Sesion:</b> {article.session?.title}</p>
           <p className="text-md text-slate-500"><b>Conferencia:</b> {article.session?.conference?.title}</p>
+          {reviewCount && (
+            <p className="text-md text-slate-500">
+              <b>Revisiones completadas:</b>{" "}
+              {reviewCount.status === "loading" && "Cargando…"}
+              {reviewCount.status === "error" && "No disponible"}
+              {reviewCount.status === "success" && reviewCount.count}
+            </p>
+          )}
         </div>
         <div className="basis-1/4 flex justify-center items-center">
           <DropdownMenu>

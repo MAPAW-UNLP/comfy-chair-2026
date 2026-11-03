@@ -10,7 +10,7 @@
 // - Mostrar un spinner de carga mientras se recuperan los datos necesarios.
 // - Mostrar mensajes informativos si:
 //     • El artículo no existe.
-//     • El artículo ya no puede editarse (ya pasó la deadilne).
+//     • El artículo ya no puede editarse (ya pasó la deadilne). Los borradores siempre se pueden editar.
 //     • El usuario no tiene permiso para editar el articulo (no es autor).
 // - Permite navegar hacia la pantalla de visualizacion de artículos de la conferencia actual (al cancelar o editar un articulo).
 // - En caso de éxito, renderiza el componente "ArticleForm" y le envía como props 
@@ -68,7 +68,9 @@ function RouteComponent() {
   }
 
   // Feature de Seguridad - Mensaje si el articulo no debe editarse (solo accesible desde la barra de navegación)
-  if (article.status !== "reception" || article.session?.deadline! < Date.now().toString()) {
+  // Un borrador siempre se puede editar: con el deadline vencido solo se deshabilita la subida
+  const isDraft = article.status === "draft";
+  if (!isDraft && (article.status !== "reception" || article.session?.deadline! < Date.now().toString())) {
     return (
       <div className="flex flex-col items-center justify-center w-full min-h-[calc(100dvh-64px)]">
         <h1 className="text-2xl font-bold italic text-slate-500 text-center">
