@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getAuthorConferences, type AuthorConferenceStatus } from '@/services/conferenceServices';
+import { useAuthorConferenceIds } from '@/hooks/useAuthorConferenceIds';
 import AuthorConferenceCard from './AuthorConferenceCard';
 
 function AuthorConferencesSection() {
@@ -27,6 +28,8 @@ function AuthorConferencesSection() {
     staleTime: 60_000,
     retry: false,
   });
+
+  const autorConferenceIds = useAuthorConferenceIds();
 
   const renderConferences = () => {
     if (isDebouncing || isPending) {
@@ -58,7 +61,11 @@ function AuthorConferencesSection() {
         {isFetching && <p role="status" className="text-sm text-muted-foreground">Actualizando conferencias...</p>}
         <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {conferences.map((conference) => (
-            <AuthorConferenceCard key={conference.id} conference={conference} />
+            <AuthorConferenceCard
+              key={conference.id}
+              conference={conference}
+              esAutor={autorConferenceIds.has(conference.id)}
+            />
           ))}
         </div>
       </>

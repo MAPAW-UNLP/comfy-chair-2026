@@ -1,14 +1,16 @@
 // src/features/reviewer/ReviewArticle.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Lock } from "lucide-react";
+import { CalendarClock, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { isAxiosError } from "axios";
+import { BackButton } from "@/components/reviewer/BackButton";
 
 import { getArticleById } from "@/services/articleServices";
 import {
@@ -17,10 +19,12 @@ import {
   updateReview,
   updatePublishedReview,
   publishReview,
+  getSessionPeriods,
   type Review as ReviewDTO,
   type PublicReview,
 } from "@/services/reviewerServices";
 import api from "@/services/api";
+import { getErrorStatus } from "@/components/reviewer/invitations/invitationsQuery";
 
 type Author = { id: number; full_name?: string; email?: string };
 
@@ -33,7 +37,16 @@ type Article = {
   main_file?: string | File | null; // PDF principal
   source_file?: string | File | null; // adjunto extra (posters)
   authors?: Author[];
+  session?: { id: number } | null;
 };
+
+const FORBIDDEN_MESSAGE = "No tenés permiso sobre este artículo";
+const NOT_FOUND_MESSAGE = "El artículo o la sesión no existen";
+
+const formatDeadline = (iso: string) =>
+  new Date(iso)
+    .toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+    .replace(",", "");
 
 // Definición de scores con etiquetas (orden de mejor a peor)
 export const SCORE_DEFS = [
@@ -66,6 +79,9 @@ export default function ReviewArticle(props?: ReviewArticleProps) {
     shouldThrow: false,
   });
   const articleId = props?.articleId ?? Number(routeParams?.articleId);
+
+  const goBack = () =>
+  navigate({ to: "/reviewer", search: { selected: String(articleId) } });
 
   const { user } = useAuth();
 
@@ -239,6 +255,41 @@ export default function ReviewArticle(props?: ReviewArticleProps) {
     };
   }, [articleId]);
 
+  const queryClient = useQueryClient();
+  const sessionId = article?.session?.id;
+  const periodsKey = ["reviewer", "periods", sessionId];
+  const { data: periods, error: periodsError } = useQuery({
+    queryKey: periodsKey,
+    queryFn: () => getSessionPeriods(sessionId as number),
+    enabled: sessionId != null,
+    retry: (failureCount, err) => getErrorStatus(err) !== 404 && failureCount < 3,
+  });
+  const reviewPeriod = periods?.review;
+  const sendBlocked = sessionId != null && !reviewPeriod?.is_open;
+
+  useEffect(() => {
+    const status = getErrorStatus(periodsError);
+    if (!periodsError || status === 401) return;
+    if (status === 404) {
+      toast.error(NOT_FOUND_MESSAGE);
+      navigate({ to: "/reviewer" });
+      return;
+    }
+    toast.error("No se pudo consultar el período de revisión.");
+  }, [periodsError, navigate]);
+
+  const handleRequestError = (e: unknown, fallback: string) => {
+    const status = getErrorStatus(e);
+    if (status === 403 || status === 404) {
+      toast.error(status === 403 ? FORBIDDEN_MESSAGE : NOT_FOUND_MESSAGE);
+      navigate({ to: "/reviewer" });
+      return;
+    }
+    const backendError = isAxiosError(e) ? e.response?.data?.error : undefined;
+    toast.error(typeof backendError === "string" ? backendError : fallback);
+    if (status === 400) queryClient.invalidateQueries({ queryKey: periodsKey });
+  };
+
   // ---- Acciones ----
   const ensureFields = () => {
     if (!opinion.trim() || score === "") {
@@ -307,13 +358,7 @@ export default function ReviewArticle(props?: ReviewArticleProps) {
       });
     } catch (e: unknown) {
       console.error("Error al guardar borrador:", e);
-      // Muestra el motivo del backend (ej. "No estás asignado para revisar este artículo")
-      const backendError = isAxiosError(e) ? e.response?.data?.error : undefined;
-      toast.error(
-        typeof backendError === "string"
-          ? backendError
-          : "Ocurrió un error al guardar el borrador."
-      );
+      handleRequestError(e, "Ocurrió un error al guardar el borrador.");
     } finally {
       setSaving(false);
     }
@@ -380,13 +425,8 @@ export default function ReviewArticle(props?: ReviewArticleProps) {
       });
     } catch (e: unknown) {
       console.error("Error al enviar la revisión:", e);
-      const backendError = isAxiosError(e) ? e.response?.data?.error : undefined;
       console.error("Detalle backend:", isAxiosError(e) ? e.response?.data : undefined);
-      toast.error(
-        typeof backendError === "string"
-          ? backendError
-          : "Ocurrió un error al enviar la revisión."
-      );
+      handleRequestError(e, "Ocurrió un error al enviar la revisión.");
     } finally {
       setSaving(false);
     }
@@ -403,7 +443,10 @@ export default function ReviewArticle(props?: ReviewArticleProps) {
 
   if (!article) {
     return (
-      <p className="px-6 py-8 text-red-600">No se encontró el artículo.</p>
+      <div className="px-6 py-8">
+        <BackButton onClick={goBack} label="Volver" className="-ml-2 mb-3" />
+        <p className="text-red-600">No se encontró el artículo.</p>
+      </div>
     );
   }
 
@@ -413,8 +456,9 @@ export default function ReviewArticle(props?: ReviewArticleProps) {
     <div className="mx-auto max-w-3xl px-6 py-8">
       {/* Encabezado */}
       <div className="mb-2">
-        {/* Fila 1: estado, alineado a la derecha */}
-        <div className="flex justify-end">
+        {/* Fila 1: volver a la izquierda, estado a la derecha */}
+        <div className="flex items-center justify-between">
+          <BackButton onClick={goBack} label="Volver" className="-ml-2" />
           <span
             className={[
               "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium",
@@ -498,6 +542,25 @@ export default function ReviewArticle(props?: ReviewArticleProps) {
           No se pudo identificar tu usuario. Iniciá sesión para guardar/editar
           la revisión.
         </div>
+      )}
+
+      {reviewPeriod && !reviewPeriod.is_open && (
+        <Alert variant="destructive" className="mt-6">
+          <CalendarClock className="size-4" />
+          <AlertDescription>
+            El período de revisión para esta sesión ha finalizado
+            {reviewPeriod.end && ` el ${formatDeadline(reviewPeriod.end)}`}. No se
+            admiten nuevos envíos.
+          </AlertDescription>
+        </Alert>
+      )}
+      {reviewPeriod?.is_open && reviewPeriod.end && (
+        <Alert className="mt-6">
+          <CalendarClock className="size-4" />
+          <AlertDescription>
+            Podés enviar tu revisión hasta el {formatDeadline(reviewPeriod.end)}.
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Formulario */}
@@ -603,7 +666,8 @@ export default function ReviewArticle(props?: ReviewArticleProps) {
               saving ||
               !opinion.trim() ||
               score === "" ||
-              !Number.isFinite(reviewerId)
+              !Number.isFinite(reviewerId) ||
+              sendBlocked
             }
             className="rounded-lg bg-emerald-600 px-6 py-2 font-semibold text-white hover:bg-emerald-500"
           >

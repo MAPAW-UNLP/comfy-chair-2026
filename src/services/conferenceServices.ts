@@ -1,4 +1,4 @@
-import { type User } from './userServices';
+import { type ChairSummary } from './userServices';
 import { axiosInstance as api } from './api';
 import { type Conference } from '@/components/conference/ConferenceApp';
 
@@ -83,7 +83,7 @@ export const getConference = async (id: string): Promise<Conference> => {
 
 export const createConference = async (
   conferencia: Omit<Conference, 'id'>,
-  chairs: User[],
+  chairs: ChairSummary[],
   user_id: string
 ): Promise<Conference> => {
   try {
@@ -116,7 +116,7 @@ export const createConference = async (
 export const updateConference = async (
   id: string,
   conferencia: Omit<Conference, 'id'>,
-  chairs: User[],
+  chairs: ChairSummary[],
   user_id: string
 ): Promise<Conference> => {
   try {

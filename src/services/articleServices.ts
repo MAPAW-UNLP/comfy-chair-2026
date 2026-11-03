@@ -11,7 +11,7 @@ import type { Session } from '@/services/sessionServices';
 
 export type Type = "regular" | "poster";
 
-export type Status = "reception" | "bidding" | "assignment" | "review" | "selection" | "accepted" | "rejected";
+export type Status = "draft" | "reception" | "bidding" | "assignment" | "review" | "selection" | "accepted" | "rejected";
 
 export type EventTypeChoices = 
   | "draft_created" 
@@ -28,6 +28,11 @@ export interface ArticleHistoryItem {
   created_at: string; 
   verdict?: VerdictStatus; // Presente solo si event_type es 'final_verdict'
 }
+export interface ArticleSource {
+  id: number;
+  filename: string;
+}
+
 export interface Article {
   id: number;
   title: string;
@@ -36,6 +41,7 @@ export interface Article {
   type: Type;
   abstract: string;
   source_file?: File | null;
+  sources?: ArticleSource[];
   authors: User[];
   corresponding_author: User | null;
   session: Session | null;
@@ -53,9 +59,27 @@ export class ApiError extends Error {
   }
 }
 
+// El back devuelve los errores 400 en dos formatos: { errors: { campo: ["msg"] } } al
+// crear/editar y { campo: "msg" } en submit. Los mensajes generales vienen en "detail".
+function toApiError(err: any): Error {
+  const data = err?.response?.data;
+  if (!data) return err;
+
+  const raw = data.errors ?? data;
+  const errors: Record<string, string[]> = {};
+  if (raw && typeof raw === 'object') {
+    Object.entries(raw).forEach(([key, value]) => {
+      errors[key] = Array.isArray(value) ? value.map(String) : [String(value)];
+    });
+  }
+
+  const message = typeof data.detail === 'string' ? data.detail : JSON.stringify(data);
+  return new ApiError(message, err.response.status, errors);
+}
+
 export interface ArticleNew {
   title: string;
-  main_file: File;
+  main_file: File | null;
   status: string | null;
   type: string | null;
   abstract: string;
@@ -68,7 +92,7 @@ export interface ArticleNew {
 export interface ArticleUpdate {
   title?: string;
   main_file?: File | null;
-  source_file?: File | null;
+  source_file?: File[] | null;
   status?: string | null;
   type?: string | null;
   abstract?: string;
@@ -95,6 +119,7 @@ function normalizeArticleShape(raw: any): Article {
     type: raw?.type ?? null,
     abstract: raw?.abstract ?? '',
     source_file: (raw?.source_file as unknown as File) ?? null,
+    sources: (raw?.sources as ArticleSource[]) ?? [],
     authors: (raw?.authors as User[]) ?? [],
     corresponding_author: (raw?.corresponding_author as User) ?? null,
     session: (raw?.session as Session) ?? null,
@@ -188,10 +213,7 @@ export async function createArticle(newArticle: ArticleNew) {
 
     return normalizeArticleShape(res.data);
   } catch (err: any) {
-    if (err.response?.data) {
-      throw new ApiError(JSON.stringify(err.response.data), err.response.status, err.response.data.errors);
-    }
-    throw err;
+    throw toApiError(err);
   }
 }
  
@@ -207,7 +229,8 @@ export async function updateArticle(id: number, updated: ArticleUpdate) {
   if (updated.source_file === null) {
     formData.append('source_file', '');
     } else {
-      formData.append('source_file', updated.source_file);
+      // El back agrega como fuentes nuevas los archivos que vengan en "sources"
+      updated.source_file.forEach((file) => formData.append('sources', file));
     }
   }
   if (updated.status !== undefined) formData.append('status', updated.status ?? '');
@@ -223,12 +246,22 @@ export async function updateArticle(id: number, updated: ArticleUpdate) {
     const res = await api.patch(`/api/article/${id}/`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return res.data;
+    return normalizeArticleShape(res.data);
   } catch (err: any) {
-    if (err.response && err.response.data) {
-      throw new Error(JSON.stringify(err.response.data));
-    }
-    throw err;
+    throw toApiError(err);
+  }
+}
+
+//------------------------------------------------------------
+// GRUPO 2 - Enviar un borrador (draft -> reception)
+//------------------------------------------------------------
+// Valida contra lo que ya está guardado en la base: antes hay que persistir los cambios con updateArticle.
+export async function submitArticle(id: number): Promise<Article> {
+  try {
+    const res = await api.post(`/api/article/${id}/submit/`);
+    return normalizeArticleShape(res.data);
+  } catch (err: any) {
+    throw toApiError(err);
   }
 }
 

@@ -7,13 +7,18 @@ import { getSessionsByConference } from '@/services/sessionServices';
 
 type ConferenceBoxProps = {
   conferencia: Conference;
+  esAutor?: boolean;
 };
 
-function ConferenceBox({ conferencia }: ConferenceBoxProps) {
+function ConferenceBox({ conferencia, esAutor }: ConferenceBoxProps) {
   const navigate = useNavigate();
   const [sessionAmount, setSessionAmount] = useState<number | null>(null);
 
   const irUnaConferencia = () => {
+    if (esAutor) {
+      navigate({ to: `/articles/${conferencia.id}` });
+      return;
+    }
     navigate({ to: `/conference/${conferencia.id}` });
   };
 
@@ -38,14 +43,14 @@ function ConferenceBox({ conferencia }: ConferenceBoxProps) {
   return (
     <div
       onClick={irUnaConferencia}
-      className="flex flex-col bg-card hover:bg-card/60 max-w-[400px] p-4 mb-2 rounded-sm gap-2 shadow border border-gray-400 cursor-pointer"
+      className="flex w-full min-w-0 flex-col gap-2 rounded-sm border border-gray-400 bg-card p-4 shadow hover:bg-card/60"
     >
       <div className="flex justify-between items-start w-full">
-        <div className="flex flex-col gap-0  w-[80%]">
-          <b className="text-xs sm:text-sm md:text-md lg:text-lg truncate">
+        <div className="flex min-w-0 flex-1 flex-col gap-0 pr-2">
+          <b className="truncate text-sm sm:text-base lg:text-lg">
             {conferencia.title.toUpperCase()}
           </b>
-          <span className="text-sm">
+          <span className="text-xs sm:text-sm">
             {formatearFecha(conferencia.start_date)}-
             {formatearFecha(conferencia.end_date)}
           </span>

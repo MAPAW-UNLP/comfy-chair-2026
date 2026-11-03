@@ -2,7 +2,7 @@ import { createConference } from '@/services/conferenceServices';
 import { useNavigate } from '@tanstack/react-router';
 import type { Conference } from './ConferenceApp';
 import ConferenceForm from './ConferenceForm';
-import type { User } from '@/services/userServices';
+import type { ChairSummary } from '@/services/userServices';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -10,7 +10,7 @@ function ConferenceCreate() {
   const navigate = useNavigate();
   const {user}= useAuth()
 
-  const handleSubmit = async (conf: Omit<Conference, 'id'>, chairs: User[]) => {
+  const handleSubmit = async (conf: Omit<Conference, 'id'>, chairs: ChairSummary[]) => {
     try {
       const data = await createConference(conf, chairs, user!.id);
       toast.success('Conferencia creada correctamente');
