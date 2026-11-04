@@ -2,6 +2,8 @@ import { type ChairSummary } from './userServices';
 import { axiosInstance as api } from './api';
 import { type Conference } from '@/components/conference/ConferenceApp';
 
+export type { Conference };
+
 const errorMessages: Record<string, string> = {
   'conference with this title already exists.':
     'Ya existe una conferencia con ese título',
@@ -100,6 +102,8 @@ export const createConference = async (
       submission_end: conferencia.submission_end || null,
       review_start: conferencia.review_start || null,
       review_end: conferencia.review_end || null,
+      bidding_start: conferencia.bidding_start || null,
+      bidding_end: conferencia.bidding_end || null,
       chairs: chairs.map(user => user.id),
       user_id
     });
@@ -124,6 +128,8 @@ export const updateConference = async (
       submission_end: conferencia.submission_end || null,
       review_start: conferencia.review_start || null,
       review_end: conferencia.review_end || null,
+      bidding_start: conferencia.bidding_start || null,
+      bidding_end: conferencia.bidding_end || null,
       chairs: chairs.map(user => user.id),
       user_id
     });
@@ -136,7 +142,15 @@ export const updateConference = async (
 
 export const updateConferencePeriods = async (
   id: number,
-  periods: Pick<Conference, 'submission_start' | 'submission_end' | 'review_start' | 'review_end'>,
+  periods: Pick<
+    Conference,
+    | 'submission_start'
+    | 'submission_end'
+    | 'review_start'
+    | 'review_end'
+    | 'bidding_start'
+    | 'bidding_end'
+  >,
   user_id: string
 ): Promise<Conference> => {
   const response = await api.patch(`/api/conference/${id}/periods/`, {
