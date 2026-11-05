@@ -1,0 +1,38 @@
+services:
+  web:
+    build:
+      context: .
+      args:
+        VITE_API_BASE: https://${APP_HOST:?APP_HOST is required}
+        VITE_API_URL: https://${APP_HOST}
+        VITE_BIDDING_START: ${VITE_BIDDING_START:-}
+        VITE_BIDDING_END: ${VITE_BIDDING_END:-}
+        VITE_REVIEW_START: ${VITE_REVIEW_START:-}
+        VITE_REVIEW_END: ${VITE_REVIEW_END:-}
+    restart: unless-stopped
+    environment:
+      PORT: ${FRONTEND_PORT:-8080}
+    networks:
+      - traefik-public
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-public
+      # HTTPS
+      - traefik.http.routers.comfy-chair-web.rule=Host(`${APP_HOST}`)
+      - traefik.http.routers.comfy-chair-web.priority=1
+      - traefik.http.routers.comfy-chair-web.entrypoints=${TRAEFIK_ENTRYPOINT_HTTPS:-websecure}
+      - traefik.http.routers.comfy-chair-web.tls=true
+      - traefik.http.routers.comfy-chair-web.tls.certresolver=${TRAEFIK_CERTRESOLVER:-myresolver}
+      - traefik.http.routers.comfy-chair-web.service=comfy-chair-web
+      - traefik.http.services.comfy-chair-web.loadbalancer.server.port=${FRONTEND_PORT:-8080}
+      # HTTP -> HTTPS
+      - traefik.http.routers.comfy-chair-web-http.rule=Host(`${APP_HOST}`)
+      - traefik.http.routers.comfy-chair-web-http.priority=1
+      - traefik.http.routers.comfy-chair-web-http.entrypoints=${TRAEFIK_ENTRYPOINT_HTTP:-web}
+      - traefik.http.routers.comfy-chair-web-http.middlewares=comfy-chair-web-https-redirect
+      - traefik.http.middlewares.comfy-chair-web-https-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.comfy-chair-web-https-redirect.redirectscheme.permanent=true
+
+networks:
+  traefik-public:
+    external: true
