@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react';
 import { SearchBar } from './ConferenceSearch';
 import type { ChairSummary } from '@/services/userServices';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAuthorConferenceIds } from '@/hooks/useAuthorConferenceIds';
+import { useIsAuthor } from '@/hooks/useIsAuthor';
 
 type VISTA_CHOICES = 'single blind' | 'double blind';
 export type ALLOWED_EXTENSIONS_CHOICES = 'pdf' | 'docx' | 'txt';
@@ -46,7 +46,7 @@ function ConferenceApp() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const esAdmin = user?.role === 'admin';
-  const autorConferenceIds = useAuthorConferenceIds(!esAdmin);
+  const esAutor = useIsAuthor(!esAdmin);
 
   const irAltaConferencia = async () => {
     navigate({ to: '/conference/create' });
@@ -121,7 +121,7 @@ function ConferenceApp() {
               <ConferenceBox
                 key={c.id}
                 conferencia={c}
-                esAutor={autorConferenceIds.has(c.id)}
+                esAutor={esAutor}
               />
             );
           })
