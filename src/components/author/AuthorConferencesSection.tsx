@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getAuthorConferences, type AuthorConferenceStatus } from '@/services/conferenceServices';
-import { useAuthorConferenceIds } from '@/hooks/useAuthorConferenceIds';
+import { useIsAuthor } from '@/hooks/useIsAuthor';
 import AuthorConferenceCard from './AuthorConferenceCard';
 
 function AuthorConferencesSection() {
@@ -29,7 +29,7 @@ function AuthorConferencesSection() {
     retry: false,
   });
 
-  const autorConferenceIds = useAuthorConferenceIds();
+  const esAutor = useIsAuthor();
 
   const renderConferences = () => {
     if (isDebouncing || isPending) {
@@ -64,7 +64,7 @@ function AuthorConferencesSection() {
             <AuthorConferenceCard
               key={conference.id}
               conference={conference}
-              esAutor={autorConferenceIds.has(conference.id)}
+              esAutor={esAutor}
             />
           ))}
         </div>

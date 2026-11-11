@@ -82,7 +82,16 @@ function DashboardPage() {
         `Rol: ${role}\n\n` +
         `Esta funcionalidad redirigirá a la página correspondiente del rol una vez que las rutas estén completamente implementadas.`
     )
+    
   }
+  const handleConferenceClick = (conferenceId: number) => {
+    localStorage.setItem("selectedConference", String(conferenceId));
+    
+    navigate({
+      to: "/chairs/conference/$conferenceId/sessions",
+      params: { conferenceId: String(conferenceId) },
+    });
+  };
 
   return (
     <div className="min-h-[calc(100dvh-64px)] bg-background p-4 md:p-8">
