@@ -8,7 +8,7 @@
 // Importaciones
 import { Button } from "@/components/ui/button";
 import { useNavigate } from '@tanstack/react-router';
-import { EyeIcon, FilePenLineIcon } from "lucide-react";
+import { EyeIcon } from "lucide-react";
 import { type Article } from "@/services/articleServices";
 import { DeadlineBanner, DraftStatusBadge } from "./ArticleDraftBadges";
 
@@ -43,9 +43,6 @@ const ArticleDraftCard : React.FC<ArticleDraftCardProps> = ({ article }) => {
           <p className="text-md text-slate-500"><b>Conferencia:</b> {article.session?.conference?.title}</p>
         </div>
         <div className="basis-1/4 flex justify-center items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={navigateEditArticle} title="Editar borrador" className="cursor-pointer">
-            <FilePenLineIcon />
-          </Button>
           <Button variant="ghost" size="icon" onClick={navigateDetailArticle} title="Ver detalle" className="cursor-pointer">
             <EyeIcon />
           </Button>

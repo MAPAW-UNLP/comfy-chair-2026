@@ -115,19 +115,17 @@ const ArticleDraftDetail : React.FC<ArticleDraftDetailProps> = ({ article }) => 
           <DraftField label="Autores" value={article.authors?.map((a) => a.email).join(", ")} missing={isMissing("authors_ids")} />
           <DraftField label="Abstract" value={article.abstract} missing={isMissing("abstract")} />
 
-          {/* Archivo principal */}
-          <div className="flex flex-col gap-1">
-            <p className={isMissing("main_file") ? "text-red-600" : undefined}><b>Artículo</b></p>
-            {mainFileName ? (
+          {/* Archivo principal: si no se subió, se muestra como campo sin completar */}
+          {mainFileName ? (
+            <div className="flex flex-col gap-1">
+              <p><b>Artículo</b></p>
               <Button variant="outline" onClick={() => downloadMainFile(article.id, mainFileName)} className="w-full text-white bg-lime-900 hover:bg-lime-950 truncate">
                 {mainFileName}
               </Button>
-            ) : (
-              <Button variant="outline" disabled className="w-full text-white bg-zinc-400">
-                Sin archivo
-              </Button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <DraftField label="Artículo" missing={true} />
+          )}
 
           {/* Lista de lo que falta para poder subir */}
           {missingFields.length > 0 && (

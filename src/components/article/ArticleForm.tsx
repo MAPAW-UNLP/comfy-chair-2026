@@ -73,10 +73,15 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
 
   // Navegacion
   const navigate = useNavigate();
-  const navigateBack = () => navigate({ to: `/articles/${selectedConference}`, replace: true });
 
   // Versión guardada del artículo (se actualiza con cada guardado de borrador)
   const [currentArticle, setCurrentArticle] = useState<Article | undefined>(article);
+
+  // Siempre se vuelve al listado de submissions de la conferencia
+  const navigateBack = () => {
+    const conferenceId = selectedConference ?? currentArticle?.session?.conference?.id ?? fixedConferenceId;
+    navigate({ to: conferenceId ? `/articles/${conferenceId}` : "/dashboard", replace: true });
+  };
 
   // El alta y la edición de un borrador usan el flujo de borradores; un artículo ya enviado se edita como siempre
   const isDraftFlow = !editMode || article?.status === "draft";
@@ -115,6 +120,11 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const currentConference = conferences.find((c) => c.id === selectedConference);
   // Ajusta 'accepts_multiple_sources' según la propiedad real de tu modelo Conference
   const acceptsMultipleSources = currentConference?.sources_multiple === true;
+
+  // Contenedores de los campos obligatorios del borrador (para desplazarse al error)
+  const conferenceFieldRef = useRef<HTMLDivElement>(null);
+  const sessionFieldRef = useRef<HTMLDivElement>(null);
+  const titleFieldRef = useRef<HTMLDivElement>(null);
 
   // Manejo de archivos
   const mainFileRef = useRef<HTMLInputElement>(null);
@@ -292,10 +302,24 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
     });
     if (!result.success) {
       setZodErrors(result.error.issues);
+      scrollToFirstDraftError(result.error.issues.map((issue) => issue.path[0]));
       return false;
     }
     setErrors({});
     return true;
+  };
+
+  // Desplaza la vista hasta el primer campo con error (en el orden en que aparecen en el form)
+  const scrollToFirstDraftError = (fieldsWithError: PropertyKey[]) => {
+    const fieldRefs = [
+      { field: "conference", ref: conferenceFieldRef },
+      { field: "session", ref: sessionFieldRef },
+      { field: "title", ref: titleFieldRef },
+    ];
+    const target = fieldRefs.find(({ field }) => fieldsWithError.includes(field))?.ref.current;
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.querySelector<HTMLElement>("input, button")?.focus({ preventScroll: true });
   };
 
   //------------------------------------------------------------
@@ -378,8 +402,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       leaveForm();
     } else if (error.status === 404) {
       toast.error(editMode ? "El artículo no existe" : "La conferencia o la sesión ya no existe");
-      if (editMode) leaveForm();
-      else navigate({ to: `/conference/${fixedConferenceId}` });
+      leaveForm();
     } else if (error.status === 409) {
       toast.error("Este artículo ya fue enviado");
       leaveForm();
@@ -392,7 +415,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   //------------------------------------------------------------
   // Manejo del boton "Guardar borrador"
   //------------------------------------------------------------
-  // Devuelve true si se guardó. Con stayOnPage el alta no redirige a la edición del borrador
+  // Devuelve true si se guardó. Con stayOnPage no redirige al listado
   // (lo usa el aviso de cambios sin guardar, que después continúa la navegación pendiente).
   const handleSaveDraft = async ({ stayOnPage = false }: { stayOnPage?: boolean } = {}): Promise<boolean> => {
 
@@ -410,14 +433,15 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
         const saved = await updateArticle(currentArticle.id, buildArticleUpdate());
         applySavedArticle(saved);
       } else {
-        // Primer guardado: se crea el borrador y se pasa a modo edición con el id devuelto
-        const created = await createArticle(buildNewArticle("draft"));
+        // Primer guardado: se crea el borrador
+        await createArticle(buildNewArticle("draft"));
         setIsDirty(false);
-        allowLeaveRef.current = true;
-        if (!stayOnPage) navigate({ to: `/article/edit/${created.id}`, replace: true });
       }
 
       toast.success("Borrador guardado", { description: "Podés retomarlo cuando quieras desde tus artículos.", duration: 5000 });
+
+      // Después de guardar se vuelve al listado de submissions de la conferencia
+      if (!stayOnPage) leaveForm();
       return true;
 
     } catch (error) {
@@ -638,13 +662,13 @@ const extensionesFormateadas = (() => {
       <div className="flex flex-col md:flex-row gap-4 w-full">
 
         {/* Combobox de Conferencia */}
-        <div className="flex-1 flex flex-col gap-2">
+        <div ref={conferenceFieldRef} className="flex-1 flex flex-col gap-2 scroll-mt-24">
           <Label htmlFor="conferencia">Conferencia {errors.conference && <p className="text-destructive">{errors.conference}</p>}</Label>
           <ConferenceCombobox value={selectedConference} onValueChange={withDirty(setSelectedConference)} conferences={conferences} disabled={editMode || fixedConferenceId !== undefined} />
         </div>
 
         {/* Select de Sesiones */}
-        <div className="flex-1 flex flex-col gap-2">
+        <div ref={sessionFieldRef} className="flex-1 flex flex-col gap-2 scroll-mt-24">
           <Label htmlFor="sesion">
             Sesión {errors.session && <p className="text-destructive">{errors.session}</p>}
           </Label>
@@ -674,7 +698,7 @@ const extensionesFormateadas = (() => {
       </div>
 
       {/* Campo de Título */}
-      <div className="flex-1 flex flex-col gap-2">
+      <div ref={titleFieldRef} className="flex-1 flex flex-col gap-2 scroll-mt-24">
         <Label htmlFor="titulo">Título {errors.title && <p className="text-destructive">{errors.title}</p>}</Label>
         <Input type="text" id="title" placeholder="Título del submission..." maxLength={100} value={title} onChange={(e) => withDirty(setTitle)(e.target.value)}/>
       </div>
@@ -877,10 +901,10 @@ const extensionesFormateadas = (() => {
         </div>
       ) : (
         <div className="flex flex-row gap-2">
-          <Button variant="outline" onClick={handleCancel} className="flex-1 bg-zinc-500 text-white" disabled={loading}>
+          <Button variant="outline" onClick={handleCancel} className="flex-1 bg-zinc-500 text-white hover:cursor-pointer" disabled={loading}>
             Cancelar
           </Button>
-          <Button variant="outline" onClick={handleUpdate} className="flex-1 bg-slate-900 text-white" disabled={loading}>
+          <Button variant="outline" onClick={handleUpdate} className="flex-1 bg-slate-900 text-white hover:cursor-pointer" disabled={loading}>
             {loading ? "Guardando..." : "Guardar"}
           </Button>
         </div>

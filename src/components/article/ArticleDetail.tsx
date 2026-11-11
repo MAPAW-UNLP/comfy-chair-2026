@@ -9,6 +9,7 @@ import { Button } from "../ui/button";
 import { useEffect, useState } from 'react';
 import ReviewBox from "@/components/reviews/ReviewBox";
 import { useArticleFiles } from "@/hooks/Grupo1/useArticleFiles";
+import { useFetchReviewCounts } from "@/hooks/Grupo1/useFetchReviewCounts";
 import { getReviewsByArticle } from '@/services/reviewerServices';
 import type { ReviewsByArticleId } from '@/services/reviewerServices';
 import type { Article, Status, Type } from "@/services/articleServices";
@@ -49,6 +50,11 @@ const ArticleDetail : React.FC<ArticleDetailProps> = ({ article }) => {
   const [reviews, setReviews] = useState<ReviewsByArticleId>();
   const [loadingReviews, setLoadingReviews] = useState<boolean>(false);
   const navigate = useNavigate();
+
+  // Conteo de revisiones: mismo hook que el listado, para que coincida con la card
+  const conferenceId = article.session?.conference?.id;
+  const { getReviewCount } = useFetchReviewCounts(conferenceId ?? 0, conferenceId !== undefined);
+  const reviewCount = getReviewCount(article.id);
 
   useEffect(() => {
     let mounted = true;
@@ -117,6 +123,12 @@ const ArticleDetail : React.FC<ArticleDetailProps> = ({ article }) => {
             ))}
           </p>
           <p><b>Abstract:</b> {article?.abstract}</p>
+          <p>
+            <b>Revisiones completadas:</b>{" "}
+            {reviewCount.status === "loading" && "Cargando…"}
+            {reviewCount.status === "error" && "No disponible"}
+            {reviewCount.status === "success" && reviewCount.count}
+          </p>
 
           {/* Botones de Archivos */}
           <div className="flex flex-col sm:flex-row gap-2 w-full">
@@ -128,7 +140,7 @@ const ArticleDetail : React.FC<ArticleDetailProps> = ({ article }) => {
                 <Button
                   variant="outline"
                   onClick={() => downloadMainFile(article.id, mainFileName!)}
-                  className="w-full text-white bg-slate-900"
+                  className="w-full text-white bg-green-900 hover:cursor-pointer"
                 >
                   Descargar Artículo
                 </Button>
@@ -142,7 +154,7 @@ const ArticleDetail : React.FC<ArticleDetailProps> = ({ article }) => {
                 <Button
                   variant="outline"
                   onClick={() => downloadSourceFile(article.id, sourceFileName!)}
-                  className="w-full text-white bg-slate-900"
+                  className="w-full text-white bg-green-900 hover:cursor-pointer"
                 >
                   Descargar Fuentes
                 </Button>

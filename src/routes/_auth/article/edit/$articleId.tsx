@@ -21,6 +21,7 @@
 
 import { useRouteContext } from '@tanstack/react-router';
 import ArticleForm from '@/components/article/ArticleForm';
+import Breadcrumb from '@/components/ui/breadcrumb';
 import { useFetchUsers } from "@/hooks/Grupo1/useFetchUsers";
 import { useFetchArticle } from "@/hooks/Grupo1/useFetchArticle";
 import { createFileRoute, useParams } from '@tanstack/react-router'
@@ -94,9 +95,23 @@ function RouteComponent() {
 
   //Cuerpo del Componente
   return (
-    <div className="flex flex-wrap gap-4 mx-4 my-4 justify-center">
+    <div className="mx-4 my-4 flex flex-col items-center gap-4">
+
+      {/* Breadcrumb para la navegación */}
+      <div className="flex justify-center w-full">
+        <Breadcrumb
+          items={[
+            { label: 'Inicio', to: '/dashboard' },
+            { label: article.session?.conference?.title ?? 'Conferencia', to: `/articles/${article.session?.conference?.id}` },
+            { label: isDraft ? 'Editar borrador' : 'Editar submission' },
+          ]}
+        />
+      </div>
+
       {/* Le envío al form la conferencia actual, el articulo existente y los usuarios de la app */}
-      <ArticleForm conferences={conferenceList} users={userList} editMode={true} article={article} userId={Number(user.id)} /> 
+      <div className="flex flex-wrap gap-4 justify-center w-full">
+        <ArticleForm conferences={conferenceList} users={userList} editMode={true} article={article} userId={Number(user.id)} />
+      </div>
     </div>
   );
 
