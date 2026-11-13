@@ -15,6 +15,7 @@
 import { useRouteContext } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 import ArticleForm from '@/components/article/ArticleForm';
+import Breadcrumb from '@/components/ui/breadcrumb';
 import { useFetchUsers } from '@/hooks/Grupo1/useFetchUsers';
 import { useFetchConferences } from '@/hooks/Grupo1/useFetchConferences';
 
@@ -51,11 +52,28 @@ function RouteComponent() {
     );
   }
 
+  // Conferencia desde la que se crea el submission (para volver a su listado)
+  const conference = conferenceList.find((c) => c.id === conferenceId);
+
   //Cuerpo del Componente
   return (
-    <div className="flex flex-wrap gap-4 mx-4 my-4 justify-center">
+    <div className="mx-4 my-4 flex flex-col items-center gap-4">
+
+      {/* Breadcrumb para la navegación */}
+      <div className="flex justify-center w-full">
+        <Breadcrumb
+          items={[
+            { label: 'Inicio', to: '/dashboard' },
+            ...(conference ? [{ label: conference.title, to: `/articles/${conference.id}` }] : []),
+            { label: 'Nuevo submission' },
+          ]}
+        />
+      </div>
+
       {/* Le envío al form la lista de conferencias y la lista de usuarios */}
-      <ArticleForm conferences={conferenceList} users={userList} userId={Number(user.id)} fixedConferenceId={conferenceId} />
+      <div className="flex flex-wrap gap-4 justify-center w-full">
+        <ArticleForm conferences={conferenceList} users={userList} userId={Number(user.id)} fixedConferenceId={conferenceId} />
+      </div>
     </div>
   );
 
