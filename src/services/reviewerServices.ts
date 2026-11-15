@@ -430,8 +430,10 @@ export async function getMyInvitationNotifications(): Promise<InvitationNotifica
  *  - 200 → puede revisar
  *  - 403 → no está asignado; 404 → el artículo no existe (el error se propaga)
  */
-export async function checkReviewAssignment(articleId: number): Promise<void> {
-  await api.get(`/api/reviewer/articles/${articleId}/assignment/`);
+export async function checkReviewAssignment(articleId: number): Promise<{ assigned: boolean }> {
+  // Devuelve el body: React Query no acepta una consulta que resuelve en undefined
+  const { data } = await api.get<{ assigned: boolean }>(`/api/reviewer/articles/${articleId}/assignment/`);
+  return data;
 }
 
 //export async function getMyReviewHistory(
