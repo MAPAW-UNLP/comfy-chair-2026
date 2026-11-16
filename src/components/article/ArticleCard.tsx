@@ -25,6 +25,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 // Lo que espera recibir el componente
 export interface ArticleCardProps {
   article: Article;
+  canEdit?: boolean;
   reviewCount?: ReviewCountState;
   onDeleted?: (id: number) => void 
 }
@@ -87,7 +88,7 @@ function formatearTiempo(msRestante: number): string {
 }
 
 //Cuerpo del Componente
-const ArticleCard : React.FC<ArticleCardProps> = ({ article, reviewCount, onDeleted }) => {
+const ArticleCard : React.FC<ArticleCardProps> = ({ article, canEdit, reviewCount, onDeleted }) => {
 
   // Navegación
   const navigate = useNavigate();
@@ -234,7 +235,7 @@ const ArticleCard : React.FC<ArticleCardProps> = ({ article, reviewCount, onDele
               <DropdownMenuItem onClick={irArticleHistoryPage} className="cursor-pointer">
                 <ClockIcon/> Ver Historial
               </DropdownMenuItem>
-              {((tiempoRestante !== "invalido") && (article.status === "reception")) && (
+              {(canEdit ?? true) && article.status === "reception" && (
                 <DropdownMenuItem onClick={navigateEditArticle} className="cursor-pointer">
                   <PencilIcon/> Editar Articulo
                 </DropdownMenuItem>
@@ -301,7 +302,15 @@ const ArticleCard : React.FC<ArticleCardProps> = ({ article, reviewCount, onDele
           </Dialog>
         </div>
 
-        {/* Boton Modificar */}
+        {/* El listado de Autor recibe el estado del backend; otros usos conservan su indicador previo. */}
+        {canEdit !== undefined ? (
+          <div className="flex-1 flex flex-col gap-1">
+            <span className="text-sm text-slate-900 font-medium text-start">Submissions</span>
+            <span className="rounded-md bg-slate-100 px-3 py-2 text-sm text-center">
+              {canEdit ? 'Período abierto' : 'No disponible para edición'}
+            </span>
+          </div>
+        ) : (
         <div className="flex-1 flex flex-col gap-1">
           <span className="text-sm text-slate-900 font-medium text-start">Deadline</span>
           <Dialog>
@@ -324,6 +333,7 @@ const ArticleCard : React.FC<ArticleCardProps> = ({ article, reviewCount, onDele
             </DialogContent>
           </Dialog>
         </div>
+        )}
       </div>
     </div>
   );

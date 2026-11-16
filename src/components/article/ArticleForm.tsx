@@ -9,8 +9,9 @@
 // Importaciones de funcionalidades y librerías
 import { useEffect, useRef, useState } from "react";
 import { useBlocker, useNavigate } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { articleDraftSchema, articleSchema, type ArticleFormData } from '@/lib/validations';
-import { completenessLabels, getDeadlineInfo, getMissingFields, type CompletenessField } from "@/lib/articleDraft";
+import { completenessLabels, getMissingFields, type CompletenessField } from "@/lib/articleDraft";
 
 // Importaciones de componentes UI
 import { toast } from 'sonner';
@@ -26,14 +27,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { downloadMainFile, downloadSourceFile } from "@/services/articleServices";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DeadlineBanner, DraftStatusBadge } from "./ArticleDraftBadges";
+import { DraftStatusBadge } from "./ArticleDraftBadges";
 import { SubmitConfirmDialog, UnsavedChangesDialog } from "./ArticleDraftDialogs";
 
 // Importaciones de servicios
 import { type User } from "@/services/userServices";
 import { type Conference } from '@/components/conference/ConferenceApp';
-import { type Session, getSessionsByConferenceGrupo1 } from "@/services/sessionServices";
-import { type Article, type ArticleNew, type ArticleUpdate, ApiError, createArticle, submitArticle, updateArticle } from "@/services/articleServices";
+import { useConferenceSessions } from '@/hooks/useConferenceSessions';
+import { useSubmissionStatus } from '@/hooks/useSubmissionStatus';
+import { type Article, type ArticleNew, type ArticleUpdate, ApiError, createArticle, isSubmissionPeriodClosed, submitArticle, updateArticle } from "@/services/articleServices";
 
 // Configuración escalable de validación de extensiones
 const ALLOWED_ARTICLE_EXTENSIONS = [".pdf"];
@@ -55,6 +57,8 @@ type ArticleFormProps = {
   article? : Article;
   userId : number
   fixedConferenceId? : number;
+  initialConferenceId?: number;
+  initialSessionId?: number;
 };
 
 // Campos que el backend devuelve en los errores 400 y su equivalente en el form
@@ -69,10 +73,11 @@ const backendFieldMap: Partial<Record<string, keyof ArticleFormData>> = {
 };
 
 //Cuerpo del Componente
-const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode, article, userId, fixedConferenceId }) => {
+const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode, article, userId, fixedConferenceId, initialConferenceId, initialSessionId }) => {
 
   // Navegacion
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Versión guardada del artículo (se actualiza con cada guardado de borrador)
   const [currentArticle, setCurrentArticle] = useState<Article | undefined>(article);
@@ -86,15 +91,11 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   // El alta y la edición de un borrador usan el flujo de borradores; un artículo ya enviado se edita como siempre
   const isDraftFlow = !editMode || article?.status === "draft";
 
-  // Setteo de sesiones
-  const [sessions, setSessions] = useState<Session[]>([]);
-
   // Manejo de errores y estados de carga
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<ArticleFormData>>({});
   const [showErrorAlert, setShowErrorAlert] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
-  const [loadingSessions, setLoadingSessions] = useState<boolean>(false);
   const [savingDraft, setSavingDraft] = useState<boolean>(false);
   const [submitAttempted, setSubmitAttempted] = useState<boolean>(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState<boolean>(false);
@@ -110,8 +111,8 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const [title, setTitle] = useState<string>("");
   const [abstract, setAbstract] = useState<string>("");
   const [articleType, setArticleType] = useState<string>("regular");
-  const [selectedConference, setSelectedConference] = useState< number | null>(fixedConferenceId ?? null);
-  const [selectedSession, setSelectedSession] = useState<string | null>(null);
+  const [selectedConference, setSelectedConference] = useState< number | null>(fixedConferenceId ?? initialConferenceId ?? null);
+  const [selectedSession, setSelectedSession] = useState<string | null>(initialSessionId ? String(initialSessionId) : null);
   const [authors, setAuthors] = useState<User[]>([]);
   const [correspondingAuthor, setCorrespondingAuthor] = useState<string>("");
 
@@ -138,10 +139,13 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const [sourceFileError, setSourceFileError] = useState<boolean>(false);
   const { mainFileName, sourceFileName, mainFileUrl, sourceFileUrl } = useArticleFiles(currentArticle ?? null);
 
-  // Sesión seleccionada (para mostrar y validar su deadline)
-  const currentSession = sessions.find((s) => String(s.id) === selectedSession) ?? currentArticle?.session ?? null;
-  const deadlineInfo = getDeadlineInfo(currentSession?.deadline);
-  const deadlineExpired = deadlineInfo.state === "expired";
+  const sessionsQuery = useConferenceSessions(selectedConference);
+  const sessions = (sessionsQuery.data ?? []).filter((session) => session.conference?.id === selectedConference);
+  const loadingSessions = sessionsQuery.isFetching;
+  const currentSession = sessions.find((s) => String(s.id) === selectedSession && s.conference?.id === selectedConference)
+    ?? (currentArticle?.session?.id === Number(selectedSession) && currentArticle.session.conference?.id === selectedConference ? currentArticle.session : null);
+  const periodQuery = useSubmissionStatus(currentSession?.id);
+  const canWrite = Boolean(currentSession && sessionsQuery.isSuccess && !sessionsQuery.isFetching && periodQuery.isSuccess && periodQuery.data?.submission_open && !periodQuery.isFetching);
 
   // Campos que faltan para poder subir (mismas reglas que el back)
   const missingFields = getMissingFields({
@@ -370,6 +374,23 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
     setIsDirty(false);
   };
 
+  const ensurePeriodOpen = async (): Promise<boolean> => {
+    if (!canWrite) {
+      toast.error('Seleccioná una sesión con el período de submissions abierto.');
+      return false;
+    }
+    const fresh = await periodQuery.refetch();
+    if (fresh.isError) {
+      toast.error('No se pudo comprobar el período. Revisá tu conexión e intentá de nuevo.');
+      return false;
+    }
+    if (!fresh.data?.submission_open) {
+      toast.error('El período de submissions de esta conferencia está cerrado. No podés guardar ni subir artículos ahora.');
+      return false;
+    }
+    return true;
+  };
+
   //------------------------------------------------------------
   // Manejo de errores de la API (alta, guardado y envío)
   //------------------------------------------------------------
@@ -381,7 +402,12 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
       return;
     }
 
-    if (error.status === 400) {
+    if (isSubmissionPeriodClosed(error)) {
+      void queryClient.invalidateQueries({ queryKey: ['submission-status'] });
+      setError('El período de submissions de esta conferencia está cerrado. Tus cambios permanecen en el formulario.');
+      setShowErrorAlert(true);
+      toast.error('El período de submissions está cerrado. La operación no se completó; revisá el borrador antes de salir.');
+    } else if (error.status === 400) {
       const fieldErrors: Partial<ArticleFormData> = {};
       const generalErrors: string[] = [];
 
@@ -420,6 +446,8 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const handleSaveDraft = async ({ stayOnPage = false }: { stayOnPage?: boolean } = {}): Promise<boolean> => {
 
     setShowErrorAlert(false);
+
+    if (!await ensurePeriodOpen()) return false;
 
     if (!validateFileFormats() || !validateDraftForm()) return false;
     if (authors.length > 0 && !validateLoggedUserIsAuthor()) return false;
@@ -465,8 +493,8 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
     setShowErrorAlert(false);
     setSubmitAttempted(true);
 
-    if (deadlineExpired) {
-      toast.error(`No podés subir: el deadline venció el ${deadlineInfo.label}.`);
+    if (!canWrite) {
+      toast.error('El período de submissions no está abierto.');
       return;
     }
     if (!validateFileFormats() || !validateFullForm() || !validateLoggedUserIsAuthor()) return;
@@ -478,6 +506,11 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   // Envío confirmado: alta directa o, si es un borrador, guardar y después submit
   //------------------------------------------------------------
   const handleConfirmSubmit = async () => {
+
+    if (!await ensurePeriodOpen()) {
+      setShowSubmitDialog(false);
+      return;
+    }
 
     try {
 
@@ -513,6 +546,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const handleUpdate = async () => {
 
     if (!currentArticle) return;
+    if (!await ensurePeriodOpen()) return;
 
     setShowErrorAlert(false);
 
@@ -565,27 +599,6 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   }, [editMode, article]);
 
   //------------------------------------------------------------
-  // Efecto para traer sesiones al cambiar la conferencia
-  //------------------------------------------------------------
-  useEffect(() => {
-    if (selectedConference) {
-      setLoadingSessions(true);
-
-      getSessionsByConferenceGrupo1(Number(selectedConference)).then((data) => {
-        setSessions(data);
-        if (editMode && article?.session && article.session.conference?.id === selectedConference) {
-          setSelectedSession(String(article.session.id));
-        } else {
-          setSelectedSession(null);
-        }
-      }).catch((err) => console.error("Error cargando sesiones:", err)).finally(() => setLoadingSessions(false));
-
-    } else {
-      setSessions([]);
-      setSelectedSession(null);
-    }
-  }, [selectedConference, editMode, article]);
-
   const availableUsers = users.filter(u =>
     !authors.some(a => a.id === u.id)
   );
@@ -636,13 +649,12 @@ const extensionesFormateadas = (() => {
 
       <hr className="bg-slate-100" />
 
-      {/* Estado del borrador, completitud y deadline */}
+      {/* Estado del borrador y disponibilidad del período */}
       {isDraftFlow && (
         <div className="flex flex-col gap-2">
           <div className="flex flex-row gap-2">
             <DraftStatusBadge label={editMode ? "Borrador" : "Sin guardar"} />
           </div>
-          <DeadlineBanner deadline={currentSession?.deadline} />
         </div>
       )}
 
@@ -664,7 +676,7 @@ const extensionesFormateadas = (() => {
         {/* Combobox de Conferencia */}
         <div ref={conferenceFieldRef} className="flex-1 flex flex-col gap-2 scroll-mt-24">
           <Label htmlFor="conferencia">Conferencia {errors.conference && <p className="text-destructive">{errors.conference}</p>}</Label>
-          <ConferenceCombobox value={selectedConference} onValueChange={withDirty(setSelectedConference)} conferences={conferences} disabled={editMode || fixedConferenceId !== undefined} />
+          <ConferenceCombobox value={selectedConference} onValueChange={(id) => { setSelectedConference(id); setSelectedSession(null); setIsDirty(true); }} conferences={conferences} disabled={editMode || fixedConferenceId !== undefined || busy || periodQuery.isFetching || showSubmitDialog} />
         </div>
 
         {/* Select de Sesiones */}
@@ -672,7 +684,7 @@ const extensionesFormateadas = (() => {
           <Label htmlFor="sesion">
             Sesión {errors.session && <p className="text-destructive">{errors.session}</p>}
           </Label>
-          <Select value={selectedSession ?? ""} onValueChange={withDirty(setSelectedSession)} disabled={!selectedConference || loadingSessions}>
+          <Select value={selectedSession ?? ""} onValueChange={withDirty(setSelectedSession)} disabled={!selectedConference || loadingSessions || sessionsQuery.isError || busy || periodQuery.isFetching || showSubmitDialog}>
             <SelectTrigger className="w-full hover:bg-accent hover:text-accent-foreground">
               <SelectValue
                 placeholder={
@@ -696,6 +708,14 @@ const extensionesFormateadas = (() => {
           </Select>
         </div>
       </div>
+
+      {sessionsQuery.isError && <p role="alert" className="text-sm text-destructive">No se pudieron consultar las sesiones. <Button type="button" variant="link" onClick={() => void sessionsQuery.refetch()}>Reintentar</Button></p>}
+      {selectedConference && sessionsQuery.isSuccess && sessions.length === 0 && <p className="text-sm text-muted-foreground">No hay sesiones disponibles para esta conferencia.</p>}
+      {currentSession && periodQuery.isError && <p role="alert" className="text-sm text-destructive">No se pudo consultar el período de submissions. <Button type="button" variant="link" onClick={() => void periodQuery.refetch()}>Reintentar</Button></p>}
+      {currentSession && periodQuery.isFetching && <p className="text-sm text-muted-foreground">Comprobando el período de submissions...</p>}
+      {currentSession && periodQuery.isSuccess && !periodQuery.isFetching && !periodQuery.data.submission_open && <p className="rounded-md bg-zinc-100 p-3 text-sm text-zinc-700">El período de submissions de esta conferencia está cerrado. Podés consultar el artículo, pero no guardar ni subir cambios.</p>}
+
+      <fieldset disabled={!canWrite} className="contents">
 
       {/* Campo de Título */}
       <div ref={titleFieldRef} className="flex-1 flex flex-col gap-2 scroll-mt-24">
@@ -882,29 +902,24 @@ const extensionesFormateadas = (() => {
       {/* Botones inferiores */}
       {isDraftFlow ? (
         <div className="flex flex-col gap-2">
-          <Button variant="outline" onClick={() => handleSaveDraft()} className="w-full cursor-pointer" disabled={busy}>
+          <Button variant="outline" onClick={() => handleSaveDraft()} className="w-full cursor-pointer" disabled={busy || !canWrite}>
             {savingDraft ? "Guardando borrador..." : "Guardar borrador"}
           </Button>
           <div className="flex flex-row gap-2">
             <Button variant="outline" onClick={handleCancel} className="flex-1 bg-zinc-500 text-white cursor-pointer" disabled={busy}>
               Cancelar
             </Button>
-            <Button variant="outline" onClick={handleSubmitClick} className="flex-1 bg-slate-900 text-white cursor-pointer" disabled={busy || deadlineExpired}>
+            <Button variant="outline" onClick={handleSubmitClick} className="flex-1 bg-slate-900 text-white cursor-pointer" disabled={busy || !canWrite}>
               {loading ? "Subiendo..." : "Subir"}
             </Button>
           </div>
-          {deadlineExpired && (
-            <p className="rounded-md border border-zinc-300 bg-zinc-100 px-3 py-2 text-xs text-zinc-600">
-              No podés subir: el deadline venció el {deadlineInfo.label}. El borrador se puede seguir guardando.
-            </p>
-          )}
         </div>
       ) : (
         <div className="flex flex-row gap-2">
           <Button variant="outline" onClick={handleCancel} className="flex-1 bg-zinc-500 text-white hover:cursor-pointer" disabled={loading}>
             Cancelar
           </Button>
-          <Button variant="outline" onClick={handleUpdate} className="flex-1 bg-slate-900 text-white hover:cursor-pointer" disabled={loading}>
+          <Button variant="outline" onClick={handleUpdate} className="flex-1 bg-slate-900 text-white hover:cursor-pointer" disabled={loading || !canWrite}>
             {loading ? "Guardando..." : "Guardar"}
           </Button>
         </div>
@@ -918,7 +933,7 @@ const extensionesFormateadas = (() => {
             Error
           </AlertTitle>
           <AlertDescription>
-              Hubo un error al subir el submission {error}
+              No se pudo completar la operación: {error}
           </AlertDescription>
         </Alert>
       )}
@@ -926,7 +941,7 @@ const extensionesFormateadas = (() => {
       {/* Confirmación de subida */}
       <SubmitConfirmDialog
         open={showSubmitDialog}
-        deadlineLabel={deadlineInfo.label || undefined}
+        deadlineLabel={undefined}
         loading={loading}
         onCancel={() => setShowSubmitDialog(false)}
         onConfirm={handleConfirmSubmit}
@@ -938,12 +953,14 @@ const extensionesFormateadas = (() => {
         saving={savingDraft}
         onLeave={() => blocker.proceed?.()}
         onStay={() => blocker.reset?.()}
-        onSaveDraft={isDraftFlow ? async () => {
+        onSaveDraft={isDraftFlow && canWrite ? async () => {
           const saved = await handleSaveDraft({ stayOnPage: true });
           if (saved) blocker.proceed?.();
           else blocker.reset?.();
         } : undefined}
       />
+
+      </fieldset>
 
     </div>
   );
