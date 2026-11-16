@@ -152,7 +152,7 @@ export const getArticlesByConferenceId = async (conferenceId: number): Promise<A
 //------------------------------------------------------------
 export async function createArticle(newArticle: ArticleNew) {
   // 0. VALIDACIÓN DE SEGURIDAD (Esto detecta el error {} antes de enviarlo al backend)
-  if (newArticle.main_file && !(newArticle.main_file instanceof File) && !(newArticle.main_file instanceof Blob)) {
+  if (newArticle.main_file && !(newArticle.main_file instanceof Blob)) {
     console.error("❌ ERROR: El main_file no es un archivo válido:", newArticle.main_file);
     throw new Error("El archivo principal está vacío o mal capturado en el formulario (no es tipo File).");
   }
@@ -188,7 +188,7 @@ export async function createArticle(newArticle: ArticleNew) {
   // 4. Archivos Source (Iteramos y pasamos el File real)
   if (newArticle.source_file && newArticle.source_file.length > 0) {
     newArticle.source_file.forEach(file => {
-      if (file instanceof File || file instanceof Blob) {
+      if (file instanceof Blob) {
         formData.append('sources', file);
       } else {
         console.warn("⚠️ Un archivo source no es válido y no se envió:", file);

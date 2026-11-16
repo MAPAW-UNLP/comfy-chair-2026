@@ -20,7 +20,7 @@ import SessionArticleCard from './SessionArticleCard';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import Statistics from './Statistics';
 import { useAuth } from '@/contexts/AuthContext';
-import Breadcrumb from '../ui/Breadcrumb';
+import Breadcrumb from '../ui/breadcrumb';
 import { useRole } from '@/contexts/RoleContext';
 import { canManageSessions } from './sessionPermissions';
 import ResolveReviewerAssignmentsDialog from './ResolveReviewerAssignmentsDialog';

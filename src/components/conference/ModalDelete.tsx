@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Button } from '../ui/button';
-import { useNavigate } from '@tanstack/react-router';
 
 type ModalEliminarProps = {
   onDelete: () => Promise<void>
@@ -16,12 +15,11 @@ function ModalEliminar({
   cerrar,
 }: ModalEliminarProps) {
   const [deleting, setDeleting] = useState(false);
-  const navigate = useNavigate();
 
   const confirmarEliminar = async () => {
     setDeleting(true);
     try {
-      onDelete()
+      await onDelete()
     } catch (error) {
       console.error('Error al eliminar:', error);
       alert('Error al eliminar');
@@ -42,7 +40,7 @@ function ModalEliminar({
         <div className="flex justify-end gap-3">
           <Button
             variant="outline"
-            onClick={cerrar}
+            onClick={() => cerrar(false)}
             className="cursor-pointer"
             disabled={deleting}
           >

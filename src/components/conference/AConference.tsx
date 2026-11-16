@@ -21,7 +21,8 @@ import { useRole } from '@/contexts/RoleContext';
 import ConferenceUsers from './ConferenceUsers';
 import { canManageSessions } from './sessionPermissions';
 
-export function formatearFecha(fecha: string): string {
+export function formatearFecha(fecha?: string): string {
+  if (!fecha) return 'Sin fecha';
   const [year, month, day] = fecha.split('-');
   return `${day}/${month}/${year}`;
 }

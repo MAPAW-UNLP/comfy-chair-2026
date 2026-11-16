@@ -29,7 +29,6 @@ export const SelectionMethod = () => {
 
   const [isSelectionLocked, setIsSelectionLocked] = useState(false);
   const [lockedMethod, setLockedMethod] = useState<'cutoff' | 'threshold' | null>(null);
-  const [lockedValue, setLockedValue] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const search = useSearch({
@@ -107,7 +106,6 @@ export const SelectionMethod = () => {
             method = 'threshold';
             value = String(session.improvement_threshold || '0');
           }
-          setLockedValue(value);
           setLockedMethod(method);
 
           if (value !== '') {
@@ -224,7 +222,6 @@ export const SelectionMethod = () => {
 
       setIsSelectionLocked(true);
       setLockedMethod(selectedMethod);
-      setLockedValue(urlValue);
 
       toast.success('Selección guardada', {
         position: 'top-left',

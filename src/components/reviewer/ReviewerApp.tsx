@@ -96,12 +96,13 @@ export const ReviewerApp = () => {
   }, [id])
 
   const handleAssign = async (reviewerId: number) => {
+    if (!user) return false
     if (assignedCount >= maxAssigned) {
       setShowMaxDialog(true)
       return false
     }
     try {
-      await assignReviewerToArticle(reviewerId, Number(id), user.id)
+      await assignReviewerToArticle(reviewerId, Number(id), Number(user.id))
       setReviewers((prev) =>
         prev.map((r) => (r.id === reviewerId ? { ...r, assigned: true } : r))
       )

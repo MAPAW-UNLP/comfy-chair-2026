@@ -21,7 +21,8 @@ export default function SessionCard({
 }: SessionCardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Sin fecha';
     try {
       return format(new Date(dateString), 'dd/MM/yyyy', { locale: es });
     } catch {

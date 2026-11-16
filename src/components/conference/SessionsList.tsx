@@ -7,12 +7,14 @@ import SessionCard from "./SessionCard";
 import AltaSession from "./SessionCreate";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2 } from "lucide-react";
+import type { Conference } from "./ConferenceApp";
 
 type SessionsListProps = {
-  conferenceId: number;
+  conference: Conference;
 };
 
-export default function SessionsList({ conferenceId }: SessionsListProps) {
+export default function SessionsList({ conference }: SessionsListProps) {
+  const conferenceId = conference.id;
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,7 +48,7 @@ export default function SessionsList({ conferenceId }: SessionsListProps) {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Sesiones</h2>
         <AltaSession
-          conferenceId={conferenceId}
+          conference={conference}
           onSessionCreated={fetchSessions}
           trigger={
             <Button>

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import type { Article } from '../../services/articleServices';
 
 type SessionArticleCardProps = {
@@ -6,7 +6,7 @@ type SessionArticleCardProps = {
 };
 
 function traducirEstado(estado: string) {
-  const traducciones = {
+  const traducciones: Record<string, string> = {
     reception: 'Recepción',
     bidding: 'Bidding',
     assignment: 'Asignación',

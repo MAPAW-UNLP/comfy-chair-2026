@@ -1,4 +1,4 @@
-import type { ArticleHistory as ArticleHistoryType, EventTypeChoices } from "@/services/articleServices";
+import type { ArticleHistoryItem as ArticleHistoryType, EventTypeChoices } from "@/services/articleServices";
 import { Item, ItemContent, ItemHeader, ItemTitle, ItemDescription } from "@/components/ui/item";
 
 // Textos descriptivos para replicar el diseño de la imagen según el evento
@@ -26,7 +26,7 @@ const EVENT_CONFIG: Record<EventTypeChoices, { title: string; defaultDescription
 };
 
 // Formateador de fechas similar al mockup (ej: 20 Ago 2025, 09:30)
-function formatDate(dateString: string): string {
+function formatDate(dateString: string | Date): string {
   if (!dateString) return "";
   const date = new Date(dateString);
   return new Intl.DateTimeFormat("es-ES", {

@@ -1,4 +1,3 @@
-import React from "react";
 import { SCORE_DEFS } from "@/components/reviewer/ReviewArticle";
 
 type Version = {

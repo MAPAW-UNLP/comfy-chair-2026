@@ -25,6 +25,8 @@ import { Progress } from "../ui/progress";
 import ReviewerConferenceSwitcher from "./ReviewerConferenceSwitcher";
 import { BackButton } from "@/components/reviewer/BackButton";
 
+/* ====================== ENV + helpers de fechas ====================== */
+
 const pad = (n: number) => String(n).padStart(2, "0");
 
 const formatClose = (iso: string) =>

@@ -6,11 +6,7 @@
 
 // Importaciones
 import { Button } from "../ui/button";
-import { useEffect, useState } from 'react';
-import ReviewBox from "@/components/reviews/ReviewBox";
 import { useArticleFiles } from "@/hooks/Grupo1/useArticleFiles";
-import { getReviewsByArticle } from '@/services/reviewerServices';
-import type { ReviewsByArticleId } from '@/services/reviewerServices';
 import type { Article, Status, Type } from "@/services/articleServices";
 import { downloadMainFile, downloadSourceFile } from "@/services/articleServices";
 import { Clock } from "lucide-react";
@@ -45,31 +41,7 @@ const ArticleDetail : React.FC<ArticleDetailProps> = ({ article }) => {
   // Hook custom para el manejo de archivos
   const { mainFileName, sourceFileName } = useArticleFiles(article);
 
-  // Estado y carga de reviews
-  const [reviews, setReviews] = useState<ReviewsByArticleId>();
-  const [loadingReviews, setLoadingReviews] = useState<boolean>(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    let mounted = true;
-    const fetchReviews = async () => {
-      setLoadingReviews(true);
-      try {
-        const data = await getReviewsByArticle(article.id);
-        if (mounted) setReviews(data ?? []);
-      } catch (e) {
-        console.error('Error fetching reviews', e);
-      } finally {
-        if (mounted) setLoadingReviews(false);
-      }
-    };
-
-    if (article.status === 'accepted' || article.status === 'rejected') {
-      fetchReviews();
-    }
-
-    return () => { mounted = false };
-  }, [article.id, article.status]);
 
   const irArticleHistoryPage = () => {
     navigate({ to: `/article/history/${article.id}` });
@@ -152,13 +124,6 @@ const ArticleDetail : React.FC<ArticleDetailProps> = ({ article }) => {
 
         </div>
       </div>
-
-      {/* Card de Reviews si el artículo está aceptado o rechazado 
-      No tiene sentido mostrar esto
-      {(article.status === "accepted" || article.status === "rejected") && !loadingReviews && reviews && (
-        <ReviewBox reviews={reviews} />
-      )}
-        */}
     </div>
   );
 };

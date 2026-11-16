@@ -1,54 +1,18 @@
-import React from 'react';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
+import Breadcrumb from '@/components/ui/breadcrumb';
 import type { Conference } from './ConferenceApp';
 import type { Session } from '@/services/sessionServices';
 
-type breadcrumbProps = {
+type BreadcrumbProps = {
   conference: Conference;
   session?: Session;
 };
 
-function ConferenceBreadcrumb({ conference, session }: breadcrumbProps) {
+export default function ConferenceBreadcrumb({ conference, session }: BreadcrumbProps) {
   return (
-    <div>
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink href="/conference/view">
-              Home
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-
-          {session ? (
-            <>
-              <BreadcrumbItem>
-                <BreadcrumbLink href={`/conference/${conference.id}`}>
-                  Conferencia
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-
-              <BreadcrumbItem>
-                <BreadcrumbPage className='font-bold'>Sesión</BreadcrumbPage>
-              </BreadcrumbItem>
-            </>
-          ) : (
-            <BreadcrumbItem>
-              <BreadcrumbPage className='font-bold'>Conferencia</BreadcrumbPage>
-            </BreadcrumbItem>
-          )}
-        </BreadcrumbList>
-      </Breadcrumb>
-    </div>
+    <Breadcrumb items={[
+      { label: 'Home', to: '/conference/view' },
+      { label: 'Conferencia', to: session ? '/conference/' + conference.id : undefined },
+      ...(session ? [{ label: 'Sesión' }] : []),
+    ]} />
   );
 }
-
-export default ConferenceBreadcrumb;

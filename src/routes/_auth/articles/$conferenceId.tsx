@@ -17,7 +17,7 @@
 // -------------------------------------------------------------------------------------- 
 
 import { useEffect, useState } from 'react';
-import Breadcrumb from '@/components/ui/Breadcrumb';
+import Breadcrumb from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { ClipboardPenLineIcon, PlusIcon } from 'lucide-react';
 import { useNavigate, useRouteContext } from '@tanstack/react-router';

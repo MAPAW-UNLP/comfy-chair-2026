@@ -1,7 +1,6 @@
-import type { ArticleHistory as ArticleHistoryType } from "@/services/articleServices";
+import type { ArticleHistoryItem as ArticleHistoryType } from "@/services/articleServices";
 import { ItemGroup, ItemSeparator } from "@/components/ui/item";
 import { ArticleLog } from "./ArticleLog";
-import { useEffect } from "react";
 
 interface ArticleHistoryProps {
   history: ArticleHistoryType[];
@@ -35,15 +34,11 @@ export function ArticleHistory({ history, articleTitle }: ArticleHistoryProps) {
               log={{
                 event_type: "draft_created",
                 created_at: history[0].created_at,
-                article: history[0].article,
-                created_by: history[0].created_by,
-                metadata: history[0].metadata,
-                reviewed_by: history[0].reviewed_by,
               }} 
             />
           {history.map((logItem, index) => (
             <ArticleLog 
-              key={logItem.created_at || index + 1} 
+              key={`${logItem.created_at}-${index}`}
               log={logItem} 
             />
           ))}

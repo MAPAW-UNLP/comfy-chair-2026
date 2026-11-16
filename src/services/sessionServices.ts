@@ -15,7 +15,7 @@ export interface Session {
   chairs_detail?: ChairSummary[];
 }
 
-const handleSessionError = (err: any, isCreate: boolean) => {
+const handleSessionError = (err: any) => {
   const message= err.response?.data;
   if (!message) return
   const posibleError =
@@ -80,7 +80,7 @@ export const createSession = async (
     });
     return response.data;
   } catch (error: any) {
-    handleSessionError(error, true);
+    handleSessionError(error);
     throw error;
   }
 };
@@ -101,7 +101,7 @@ export const updateSession = async (
     });
     return response.data;
   } catch (error: any) {
-    handleSessionError(error, true);
+    handleSessionError(error);
     throw error;
   }
 };
@@ -111,7 +111,7 @@ export const deleteSession = async (sessionId: string, user_id: string): Promise
   try {
     await api.delete(`/api/session/${sessionId}/?user_id=${user_id}`);
   } catch (error) {
-    handleSessionError(error, false);
+    handleSessionError(error);
     throw error;
   }
 };

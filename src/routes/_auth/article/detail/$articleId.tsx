@@ -13,7 +13,7 @@
 //
 // -------------------------------------------------------------------------------------- 
 
-import Breadcrumb from '@/components/ui/Breadcrumb';
+import Breadcrumb from '@/components/ui/breadcrumb';
 import ArticleDetail from '@/components/article/ArticleDetail';
 import ArticleDraftDetail from '@/components/article/ArticleDraftDetail';
 import { useFetchArticle } from "@/hooks/Grupo1/useFetchArticle";
