@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 import type { Article } from '../../services/articleServices';
+import { useAuth } from '@/contexts/AuthContext';
+import { Badge } from '@/components/ui/badge';
 
 type SessionArticleCardProps = {
   article: Article;
@@ -23,10 +25,19 @@ function SessionArticleCard({ article }: SessionArticleCardProps) {
   useEffect(() => {
     console.log('article, ', article);
   }, []);
+  const userId = Number(useAuth().user?.id);
+  const esAutor =
+    article.corresponding_author?.id === userId ||
+    article.authors.some((autor) => autor.id === userId);
   return (
     <div className="flex flex-col gap-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-md hover:shadow-lg transition-shadow duration-200">
       <div className="flex flex-col gap-2">
-        <h2 className="text-xl font-semibold text-gray-800">{article.title}</h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-xl font-semibold text-gray-800">{article.title}</h2>
+          <Badge variant={esAutor ? 'default' : 'outline'} className="shrink-0">
+            {esAutor ? 'Sos autor' : 'No sos autor'}
+          </Badge>
+        </div>
         <hr className="border-gray-300" />
       </div>
 
