@@ -8,8 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { getInvitation, type BlindKind, type InvitationDetail as Detail } from '@/services/reviewerServices';
-import { AcceptInvitationButton } from './AcceptInvitationButton';
-import { RejectInvitationButton } from './RejectInvitationButton';
 import { InvitationStatusBadge } from './InvitationStatusBadge';
 import { INVITATION_STATUS_STYLES } from './invitationStatus';
 import { formatDate, formatDateTime, getApiErrorMessage, getErrorStatus } from './invitationsQuery';
@@ -89,15 +87,14 @@ export default function InvitationDetail() {
           </CardContent>
         </Card>
       ) : (
-        <InvitationDetailCard invitation={data} onResponded={goToList} />
+        <InvitationDetailCard invitation={data} />
       )}
     </div>
   );
 }
 
-function InvitationDetailCard({ invitation, onResponded }: { invitation: Detail; onResponded: () => void }) {
+function InvitationDetailCard({ invitation }: { invitation: Detail }) {
   const { conference, status } = invitation;
-  const isPendingInvitation = status === 'pending';
 
   return (
     <Card className={cn('border-l-4', INVITATION_STATUS_STYLES[status].borderClassName)}>
@@ -142,20 +139,6 @@ function InvitationDetailCard({ invitation, onResponded }: { invitation: Detail;
 
       <CardFooter className="flex flex-col items-stretch gap-3 border-t px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p className="text-sm text-muted-foreground">{footerMessage(invitation)}</p>
-        <div className="flex flex-wrap justify-end gap-2">
-          <RejectInvitationButton
-            invitationId={invitation.id}
-            conferenceTitle={conference.title}
-            disabled={!isPendingInvitation}
-            onRejected={onResponded}
-          />
-          <AcceptInvitationButton
-            invitationId={invitation.id}
-            conferenceTitle={conference.title}
-            disabled={!isPendingInvitation}
-            onAccepted={onResponded}
-          />
-        </div>
       </CardFooter>
     </Card>
   );
@@ -195,7 +178,7 @@ function timeValue(invitation: Detail): string {
 function footerMessage(invitation: Detail): string {
   switch (invitation.status) {
     case 'pending':
-      return '¿Querés formar parte del comité de revisores de esta conferencia?';
+      return 'Esta invitación está pendiente. Podés responder desde el listado de invitaciones.';
     case 'accepted':
       return 'Ya aceptaste esta invitación.';
     case 'rejected':

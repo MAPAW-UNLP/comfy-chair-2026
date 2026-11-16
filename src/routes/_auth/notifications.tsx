@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { useState, useMemo } from 'react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertCircle, Info, Check } from 'lucide-react'
-import { InvitationNotificationActions } from '@/components/reviewer/invitations/InvitationNotificationActions'
+import { InvitationNotificationActions, invitationNotificationsQuery } from '@/components/reviewer/invitations/InvitationNotificationActions'
 import { toast } from 'sonner'
 
 export const Route = createFileRoute('/_auth/notifications')({
@@ -32,13 +32,28 @@ function RouteComponent() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all')
-  const [typeFilter, setTypeFilter] = useState<'all' | NotificationType>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | NotificationType | 'invitations'>('all')
 
   // Fetch notifications
   const { data: notifications = [], isLoading, error } = useQuery({
     queryKey: ['notifications'],
     queryFn: getAllNotifications,
   })
+
+  const {
+    data: invitationNotifications,
+    isPending: invitationsPending,
+    isError: invitationsError,
+    refetch: refetchInvitations,
+    isFetching: invitationsFetching,
+  } = useQuery(invitationNotificationsQuery)
+
+  const invitationNotificationIds = useMemo(
+    () => new Set(invitationNotifications?.map(link => link.notification)),
+    [invitationNotifications],
+  )
+  // El total no depende del filtro de lectura ni del estado de la respuesta.
+  const invitationCount = new Set(invitationNotifications?.map(link => link.invitation)).size
 
   // Mark as read mutation
   const markAsReadMutation = useMutation({
@@ -100,12 +115,14 @@ function RouteComponent() {
     }
 
     // Filter by type
-    if (typeFilter !== 'all') {
+    if (typeFilter === 'invitations') {
+      filtered = filtered.filter(n => invitationNotificationIds.has(n.id))
+    } else if (typeFilter !== 'all') {
       filtered = filtered.filter(n => n.type === typeFilter)
     }
 
     return filtered
-  }, [notifications, filter, typeFilter])
+  }, [notifications, filter, typeFilter, invitationNotificationIds])
 
   const unreadCount = notifications.filter(n => !n.read).length
 
@@ -145,9 +162,9 @@ function RouteComponent() {
 
       <div className="space-y-4">
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col xl:flex-row gap-4">
           <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)} className="flex-1">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList aria-label="Filtrar por estado de lectura" className="grid w-full grid-cols-3">
               <TabsTrigger value="all">
                 Todas ({notifications.length})
               </TabsTrigger>
@@ -161,20 +178,44 @@ function RouteComponent() {
           </Tabs>
 
           <Tabs value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)} className="flex-1">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList aria-label="Filtrar por tipo de notificación" className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-4">
               <TabsTrigger value="all">Todos los tipos</TabsTrigger>
               <TabsTrigger value="info">Informativas</TabsTrigger>
               <TabsTrigger value="critical">Críticas</TabsTrigger>
+              <TabsTrigger value="invitations">
+                Invitaciones ({invitationsPending ? '…' : invitationsError ? '—' : invitationCount})
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
 
         {/* Notifications list */}
         <div className="space-y-2">
-          {filteredNotifications.length === 0 ? (
+          {typeFilter === 'invitations' && invitationsPending ? (
+            <Card>
+              <CardContent className="p-6 text-center" role="status">
+                <p className="text-muted-foreground">Cargando invitaciones...</p>
+              </CardContent>
+            </Card>
+          ) : typeFilter === 'invitations' && invitationsError ? (
+            <Card>
+              <CardContent className="space-y-3 p-6 text-center" role="alert">
+                <p className="text-muted-foreground">No se pudieron cargar las invitaciones.</p>
+                <Button variant="outline" onClick={() => refetchInvitations()} disabled={invitationsFetching}>
+                  Reintentar
+                </Button>
+              </CardContent>
+            </Card>
+          ) : filteredNotifications.length === 0 ? (
             <Card>
               <CardContent className="p-6 text-center">
-                <p className="text-muted-foreground">No hay notificaciones para mostrar</p>
+                <p className="text-muted-foreground">
+                  {typeFilter === 'invitations'
+                    ? invitationCount === 0
+                      ? 'No hay invitaciones para visualizar.'
+                      : 'No hay invitaciones con el estado de lectura seleccionado.'
+                    : 'No hay notificaciones para mostrar'}
+                </p>
               </CardContent>
             </Card>
           ) : (
