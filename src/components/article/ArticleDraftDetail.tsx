@@ -10,11 +10,13 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from '@tanstack/react-query';
 import { useArticleFiles } from "@/hooks/Grupo1/useArticleFiles";
-import { completenessLabels, getArticleMissingFields, getDeadlineInfo, type CompletenessField } from "@/lib/articleDraft";
-import { ApiError, downloadMainFile, submitArticle, type Article } from "@/services/articleServices";
-import { DeadlineBanner, DraftStatusBadge } from "./ArticleDraftBadges";
+import { completenessLabels, getArticleMissingFields, type CompletenessField } from "@/lib/articleDraft";
+import { ApiError, downloadMainFile, isSubmissionPeriodClosed, submitArticle, type Article } from "@/services/articleServices";
+import { DraftStatusBadge } from "./ArticleDraftBadges";
 import { SubmitConfirmDialog } from "./ArticleDraftDialogs";
+import { useSubmissionStatus } from '@/hooks/useSubmissionStatus';
 
 // Lo que espera recibir el componente
 export interface ArticleDraftDetailProps {
@@ -35,6 +37,7 @@ const ArticleDraftDetail : React.FC<ArticleDraftDetailProps> = ({ article }) => 
 
   // Navegación
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const navigateEditArticle = () => navigate({ to: `/article/edit/${article.id}` });
   const navigateArticleList = () => navigate({ to: `/articles/${article.session?.conference?.id}`, replace: true });
 
@@ -44,14 +47,25 @@ const ArticleDraftDetail : React.FC<ArticleDraftDetailProps> = ({ article }) => 
 
   const missingFields = getArticleMissingFields(article);
   const isMissing = (field: CompletenessField) => missingFields.includes(field);
-  const deadlineInfo = getDeadlineInfo(article.session?.deadline);
-  const canSubmit = missingFields.length === 0 && deadlineInfo.state !== "expired";
+  const periodQuery = useSubmissionStatus(article.session?.id);
+  const periodOpen = Boolean(periodQuery.isSuccess && periodQuery.data?.submission_open && !periodQuery.isFetching);
+  const canSubmit = missingFields.length === 0 && periodOpen;
 
   //------------------------------------------------------------
   // Envío del borrador
   //------------------------------------------------------------
   const handleSubmit = async () => {
     try {
+      if (!canSubmit) return;
+      const fresh = await periodQuery.refetch();
+      if (fresh.isError) {
+        toast.error('No se pudo comprobar el período. Revisá tu conexión e intentá de nuevo.');
+        return;
+      }
+      if (!fresh.data?.submission_open) {
+        toast.error('El período de submissions de esta conferencia está cerrado.');
+        return;
+      }
       setSubmitting(true);
       await submitArticle(article.id);
       toast.success("Artículo subido", { description: `"${article.title}" pasó a estado Recibido.`, duration: 5000 });
@@ -61,11 +75,14 @@ const ArticleDraftDetail : React.FC<ArticleDraftDetailProps> = ({ article }) => 
       if (!(error instanceof ApiError)) {
         toast.error("No se pudo subir el artículo", { description: "Revisá tu conexión e intentá de nuevo." });
       } else if (error.status === 400) {
-        // Deadline vencido (detail) o campos faltantes según lo guardado en el back
+        // Campos faltantes según lo guardado en el backend.
         const fields = Object.keys(error.errors).filter((key) => key in completenessLabels) as CompletenessField[];
         toast.error("No se pudo subir el artículo", {
           description: fields.length > 0 ? `Falta completar: ${fields.map((f) => completenessLabels[f]).join(", ")}` : error.message,
         });
+      } else if (isSubmissionPeriodClosed(error)) {
+        void queryClient.invalidateQueries({ queryKey: ['submission-status'] });
+        toast.error('El período de submissions está cerrado. El borrador sigue disponible para consulta.');
       } else if (error.status === 403) {
         toast.error("No tenés permiso sobre este artículo");
         navigateArticleList();
@@ -104,7 +121,10 @@ const ArticleDraftDetail : React.FC<ArticleDraftDetailProps> = ({ article }) => 
           <div className="flex flex-row gap-2">
             <DraftStatusBadge />
           </div>
-          <DeadlineBanner deadline={article.session?.deadline} />
+          {periodQuery.isFetching && <p className="text-sm text-muted-foreground">Comprobando el período de submissions...</p>}
+          {!article.session && <p className="text-sm text-zinc-600">Este borrador no tiene una sesión válida. Podés consultarlo, pero no editarlo ni subirlo.</p>}
+          {periodQuery.isError && <p role="alert" className="text-sm text-destructive">No se pudo consultar el período. <Button variant="link" onClick={() => void periodQuery.refetch()}>Reintentar</Button></p>}
+          {periodQuery.isSuccess && !periodQuery.isFetching && !periodQuery.data.submission_open && <p className="text-sm text-zinc-600">El período de submissions está cerrado. Podés consultar el borrador, pero no editarlo ni subirlo.</p>}
 
           {/* Detalles del Borrador */}
           <DraftField label="Título" value={article.title} missing={isMissing("title")} />
@@ -139,17 +159,12 @@ const ArticleDraftDetail : React.FC<ArticleDraftDetailProps> = ({ article }) => 
 
           {/* Acciones */}
           <div className="flex flex-row gap-2 mt-2">
-            <Button variant="outline" onClick={navigateEditArticle} className="flex-1 bg-slate-900 text-white cursor-pointer">
-              Continuar edición
-            </Button>
+            {periodOpen && <Button variant="outline" onClick={navigateEditArticle} className="flex-1 bg-slate-900 text-white cursor-pointer">Continuar edición</Button>}
             <Button variant="outline" onClick={() => setShowSubmitDialog(true)} disabled={!canSubmit || submitting} className="flex-1 bg-slate-900 text-white cursor-pointer disabled:bg-zinc-400">
               {submitting ? "Subiendo..." : "Subir"}
             </Button>
           </div>
 
-          {deadlineInfo.state === "expired" && (
-            <p className="text-xs text-zinc-600">No podés subir: el deadline venció el {deadlineInfo.label}.</p>
-          )}
 
         </div>
       </div>
@@ -157,7 +172,7 @@ const ArticleDraftDetail : React.FC<ArticleDraftDetailProps> = ({ article }) => 
       {/* Confirmación de subida */}
       <SubmitConfirmDialog
         open={showSubmitDialog}
-        deadlineLabel={deadlineInfo.label || undefined}
+        deadlineLabel={undefined}
         loading={submitting}
         onCancel={() => setShowSubmitDialog(false)}
         onConfirm={handleSubmit}

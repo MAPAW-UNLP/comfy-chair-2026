@@ -10,15 +10,16 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from '@tanstack/react-router';
 import { EyeIcon } from "lucide-react";
 import { type Article } from "@/services/articleServices";
-import { DeadlineBanner, DraftStatusBadge } from "./ArticleDraftBadges";
+import { DraftStatusBadge } from "./ArticleDraftBadges";
 
 // Lo que espera recibir el componente
 export interface ArticleDraftCardProps {
   article: Article;
+  canEdit: boolean;
 }
 
 //Cuerpo del Componente
-const ArticleDraftCard : React.FC<ArticleDraftCardProps> = ({ article }) => {
+const ArticleDraftCard : React.FC<ArticleDraftCardProps> = ({ article, canEdit }) => {
 
   // Navegación
   const navigate = useNavigate();
@@ -49,9 +50,13 @@ const ArticleDraftCard : React.FC<ArticleDraftCardProps> = ({ article }) => {
         </div>
       </div>
 
-      <Button variant="outline" onClick={navigateEditArticle} className="w-full bg-slate-900 text-white cursor-pointer">
-        Continuar edición
-      </Button>
+      {canEdit ? (
+        <Button variant="outline" onClick={navigateEditArticle} className="w-full bg-slate-900 text-white cursor-pointer">
+          Continuar edición
+        </Button>
+      ) : (
+        <p className="text-xs text-zinc-600">La edición requiere un período de submissions abierto.</p>
+      )}
 
       {/* Estado */}
       <div className="flex flex-col gap-1">
@@ -59,7 +64,6 @@ const ArticleDraftCard : React.FC<ArticleDraftCardProps> = ({ article }) => {
         <DraftStatusBadge />
       </div>
 
-      <DeadlineBanner deadline={article.session?.deadline} />
     </div>
   );
 };
