@@ -111,8 +111,9 @@ export interface ReviewerAssignment {
   review_id: number | null; // null si todavía no hay review
   review_status: ReviewStatus;
   review_period: Period;
+  is_author: boolean;
 }
- 
+
 export interface SessionProgress {
   session_id: number;
   title: string;

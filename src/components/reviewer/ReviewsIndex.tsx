@@ -115,6 +115,7 @@ interface UiRow {
   title: string;
   status: ReviewStatus;
   period: Period;
+  isAuthor: boolean;
 }
 
 interface ArticleCardProps {
@@ -157,6 +158,7 @@ const toRow = (r: ReviewerAssignment): UiRow => ({
   title: r.article.title,
   status: STATUS_FROM_API[r.review_status],
   period: r.review_period,
+  isAuthor: r.is_author,
 });
 
 /* -------------- ArticleCard con badge + botón alineados -------------- */
@@ -187,30 +189,43 @@ function ArticleCard({
 
       {/* FILA: estado + botón */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={
-              "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium " +
-              conf.badgeClass
-            }
-          >
-            {conf.label}
-          </span>
-          {!is_open ? (
-            <Badge variant="destructive">Plazo vencido</Badge>
-          ) : end ? (
-            <Badge variant="secondary">Cierra el {formatClose(end)}</Badge>
-          ) : (
-            <Badge variant="outline">Sin fecha límite</Badge>
-          )}
-        </div>
+        {article.isAuthor ? (
+          <>
+            <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium text-sky-700 bg-sky-50 ring-1 ring-sky-200 dark:text-sky-200 dark:bg-sky-900/30 dark:ring-sky-800">
+              Sos autor
+            </span>
+            <p className="text-right text-sm text-slate-500">
+              No podés revisar un artículo del que sos autor
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={
+                  "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium " +
+                  conf.badgeClass
+                }
+              >
+                {conf.label}
+              </span>
+              {!is_open ? (
+                <Badge variant="destructive">Plazo vencido</Badge>
+              ) : end ? (
+                <Badge variant="secondary">Cierra el {formatClose(end)}</Badge>
+              ) : (
+                <Badge variant="outline">Sin fecha límite</Badge>
+              )}
+            </div>
 
-        <Button
-          onClick={() => onAction?.(article)}
-          className="h-full min-w-[150px] justify-center rounded-md px-4 text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 active:bg-slate-950"
-        >
-          {is_open ? conf.cta : "Ver revisión"}
-        </Button>
+            <Button
+              onClick={() => onAction?.(article)}
+              className="h-full min-w-[150px] justify-center rounded-md px-4 text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 active:bg-slate-950"
+            >
+              {is_open ? conf.cta : "Ver revisión"}
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -319,7 +334,7 @@ export default function ReviewsIndex() {
 
   const nextDeadline = useMemo(() => {
     const ends = (assignmentsData?.results ?? []).flatMap((r) =>
-      r.review_period.is_open && r.review_period.end ? [r.review_period.end] : []
+      !r.is_author && r.review_period.is_open && r.review_period.end ? [r.review_period.end] : []
     );
     return ends.sort((a, b) => Date.parse(a) - Date.parse(b))[0];
   }, [assignmentsData]);
