@@ -58,7 +58,10 @@ const RootLayoutContent = () => {
     } else if (normalizedRole === 'revisor') {
       navigate({ to: '/reviewer' });
     }else if (normalizedRole === 'chair') {
-      navigate({ to: '/chairs/select-session' });
+      navigate({
+        to: '/chairs/conference/$conferenceId/sessions',
+        params: { conferenceId: String(selectedRole.conferenceId) },
+      });
     }
   };
 
@@ -81,7 +84,6 @@ const RootLayoutContent = () => {
       { to: '/reviewer/invitations', label: <InvitationsNavLabel /> },
       { to: '/users', label: 'Usuarios' },
       { to: '/article/create', label: 'Artículos' },
-      { to: '/chairs/select-session', label: 'Sesiones' },
     ],
   };
 

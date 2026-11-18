@@ -70,7 +70,7 @@ function DashboardPage() {
     }
 
     if (roleKey === 'chair') {
-      navigate({ to: '/chairs/select-session' })
+      handleConferenceClick(conference.conference_id)
       return
     }
 

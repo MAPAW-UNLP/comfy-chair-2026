@@ -14,6 +14,8 @@ type Periods = {
   review_end: string;
   bidding_start: string;
   bidding_end: string;
+  camera_ready_start: string;
+  camera_ready_end: string;
 };
 
 function parseDate(value?: string | null): Date | undefined {
@@ -41,6 +43,8 @@ export function ConferencePeriodsConfig() {
   const [reviewEnd, setReviewEnd] = useState<Date>();
   const [biddingStart, setBiddingStart] = useState<Date>();
   const [biddingEnd, setBiddingEnd] = useState<Date>();
+  const [cameraReadyStart, setCameraReadyStart] = useState<Date>();
+  const [cameraReadyEnd, setCameraReadyEnd] = useState<Date>();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -53,7 +57,7 @@ export function ConferencePeriodsConfig() {
 
   useEffect(() => {
     if (!conferenceId) {
-      navigate({ to: '/chairs/select-session' });
+      navigate({ to: '/dashboard' });
       return;
     }
 
@@ -61,7 +65,7 @@ export function ConferencePeriodsConfig() {
       .then((data) => {
         if (!data) {
           toast.error('No se pudo cargar la conferencia.');
-          navigate({ to: '/chairs/select-session' });
+          navigate({ to: '/dashboard' });
           return;
         }
         if (!canManageSessions(user, data)) {
@@ -79,6 +83,8 @@ export function ConferencePeriodsConfig() {
         setReviewEnd(parseDate(data.review_end));
         setBiddingStart(parseDate(data.bidding_start));
         setBiddingEnd(parseDate(data.bidding_end));
+        setCameraReadyStart(parseDate(data.camera_ready_start));
+        setCameraReadyEnd(parseDate(data.camera_ready_end));
       })
       .catch(() => toast.error('No se pudo cargar la conferencia.'))
       .finally(() => setLoading(false));
@@ -99,6 +105,8 @@ export function ConferencePeriodsConfig() {
       review_end: formatDate(reviewEnd),
       bidding_start: formatDate(biddingStart),
       bidding_end: formatDate(biddingEnd),
+      camera_ready_start: formatDate(cameraReadyStart),
+      camera_ready_end: formatDate(cameraReadyEnd),
     };
 
     if (
@@ -125,6 +133,14 @@ export function ConferencePeriodsConfig() {
       toast.error('El cierre de bidding no puede ser anterior al inicio.');
       return;
     }
+    if (
+      periods.camera_ready_start &&
+      periods.camera_ready_end &&
+      periods.camera_ready_end < periods.camera_ready_start
+    ) {
+      toast.error('El cierre de camera-ready no puede ser anterior al inicio.');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -143,7 +159,7 @@ export function ConferencePeriodsConfig() {
   return (
     <form onSubmit={handleSubmit} className="mx-auto flex max-w-2xl flex-col gap-6 p-6">
       <div>
-        <h1 className="text-2xl font-bold">Configuración de fechas</h1>
+        <h1 className="text-2xl font-bold">Configuración de la conferencia</h1>
         <p className="text-sm text-gray-500">Configurá las ventanas de la conferencia.</p>
       </div>
 
@@ -183,13 +199,25 @@ export function ConferencePeriodsConfig() {
         </label>
       </fieldset>
 
+      <fieldset className="flex flex-col gap-4 rounded-xl border border-gray-300 p-5">
+        <legend className="px-1 font-semibold">Ventana de camera-ready</legend>
+        <label className="flex flex-col gap-1">
+          Inicio
+          <CustomCalendar date={cameraReadyStart} setDate={setCameraReadyStart} />
+        </label>
+        <label className="flex flex-col gap-1">
+          Cierre
+          <CustomCalendar date={cameraReadyEnd} setDate={setCameraReadyEnd} />
+        </label>
+      </fieldset>
+
       <div className="flex justify-end gap-3">
         <Button
           type="button"
           variant="outline"
           onClick={() => {
             if (!conference?.id) {
-              navigate({ to: '/chairs/select-session' });
+              navigate({ to: '/dashboard' });
               return;
             }
             goToSessions(String(conference.id));

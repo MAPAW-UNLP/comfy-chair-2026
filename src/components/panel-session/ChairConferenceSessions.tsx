@@ -55,7 +55,7 @@ export function ChairConferenceSessions() {
       <main className="mx-auto max-w-5xl px-6 py-8 md:px-12">
         <button
           type="button"
-          onClick={() => navigate({ to: '/chairs/select-session' })}
+          onClick={() => navigate({ to: '/dashboard' })}
           className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-indigo-600"
         >
           <ArrowLeft className="h-4 w-4" />

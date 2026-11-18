@@ -104,6 +104,8 @@ export const createConference = async (
       review_end: conferencia.review_end || null,
       bidding_start: conferencia.bidding_start || null,
       bidding_end: conferencia.bidding_end || null,
+      camera_ready_start: conferencia.camera_ready_start || null,
+      camera_ready_end: conferencia.camera_ready_end || null,
       chairs: chairs.map(user => user.id),
       user_id
     });
@@ -130,6 +132,8 @@ export const updateConference = async (
       review_end: conferencia.review_end || null,
       bidding_start: conferencia.bidding_start || null,
       bidding_end: conferencia.bidding_end || null,
+      camera_ready_start: conferencia.camera_ready_start || null,
+      camera_ready_end: conferencia.camera_ready_end || null,
       chairs: chairs.map(user => user.id),
       user_id
     });
@@ -150,6 +154,8 @@ export const updateConferencePeriods = async (
     | 'review_end'
     | 'bidding_start'
     | 'bidding_end'
+    | 'camera_ready_start'
+    | 'camera_ready_end'
   >,
   user_id: string
 ): Promise<Conference> => {

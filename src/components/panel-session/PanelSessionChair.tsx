@@ -94,7 +94,7 @@ export function PanelSessionChair() {
       const sessionIdString = localStorage.getItem("selectedSession")
 
       if (!sessionIdString) {
-        navigate({ to: "/chairs/select-session" })
+        navigate({ to: "/dashboard" })
         return
       }
 
