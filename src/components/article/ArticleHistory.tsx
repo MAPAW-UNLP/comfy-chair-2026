@@ -1,7 +1,6 @@
 import type { ArticleHistory as ArticleHistoryType } from "@/services/articleServices";
 import { ItemGroup, ItemSeparator } from "@/components/ui/item";
 import { ArticleLog } from "./ArticleLog";
-import { useEffect } from "react";
 
 interface ArticleHistoryProps {
   history: ArticleHistoryType[];
@@ -30,17 +29,6 @@ export function ArticleHistory({ history, articleTitle }: ArticleHistoryProps) {
       {/* Lista de Registros */}
       {history && history.length > 0 ? (
         <ItemGroup className="gap-3.5">
-          <ArticleLog 
-              key={0} 
-              log={{
-                event_type: "draft_created",
-                created_at: history[0].created_at,
-                article: history[0].article,
-                created_by: history[0].created_by,
-                metadata: history[0].metadata,
-                reviewed_by: history[0].reviewed_by,
-              }} 
-            />
           {history.map((logItem, index) => (
             <ArticleLog 
               key={logItem.created_at || index + 1} 
