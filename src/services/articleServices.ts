@@ -6,6 +6,7 @@
 // -------------------------------------------------------------------------------------- 
 
 import { axiosInstance as api } from './api';
+import axios from 'axios';
 import type { User } from '@/services/userServices';
 import type { Session } from '@/services/sessionServices';
 
@@ -351,16 +352,25 @@ export const getAllArticles = async (): Promise<Article[]> => {
 };
 
 //Usado por el grupo 4 en el sprint 1. Se utilizar para el historial de los articulos
+export class ArticleHistoryError extends Error {
+  constructor(
+    message: string,
+    public readonly status?: number,
+  ) {
+    super(message);
+    this.name = 'ArticleHistoryError';
+  }
+}
+
 export async function getArticleHistory(articleId: number): Promise<ArticleHistoryItem[]> {
   try {
     const res = await api.get<ArticleHistoryItem[]>(`/api/article/${articleId}/history/`);
-    if (!res.status || res.status >= 400) {
-      throw new Error("Error al obtener el historial del artículo");
-    }
     return res.data;
   } catch (err: any) {
-    if (err.response?.data) {
-      throw new Error(JSON.stringify(err.response.data));
+    if (axios.isAxiosError(err)) {
+      const detail = err.response?.data?.detail;
+      const message = typeof detail === 'string' ? detail : 'Error al obtener el historial del artículo.';
+      throw new ArticleHistoryError(message, err.response?.status);
     }
     throw err;
   }
