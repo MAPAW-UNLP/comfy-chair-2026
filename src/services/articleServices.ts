@@ -13,12 +13,13 @@ export type Type = "regular" | "poster";
 
 export type Status = "draft" | "reception" | "bidding" | "assignment" | "review" | "selection" | "accepted" | "rejected";
 
-export type EventTypeChoices = 
-  | "draft_created" 
-  | "submitted" 
-  | "reviewer_assigned" 
-  | "review_received" 
-  | "final_verdict";
+export type EventTypeChoices =
+  | "draft_created"
+  | "submitted"
+  | "reviewer_assigned"
+  | "review_received"
+  | "final_verdict"
+  | "camera_ready_uploaded";
 
   export type VerdictStatus = "accepted" | "rejected";
   
@@ -33,6 +34,16 @@ export interface ArticleSource {
   filename: string;
 }
 
+// Registro de la tabla ArticleFile que representa el camera-ready vigente de un
+// artículo, tal como lo expone el GET de /api/article/{id}/ (ya resuelto, con
+// filename y uploaded_at propios: no hay que parsearlos de la URL).
+export interface ArticleCameraReadyFile {
+  id: number;
+  filename: string;
+  file: string; // URL del archivo
+  uploaded_at: string;
+}
+
 export interface Article {
   id: number;
   title: string;
@@ -45,6 +56,11 @@ export interface Article {
   authors: User[];
   corresponding_author: User | null;
   session: Session | null;
+  // Camera-ready: null si todavía no se subió. camera_ready_deadline sale resuelto
+  // de la conferencia (Conference.camera_ready_deadline), no hay que ir a buscarlo
+  // a session.conference.
+  camera_ready?: ArticleCameraReadyFile | null;
+  camera_ready_deadline?: string | null;
 }
 
 export class ApiError extends Error {
@@ -123,6 +139,8 @@ function normalizeArticleShape(raw: any): Article {
     authors: (raw?.authors as User[]) ?? [],
     corresponding_author: (raw?.corresponding_author as User) ?? null,
     session: (raw?.session as Session) ?? null,
+    camera_ready: (raw?.camera_ready as ArticleCameraReadyFile) ?? null,
+    camera_ready_deadline: raw?.camera_ready_deadline ?? null,
   };
 }
 
@@ -304,6 +322,20 @@ export async function downloadMainFile(articleId: number, fileName: string) {
 }
 
 //------------------------------------------------------------
+// Descargar un archivo por URL directa (sin pasar por un endpoint de la API).
+// El camera-ready no tiene endpoint de descarga propio: el back expone la URL
+// del archivo (camera_ready.file) en el GET del artículo, igual que main_file.
+//------------------------------------------------------------
+export function downloadFileByUrl(url: string, fileName: string) {
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName || "archivo";
+  link.target = "_blank";
+  link.rel = "noopener";
+  link.click();
+}
+
+//------------------------------------------------------------
 // GRUPO 1 - Descargar archivo de fuentes del artículo
 //------------------------------------------------------------
 export async function downloadSourceFile(articleId: number, fileName: string) {
@@ -349,6 +381,33 @@ export const getAllArticles = async (): Promise<Article[]> => {
   const response = await api.get('/api/article');
   return response.data;
 };
+
+//------------------------------------------------------------
+// Subida del archivo camera-ready (autor, artículo accepted, dentro del deadline).
+// Devuelve el registro ArticleFile recién creado (201), no el Article completo:
+// para reflejar el artículo actualizado hay que volver a pedirlo con getArticleById.
+//------------------------------------------------------------
+export async function uploadCameraReady(
+  articleId: number,
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<ArticleCameraReadyFile> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await api.post(`/api/article/${articleId}/camera_ready/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (event) => {
+        if (!onProgress || !event.total) return;
+        onProgress(Math.round((event.loaded / event.total) * 100));
+      },
+    });
+    return res.data;
+  } catch (err: any) {
+    throw toApiError(err);
+  }
+}
 
 //Usado por el grupo 4 en el sprint 1. Se utilizar para el historial de los articulos
 export async function getArticleHistory(articleId: number): Promise<ArticleHistoryItem[]> {

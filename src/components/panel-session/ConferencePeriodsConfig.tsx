@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
+import { isAxiosError } from 'axios';
 import { toast } from 'sonner';
 import { getConferenceById, updateConferencePeriods, type Conference } from '@/services/conferenceServices';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ type Periods = {
   review_end: string;
   bidding_start: string;
   bidding_end: string;
+  camera_ready_deadline: string;
 };
 
 function parseDate(value?: string | null): Date | undefined {
@@ -41,6 +43,8 @@ export function ConferencePeriodsConfig() {
   const [reviewEnd, setReviewEnd] = useState<Date>();
   const [biddingStart, setBiddingStart] = useState<Date>();
   const [biddingEnd, setBiddingEnd] = useState<Date>();
+  const [cameraReadyDeadline, setCameraReadyDeadline] = useState<Date>();
+  const [cameraReadyDeadlineError, setCameraReadyDeadlineError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -79,8 +83,16 @@ export function ConferencePeriodsConfig() {
         setReviewEnd(parseDate(data.review_end));
         setBiddingStart(parseDate(data.bidding_start));
         setBiddingEnd(parseDate(data.bidding_end));
+        setCameraReadyDeadline(parseDate(data.camera_ready_deadline));
       })
-      .catch(() => toast.error('No se pudo cargar la conferencia.'))
+      .catch((err) => {
+        if (err?.response?.status === 404) {
+          toast.error('Conferencia no encontrada.');
+          navigate({ to: '/chairs/select-session' });
+        } else {
+          toast.error('No se pudo cargar la conferencia.');
+        }
+      })
       .finally(() => setLoading(false));
   }, [conferenceId, navigate, user]);
 
@@ -92,6 +104,8 @@ export function ConferencePeriodsConfig() {
       return;
     }
 
+    setCameraReadyDeadlineError(null);
+
     const periods: Periods = {
       submission_start: formatDate(submissionStart),
       submission_end: formatDate(submissionEnd),
@@ -99,7 +113,28 @@ export function ConferencePeriodsConfig() {
       review_end: formatDate(reviewEnd),
       bidding_start: formatDate(biddingStart),
       bidding_end: formatDate(biddingEnd),
+      camera_ready_deadline: formatDate(cameraReadyDeadline),
     };
+
+    if (
+      periods.camera_ready_deadline &&
+      periods.review_end &&
+      periods.camera_ready_deadline < periods.review_end
+    ) {
+      setCameraReadyDeadlineError('El deadline de camera-ready no puede ser anterior al cierre de revisión.');
+      return;
+    }
+    if (
+      periods.camera_ready_deadline &&
+      conference.end_date &&
+      periods.camera_ready_deadline > conference.end_date
+    ) {
+      setCameraReadyDeadlineError('El deadline de camera-ready no puede ser posterior a la fecha de fin de la conferencia.');
+      return;
+    }
+    if (!periods.camera_ready_deadline) {
+      toast.warning('Los autores no podrán subir camera-ready sin un deadline configurado.');
+    }
 
     if (
       periods.submission_start &&
@@ -131,8 +166,23 @@ export function ConferencePeriodsConfig() {
       await updateConferencePeriods(conference.id, periods, String(user.id));
       toast.success('Configuración guardada.');
       goToSessions(String(conference.id));
-    } catch {
-      toast.error('No se pudo guardar la configuración.');
+    } catch (err: unknown) {
+      const status = isAxiosError(err) ? err.response?.status : undefined;
+      const data = isAxiosError(err) ? err.response?.data : undefined;
+      if (status === 400) {
+        const fieldError = data?.camera_ready_deadline;
+        if (fieldError) {
+          setCameraReadyDeadlineError(Array.isArray(fieldError) ? fieldError[0] : String(fieldError));
+        } else {
+          toast.error(data?.detail || 'No se pudo guardar la configuración.');
+        }
+      } else if (status === 403) {
+        toast.error('Solo los chairs pueden configurar las fechas de esta conferencia.');
+      } else if (status === 404) {
+        toast.error('Conferencia no encontrada.');
+      } else {
+        toast.error('No se pudo guardar la configuración.');
+      }
     } finally {
       setSaving(false);
     }
@@ -181,6 +231,28 @@ export function ConferencePeriodsConfig() {
           Cierre
           <CustomCalendar date={reviewEnd} setDate={setReviewEnd} />
         </label>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-4 rounded-xl border border-gray-300 p-5">
+        <legend className="px-1 font-semibold">Deadline de camera-ready</legend>
+        <label className="flex flex-col gap-1">
+          Fecha límite
+          <CustomCalendar
+            date={cameraReadyDeadline}
+            setDate={(value) => {
+              setCameraReadyDeadlineError(null);
+              setCameraReadyDeadline(value);
+            }}
+          />
+        </label>
+        {cameraReadyDeadlineError && (
+          <p className="text-sm text-red-600">{cameraReadyDeadlineError}</p>
+        )}
+        {!cameraReadyDeadline && !cameraReadyDeadlineError && (
+          <p className="text-sm text-amber-600">
+            Los autores no podrán subir camera-ready sin esta fecha configurada.
+          </p>
+        )}
       </fieldset>
 
       <div className="flex justify-end gap-3">

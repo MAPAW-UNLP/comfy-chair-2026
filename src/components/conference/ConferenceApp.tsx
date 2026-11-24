@@ -29,6 +29,7 @@ export type Conference = {
   review_end?: string | null;
   bidding_start?: string | null;
   bidding_end?: string | null;
+  camera_ready_deadline?: string | null;
   blind_kind: VISTA_CHOICES;
   chairs?: number[];
   chairs_detail?: ChairSummary[];
