@@ -9,9 +9,8 @@
 // ArticleDetail). El backend igual puede rechazar la subida con 400 si el deadline
 // venció; ese caso cae en el manejo de error 400 genérico, igual que cualquier otro.
 //
-// NOTA: depende de POST /api/article/{id}/camera_ready/, todavía no desplegado en el
-// backend (contrato ya acordado con el equipo de backend, ticket "[Back] Habilitar la
-// carga de camera-ready..."). El componente queda listo para integrar.
+// Depende de POST /api/article/{id}/camera_ready/, ya integrado contra el backend
+// real (rama feature/camera-ready, ticket "[Back] Habilitar la carga de camera-ready...").
 //
 // --------------------------------------------------------------------------------------
 
