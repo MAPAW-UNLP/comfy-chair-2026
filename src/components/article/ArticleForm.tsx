@@ -28,6 +28,8 @@ import { downloadMainFile, downloadSourceFile } from "@/services/articleServices
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DeadlineBanner, DraftStatusBadge } from "./ArticleDraftBadges";
 import { SubmitConfirmDialog, UnsavedChangesDialog } from "./ArticleDraftDialogs";
+import { FileSelectButton } from "./FileSelectButton";
+import { validateFileExtension, formatAllowedExtensions } from "@/lib/fileValidation";
 
 // Importaciones de servicios
 import { type User } from "@/services/userServices";
@@ -38,14 +40,6 @@ import { type Article, type ArticleNew, type ArticleUpdate, ApiError, createArti
 // Configuración escalable de validación de extensiones
 const ALLOWED_ARTICLE_EXTENSIONS = [".pdf"];
 const ALLOWED_SOURCE_EXTENSIONS = [".pdf", ".zip", ".rar", ".png", ".jpeg", ".jpg"];
-
-/**
- * Helper para validar si un archivo posee una extensión permitida.
- */
-const validateFileExtension = (file: File, allowedExtensions: string[]): boolean => {
-  const fileName = file.name.toLowerCase();
-  return allowedExtensions.some((ext) => fileName.endsWith(ext.toLowerCase()));
-};
 
 // Lo que espera recibir el componente
 type ArticleFormProps = {
@@ -127,8 +121,6 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   const titleFieldRef = useRef<HTMLDivElement>(null);
 
   // Manejo de archivos
-  const mainFileRef = useRef<HTMLInputElement>(null);
-  const sourceFileRef = useRef<HTMLInputElement>(null);
   const [mainFile, setMainFile] = useState<File | null>(null);
 
   // AHORA sourceFiles ES UN ARRAY DE ARCHIVOS
@@ -178,29 +170,19 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
   //------------------------------------------------------------
   // Manejo de la seleccion de archivos
   //------------------------------------------------------------
-  const handleMainFileClick = () => mainFileRef.current?.click();
-
-  const handleMainFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setMainFile(file);
-      setIsDirty(true);
-      const isValid = validateFileExtension(file, ALLOWED_ARTICLE_EXTENSIONS);
-      setMainFileError(!isValid);
-      if (!isValid) {
-        toast.error(`Formato no permitido. Solo se aceptan archivos: ${ALLOWED_ARTICLE_EXTENSIONS.join(", ")}`);
-      }
+  const handleMainFileSelected = (files: File[]) => {
+    const file = files[0];
+    if (!file) return;
+    setMainFile(file);
+    setIsDirty(true);
+    const isValid = validateFileExtension(file, ALLOWED_ARTICLE_EXTENSIONS);
+    setMainFileError(!isValid);
+    if (!isValid) {
+      toast.error(`Formato no permitido. Solo se aceptan archivos: ${ALLOWED_ARTICLE_EXTENSIONS.join(", ")}`);
     }
   };
 
-  const handleSourceFileClick = () => sourceFileRef.current?.click();
-
-  const handleSourceFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedList = event.target.files;
-    if (!selectedList || selectedList.length === 0) return;
-
-    const filesArray = Array.from(selectedList);
-
+  const handleSourceFilesSelected = (filesArray: File[]) => {
     // Validar extensiones para cada archivo
     const hasInvalid = filesArray.some(file => !validateFileExtension(file, ALLOWED_SOURCE_EXTENSIONS));
 
@@ -603,22 +585,7 @@ const ArticleForm : React.FC<ArticleFormProps> = ({ conferences, users, editMode
     return "Seleccionar archivo...";
   };
 
-const extensionesFormateadas = (() => {
-  const exts = currentConference?.allowed_extensions;
-
-  if (Array.isArray(exts)) {
-    return exts.map((ext: string) => ext.toUpperCase()).join(', ');
-  }
-
-  if (typeof exts === 'string') {
-    return (exts as string)
-      .split(',')
-      .map((ext) => ext.trim().toUpperCase())
-      .join(', ');
-  }
-
-  return 'ninguna';
-})();
+const extensionesFormateadas = formatAllowedExtensions(currentConference?.allowed_extensions);
 
   // Campos faltantes que se listan en el resumen después de intentar subir
   const pendingFields: CompletenessField[] = submitAttempted && isDraftFlow ? missingFields : [];
@@ -743,34 +710,15 @@ const extensionesFormateadas = (() => {
             </Label>
 
           </div>
-          <input
-            type="file"
-            ref={mainFileRef}
-            onChange={handleMainFileChange}
+          <FileSelectButton
+            label="Submission"
             accept={ALLOWED_ARTICLE_EXTENSIONS.join(",")}
-            className="hidden"
-          />
-          <Button
-            variant="outline"
-            onClick={handleMainFileClick}
-            type="button"
             disabled={busy}
-            className={`w-full text-white transition-colors truncate ${
-              mainFileError
-                ? "bg-red-600 hover:bg-red-700"
-                : mainFile
-                ? "bg-lime-900 hover:bg-lime-950"
-                : editMode && mainFileName
-                ? "bg-lime-900 hover:bg-lime-950"
-                : "bg-slate-900 hover:bg-slate-800"
-            }`}
-          >
-            {mainFile
-              ? mainFile.name
-              : mainFileName
-              ? mainFileName
-              : "Seleccionar archivo..."}
-          </Button>
+            hasError={mainFileError}
+            hasFile={Boolean(mainFile) || Boolean(editMode && mainFileName)}
+            displayText={mainFile ? mainFile.name : mainFileName ? mainFileName : "Seleccionar archivo..."}
+            onFilesSelected={handleMainFileSelected}
+          />
         </div>
 
         {/* Archivo de fuentes solo si es Poster */}
@@ -782,31 +730,16 @@ const extensionesFormateadas = (() => {
               </Label>
 
             </div>
-            <input
-              type="file"
-              ref={sourceFileRef}
-              onChange={handleSourceFileChange}
+            <FileSelectButton
+              label="Fuentes"
               accept={ALLOWED_SOURCE_EXTENSIONS.join(",")}
-              multiple={acceptsMultipleSources} // <-- Activa/Desactiva la selección múltiple
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              onClick={handleSourceFileClick}
-              type="button"
+              multiple={acceptsMultipleSources}
               disabled={busy}
-              className={`w-full text-white transition-colors truncate ${
-                sourceFileError
-                  ? "bg-red-600 hover:bg-red-700"
-                  : sourceFiles.length > 0
-                  ? "bg-slate-900 hover:bg-slate-800"
-                  : editMode && (sourceFileName || currentArticle?.sources?.length)
-                  ? "bg-lime-900 hover:bg-lime-950"
-                  : "bg-slate-900 hover:bg-slate-800"
-              }`}
-            >
-              {getSourceButtonText()}
-            </Button>
+              hasError={sourceFileError}
+              hasFile={sourceFiles.length === 0 && Boolean(editMode && (sourceFileName || currentArticle?.sources?.length))}
+              displayText={getSourceButtonText()}
+              onFilesSelected={handleSourceFilesSelected}
+            />
           </div>
         )}
 

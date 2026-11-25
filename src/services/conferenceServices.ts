@@ -150,6 +150,7 @@ export const updateConferencePeriods = async (
     | 'review_end'
     | 'bidding_start'
     | 'bidding_end'
+    | 'camera_ready_deadline'
   >,
   user_id: string
 ): Promise<Conference> => {

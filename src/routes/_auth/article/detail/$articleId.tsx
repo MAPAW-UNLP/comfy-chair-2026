@@ -17,7 +17,7 @@ import Breadcrumb from '@/components/ui/Breadcrumb';
 import ArticleDetail from '@/components/article/ArticleDetail';
 import ArticleDraftDetail from '@/components/article/ArticleDraftDetail';
 import { useFetchArticle } from "@/hooks/Grupo1/useFetchArticle";
-import { createFileRoute, useParams } from '@tanstack/react-router';
+import { createFileRoute, useParams, useRouteContext } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_auth/article/detail/$articleId')({
   component: RouteComponent,
@@ -25,11 +25,14 @@ export const Route = createFileRoute('/_auth/article/detail/$articleId')({
 
 function RouteComponent() {
 
+  // Usuario Actual
+  const { user } = useRouteContext({ from: '/_auth/article/detail/$articleId' });
+
   // Parametros de entrada (articleId)
   const { articleId } = useParams({ from: '/_auth/article/detail/$articleId' });
   const id = Number(articleId);
 
-  // Hooks 
+  // Hooks
   const { article, loading: loadingArticle } = useFetchArticle(id);
 
   // Estado de carga
@@ -73,7 +76,7 @@ function RouteComponent() {
       {/* Contenido Detallado del Articulo */}
       <div className="flex flex-wrap gap-4 justify-center">
           {/* Le envío al componente el articulo actual (los borradores tienen su propio detalle) */}
-          {article.status === "draft" ? <ArticleDraftDetail article={article} /> : <ArticleDetail article={article} />}
+          {article.status === "draft" ? <ArticleDraftDetail article={article} /> : <ArticleDetail article={article} currentUserId={Number(user.id)} />}
       </div>
       
     </div>

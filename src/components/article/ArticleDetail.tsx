@@ -13,13 +13,15 @@ import { useFetchReviewCounts } from "@/hooks/Grupo1/useFetchReviewCounts";
 import { getReviewsByArticle } from '@/services/reviewerServices';
 import type { ReviewsByArticleId } from '@/services/reviewerServices';
 import type { Article, Status, Type } from "@/services/articleServices";
-import { downloadMainFile, downloadSourceFile } from "@/services/articleServices";
+import { downloadMainFile, downloadSourceFile, downloadFileByUrl } from "@/services/articleServices";
 import { Clock } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 // Lo que espera recibir el componente
 export interface ArticleDetailProps {
   article: Article;
+  /** Id del usuario logueado, para saber si puede subir/reemplazar el camera-ready */
+  currentUserId?: number;
 }
 
 // Textos asociados a cada tipo
@@ -41,10 +43,10 @@ const estadoTexto: Record<Status, string> = {
 };
 
 //Cuerpo del Componente
-const ArticleDetail : React.FC<ArticleDetailProps> = ({ article }) => {
+const ArticleDetail : React.FC<ArticleDetailProps> = ({ article, currentUserId }) => {
 
   // Hook custom para el manejo de archivos
-  const { mainFileName, sourceFileName } = useArticleFiles(article);
+  const { mainFileName, sourceFileName, cameraReadyName, cameraReadyUrl } = useArticleFiles(article);
 
   // Estado y carga de reviews
   const [reviews, setReviews] = useState<ReviewsByArticleId>();
@@ -80,6 +82,20 @@ const ArticleDetail : React.FC<ArticleDetailProps> = ({ article }) => {
   const irArticleHistoryPage = () => {
     navigate({ to: `/article/history/${article.id}` });
   }
+
+  const irCameraReadyPage = () => {
+    navigate({ to: `/article/camera-ready/${article.id}` });
+  }
+
+  // Camera-ready: solo tiene sentido una vez que el artículo fue aceptado.
+  // Autor = está en `authors` o es el corresponding_author (igual que el back, ver is_article_author).
+  const esAutor =
+    article.authors?.some((a) => a.id === currentUserId) ||
+    article.corresponding_author?.id === currentUserId;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const deadlineVencido = Boolean(article.camera_ready_deadline && article.camera_ready_deadline < today);
+  const puedeSubir = esAutor && Boolean(article.camera_ready_deadline) && !deadlineVencido;
 
   //------------------------------------------------------------
   // Renderizado del componente
@@ -165,7 +181,78 @@ const ArticleDetail : React.FC<ArticleDetailProps> = ({ article }) => {
         </div>
       </div>
 
-      {/* Card de Reviews si el artículo está aceptado o rechazado 
+      {/* Card de Camera-ready: solo para artículos aceptados */}
+      {article.status === "accepted" && (
+        <div className="bg-white shadow-lg rounded-2xl p-6 w-full">
+          <div className="text-start flex flex-col gap-2">
+            <h3 className="text-lg font-bold italic text-slate-500 text-center">Camera-ready</h3>
+            <hr className="bg-slate-100" />
+
+            <p>
+              <b>Archivo inicial:</b>{" "}
+              {mainFileName ? (
+                <Button
+                  variant="link"
+                  className="p-0 m-0 h-auto align-baseline leading-none text-sky-600 hover:underline"
+                  onClick={() => downloadMainFile(article.id, mainFileName)}
+                >
+                  {mainFileName}
+                </Button>
+              ) : (
+                "—"
+              )}
+            </p>
+            <p>
+              <b>Camera-ready:</b>{" "}
+              {cameraReadyName && cameraReadyUrl ? (
+                <Button
+                  variant="link"
+                  className="p-0 m-0 h-auto align-baseline leading-none text-sky-600 hover:underline"
+                  onClick={() => downloadFileByUrl(cameraReadyUrl, cameraReadyName)}
+                >
+                  {cameraReadyName}
+                </Button>
+              ) : (
+                "Sin subir"
+              )}
+            </p>
+            <p><b>Fecha de subida:</b> {article.camera_ready?.uploaded_at ? new Date(article.camera_ready.uploaded_at).toLocaleDateString("es-AR") : "—"}</p>
+
+            {currentUserId !== undefined && !esAutor && (
+              <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <p className="font-semibold">Sin permisos</p>
+                <p>Solo los autores del artículo pueden subir el camera-ready.</p>
+              </div>
+            )}
+
+            {esAutor && !article.camera_ready_deadline && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                <p className="font-semibold">Todavía no hay un deadline configurado</p>
+                <p>Los chairs de la conferencia tienen que configurarlo antes de que puedas subir el camera-ready.</p>
+              </div>
+            )}
+
+            {esAutor && article.camera_ready_deadline && deadlineVencido && (
+              <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <p className="font-semibold">El deadline venció</p>
+                <p>Ya no se puede subir ni reemplazar el camera-ready.</p>
+              </div>
+            )}
+
+            {puedeSubir && (
+              <Button
+                variant="outline"
+                onClick={irCameraReadyPage}
+                className="w-full text-white bg-slate-900 hover:bg-slate-800 hover:cursor-pointer"
+              >
+                {cameraReadyName ? "Reemplazar" : "Subir camera-ready"}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Card de Reviews si el artículo está aceptado o rechazado
       No tiene sentido mostrar esto
       {(article.status === "accepted" || article.status === "rejected") && !loadingReviews && reviews && (
         <ReviewBox reviews={reviews} />
