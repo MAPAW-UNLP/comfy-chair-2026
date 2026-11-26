@@ -16,7 +16,6 @@
 //
 // -------------------------------------------------------------------------------------- 
 
-import { useEffect, useState } from 'react';
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import { Button } from '@/components/ui/button';
 import { ClipboardPenLineIcon, PlusIcon } from 'lucide-react';
@@ -27,7 +26,8 @@ import { createFileRoute, useParams } from '@tanstack/react-router';
 import { useFetchConference } from "@/hooks/Grupo1/useFetchConference";
 import { useFetchConferenceArticles } from "@/hooks/Grupo1/useFetchConferenceArticles";
 import { useFetchReviewCounts } from "@/hooks/Grupo1/useFetchReviewCounts";
-import { getSessionsByConferenceGrupo1 } from '@/services/sessionServices';
+import { useConferenceSessions } from '@/hooks/useConferenceSessions';
+import { useSubmissionStatus } from '@/hooks/useSubmissionStatus';
 
 export const Route = createFileRoute('/_auth/articles/$conferenceId')({
   component: RouteComponent,
@@ -50,20 +50,10 @@ function RouteComponent() {
   // Conteo de revisiones: una sola consulta por listado, no bloquea el spinner
   const { getReviewCount } = useFetchReviewCounts(id, !loadingArticles);
 
-  // Sesiones vigentes: habilitan o no la creación de un nuevo submission
-  const [hasActiveSessions, setHasActiveSessions] = useState(false);
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    getSessionsByConferenceGrupo1(id).then((sessions) => {
-      if (!isCancelled) setHasActiveSessions(sessions.length > 0);
-    });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [id]);
+  const sessionsQuery = useConferenceSessions(id);
+  const representativeSession = sessionsQuery.data?.find((session) => session.conference?.id === id);
+  const periodQuery = useSubmissionStatus(representativeSession?.id);
+  const periodOpen = Boolean(representativeSession && sessionsQuery.isSuccess && !sessionsQuery.isFetching && periodQuery.isSuccess && periodQuery.data?.submission_open && !periodQuery.isFetching);
 
   // Estado de carga
   const loading = loadingConference || loadingArticles;
@@ -98,20 +88,17 @@ function RouteComponent() {
       </div>
 
       {/* Acceso para crear un nuevo submission en esta conferencia */}
-      <div className="flex flex-col items-center gap-1 w-full">
-        <Button
-          size={'sm'}
-          className="cursor-pointer"
-          disabled={!hasActiveSessions}
-          onClick={() => navigate({ to: '/article/create', search: { conferenceId: id } })}
-        >
-          <PlusIcon /> Nuevo submission
-        </Button>
-        {!hasActiveSessions && (
-          <p className="text-xs text-muted-foreground">
-            No hay sesiones vigentes para recibir submissions
-          </p>
+      <div className="flex flex-col items-center gap-1 w-full" aria-live="polite">
+        {periodOpen && (
+          <Button size="sm" className="cursor-pointer" onClick={() => navigate({ to: '/article/create', search: { conferenceId: id } })}>
+            <PlusIcon /> Nueva Submission
+          </Button>
         )}
+        {(sessionsQuery.isFetching || (representativeSession && periodQuery.isFetching)) && <p className="text-xs text-muted-foreground">Comprobando el período de submissions...</p>}
+        {sessionsQuery.isError && <p className="text-xs text-destructive">No se pudieron consultar las sesiones. <Button variant="link" size="sm" onClick={() => void sessionsQuery.refetch()}>Reintentar</Button></p>}
+        {sessionsQuery.isSuccess && !representativeSession && <p className="text-xs text-muted-foreground">No hay sesiones disponibles para crear submissions.</p>}
+        {representativeSession && periodQuery.isError && <p className="text-xs text-destructive">No se pudo consultar el período. <Button variant="link" size="sm" onClick={() => void periodQuery.refetch()}>Reintentar</Button></p>}
+        {representativeSession && periodQuery.isSuccess && !periodQuery.isFetching && !periodQuery.data.submission_open && <p className="text-xs text-muted-foreground">El período de submissions de esta conferencia está cerrado.</p>}
       </div>
 
       {/* Si no hay articulos muestra un mensaje, si hay entonces mapea cada uno como una card */}
@@ -122,16 +109,16 @@ function RouteComponent() {
           </div>
           <h1 className="font-bold text-slate-900">Todavía no tenés artículos</h1>
           <p className="text-sm text-slate-500">
-            Empezá a cargar uno. Podés guardarlo como borrador, completarlo cuando quieras y subirlo antes del deadline de la sesión.
+            Cuando el período de submissions esté abierto, podés crear un artículo y guardarlo como borrador.
           </p>
         </div>
       ) : (
         <div className="flex flex-wrap w-full gap-4 justify-center">
           {/* Le envío a cada card el id del articulo y el objeto articulo correspondiente; los borradores usan su propia card */}
           {articles.map((a) => a.status === "draft" ? (
-            <ArticleDraftCard key={a.id} article={a} />
+            <ArticleDraftCard key={a.id} article={a} canEdit={periodOpen} />
           ) : (
-            <ArticleCard key={a.id} article={a} reviewCount={getReviewCount(a.id)} onDeleted={(id) => setArticles((prev) => prev.filter((art) => art.id !== id))}/>
+            <ArticleCard key={a.id} article={a} canEdit={periodOpen} reviewCount={getReviewCount(a.id)} onDeleted={(id) => setArticles((prev) => prev.filter((art) => art.id !== id))}/>
           ))}
         </div>
       )}

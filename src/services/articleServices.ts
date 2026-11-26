@@ -66,12 +66,14 @@ export interface Article {
 export class ApiError extends Error {
   status: number;
   errors: Record<string, string[]>;
+  code?: string;
 
-  constructor(message: string, status: number, errors: Record<string, string[]> = {}) {
+  constructor(message: string, status: number, errors: Record<string, string[]> = {}, code?: string) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.errors = errors;
+    this.code = code;
   }
 }
 
@@ -90,7 +92,26 @@ function toApiError(err: any): Error {
   }
 
   const message = typeof data.detail === 'string' ? data.detail : JSON.stringify(data);
-  return new ApiError(message, err.response.status, errors);
+  return new ApiError(message, err.response.status, errors, typeof data.code === 'string' ? data.code : undefined);
+}
+
+export const isSubmissionPeriodClosed = (error: unknown): boolean =>
+  error instanceof ApiError && error.status === 403 && error.code === 'submission_period_closed';
+
+export interface SubmissionStatus {
+  session_id: number;
+  submission_open: boolean;
+  submission_start: string | null;
+  /** Exclusive UTC boundary, sourced from Conference.submission_end. */
+  submission_deadline: string | null;
+}
+
+export async function getSubmissionStatus(sessionId: number, signal?: AbortSignal): Promise<SubmissionStatus> {
+  const response = await api.get<SubmissionStatus>('/api/article/submission-status/', {
+    params: { session_id: sessionId },
+    signal,
+  });
+  return response.data;
 }
 
 export interface ArticleNew {

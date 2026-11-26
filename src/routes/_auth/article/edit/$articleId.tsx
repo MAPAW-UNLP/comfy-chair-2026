@@ -19,6 +19,7 @@
 //
 // -------------------------------------------------------------------------------------- 
 
+import { useEffect, useState } from 'react';
 import { useRouteContext } from '@tanstack/react-router';
 import ArticleForm from '@/components/article/ArticleForm';
 import Breadcrumb from '@/components/ui/breadcrumb';
@@ -26,6 +27,8 @@ import { useFetchUsers } from "@/hooks/Grupo1/useFetchUsers";
 import { useFetchArticle } from "@/hooks/Grupo1/useFetchArticle";
 import { createFileRoute, useParams } from '@tanstack/react-router'
 import { useFetchConferences } from "@/hooks/Grupo1/useFetchConferences";
+import { useSubmissionStatus } from '@/hooks/useSubmissionStatus';
+import { Button } from '@/components/ui/button';
 
 export const Route = createFileRoute('/_auth/article/edit/$articleId')({
   component: RouteComponent,
@@ -44,6 +47,12 @@ function RouteComponent() {
   const { userList, loadingUsers } = useFetchUsers();
   const { article, loading: loadingArticle } = useFetchArticle(id);
   const { conferenceList, loadingConferences } = useFetchConferences();
+  const periodQuery = useSubmissionStatus(article?.session?.id);
+  const [enteredArticleId, setEnteredArticleId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (article && periodQuery.isSuccess && periodQuery.data?.submission_open && !periodQuery.isFetching) setEnteredArticleId(article.id);
+  }, [article, periodQuery.isSuccess, periodQuery.data, periodQuery.isFetching]);
 
   // Estado de carga
   const loading = loadingArticle || loadingUsers || loadingConferences;
@@ -68,10 +77,9 @@ function RouteComponent() {
     );
   }
 
-  // Feature de Seguridad - Mensaje si el articulo no debe editarse (solo accesible desde la barra de navegación)
-  // Un borrador siempre se puede editar: con el deadline vencido solo se deshabilita la subida
+  // Los estados editables conservan su regla existente; el período lo decide el backend.
   const isDraft = article.status === "draft";
-  if (!isDraft && (article.status !== "reception" || article.session?.deadline! < Date.now().toString())) {
+  if (!isDraft && article.status !== "reception") {
     return (
       <div className="flex flex-col items-center justify-center w-full min-h-[calc(100dvh-64px)]">
         <h1 className="text-2xl font-bold italic text-slate-500 text-center">
@@ -93,6 +101,21 @@ function RouteComponent() {
     );
   }
 
+  if (!article.session) {
+    return <p className="p-6 text-center">Este artículo no tiene una sesión válida para editarlo.</p>;
+  }
+
+  const entered = enteredArticleId === article.id || Boolean(periodQuery.isSuccess && periodQuery.data?.submission_open && !periodQuery.isFetching);
+  if (!entered && periodQuery.isFetching) {
+    return <div className="grid place-items-center w-full min-h-[calc(100dvh-64px)]">Comprobando el período de submissions...</div>;
+  }
+  if (!entered && periodQuery.isError) {
+    return <div role="alert" className="p-6 text-center">No se pudo consultar el período de submissions. <Button onClick={() => void periodQuery.refetch()}>Reintentar</Button></div>;
+  }
+  if (!entered && !periodQuery.data?.submission_open) {
+    return <div className="p-6 text-center">El período de submissions de esta conferencia está cerrado. Podés consultar el artículo desde su detalle.</div>;
+  }
+
   //Cuerpo del Componente
   return (
     <div className="mx-4 my-4 flex flex-col items-center gap-4">
@@ -110,7 +133,7 @@ function RouteComponent() {
 
       {/* Le envío al form la conferencia actual, el articulo existente y los usuarios de la app */}
       <div className="flex flex-wrap gap-4 justify-center w-full">
-        <ArticleForm conferences={conferenceList} users={userList} editMode={true} article={article} userId={Number(user.id)} />
+        <ArticleForm key={article.id} conferences={conferenceList} users={userList} editMode={true} article={article} userId={Number(user.id)} />
       </div>
     </div>
   );
