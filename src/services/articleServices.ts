@@ -9,6 +9,7 @@ import { axiosInstance as api } from './api';
 import axios from 'axios';
 import type { User } from '@/services/userServices';
 import type { Session } from '@/services/sessionServices';
+import { AxiosError } from 'axios';
 
 export type Type = "regular" | "poster";
 

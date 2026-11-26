@@ -12,6 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getAllNotifications, getUserFullData } from '@/services/userServices';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { ChevronDown } from 'lucide-react';
+import NotFoundPage from '@/components/error/NotFoundPage';
 
 const RootLayoutContent = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -75,6 +76,7 @@ const RootLayoutContent = () => {
     chair: [
       { to: '/article/select', label: 'Artículos' },
       { to: '/review/chair/reviewed', label: 'Revisores' },
+      { to: '/chairs/panel-session', label: 'Panel de Sesión' },
     ],
     admin: [
       { to: '/reviewer/', label: 'Revisor' },
@@ -113,6 +115,7 @@ const RootLayoutContent = () => {
             <Link
               to={user ? "/dashboard" : "/"}
               className="hidden font-bold text-lg xl:flex items-center gap-2 hover:underline focus:outline-none focus:ring-2 focus:ring-slate-400 mr-2"
+              onClick={clearSelectedRole}
             >
               ComfyChair
               <Armchair />
@@ -123,6 +126,7 @@ const RootLayoutContent = () => {
                 <Link
                   key={link.to}
                   to={link.to}
+                  onClick={clearSelectedRole}
                   className="inline-flex items-center justify-center px-3 py-1 rounded-md hover:bg-black/20 [&.active]:bg-black/40 [&.active]:text-white text-sm"
                 >
                   {link.label}
@@ -135,6 +139,7 @@ const RootLayoutContent = () => {
           <Link
             to={user ? "/dashboard" : "/"}
             className="absolute left-1/2 -translate-x-1/2 font-bold text-lg flex xl:hidden items-center gap-2 hover:underline focus:outline-none focus:ring-2 focus:ring-slate-400"
+            onClick={clearSelectedRole}
           >
             ComfyChair
             <Armchair />
@@ -144,7 +149,7 @@ const RootLayoutContent = () => {
           <div className="hidden xl:flex items-center gap-4 z-10">
             {user ? (
               <>
-                <Link to="/notifications" className="p-1.5 hover:bg-black/20 rounded-full relative transition-colors">
+                <Link to="/notifications" className="p-1.5 hover:bg-black/20 rounded-full relative transition-colors" onClick={clearSelectedRole}>
                   <Bell className="h-5 w-5" />
                   {unreadCount > 0 && (
                     <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] leading-4 text-white">
@@ -166,7 +171,7 @@ const RootLayoutContent = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="bg-slate-900 border border-slate-800 text-white min-w-[160px] p-1 shadow-lg rounded-md z-50">
                     <DropdownMenuItem asChild>
-                      <Link to='/profile' className='w-full block px-3 py-2 text-sm hover:bg-slate-800 rounded cursor-pointer'>
+                      <Link to='/profile' className='w-full block px-3 py-2 text-sm hover:bg-slate-800 rounded cursor-pointer' onClick={clearSelectedRole}>
                         Mi perfil
                       </Link>
                     </DropdownMenuItem>
@@ -313,4 +318,4 @@ const RootLayout = () => {
   );
 };
 
-export const Route = createRootRoute({ component: RootLayout });
+export const Route = createRootRoute({ component: RootLayout, notFoundComponent: NotFoundPage });
