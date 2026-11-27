@@ -6,7 +6,7 @@
 // --------------------------------------------------------------------------------------
 
 import { useEffect, useState } from "react";
-import { getReviewedArticles } from "@/services/reviewedArticlesServices";
+import api from '@/services/api';
 
 export type ReviewCountState =
   | { status: "loading" }
@@ -28,7 +28,7 @@ export function useFetchReviewCounts(conferenceId: number, enabled: boolean) {
 
     async function fetch() {
       try {
-        const data: unknown = await getReviewedArticles();
+        const { data }: { data: unknown } = await api.get('/api/article/review-counts/');
         if (!Array.isArray(data)) throw new Error("Respuesta inválida");
 
         // Solo se conservan id y review_count; title se descarta

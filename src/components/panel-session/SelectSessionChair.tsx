@@ -3,6 +3,8 @@ import { ArrowRight, CalendarDays, Loader2, Presentation } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { getAllConferences, type Conference } from '@/services/conferenceServices';
 import { useAuth } from '@/contexts/AuthContext';
+import api from '@/services/api';
+import type { ConferenceAccess } from '@/lib/routeAccess';
 
 export function SelectSessionChair() {
     const [conferences, setConferences] = useState<Conference[]>([]);
@@ -14,11 +16,12 @@ export function SelectSessionChair() {
     useEffect(() => {
         const loadConferences = async () => {
             try {
-                const data = await getAllConferences();
-                const userId = String(user?.id);
+                const [data, { data: access }] = await Promise.all([
+                    getAllConferences(), api.get<ConferenceAccess>('/user/access/'),
+                ]);
                 setConferences(
                     data.filter((conference) =>
-                        conference.chairs?.some((chairId) => String(chairId) === userId),
+                        user?.role === 'admin' || access.chair_conference_ids.includes(conference.id),
                     ),
                 );
             } catch {
@@ -29,7 +32,7 @@ export function SelectSessionChair() {
         };
 
         if (user?.id) loadConferences();
-    }, [user?.id]);
+    }, [user?.id, user?.role]);
 
     if (loading) {
         return (

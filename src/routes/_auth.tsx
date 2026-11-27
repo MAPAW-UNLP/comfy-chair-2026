@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 import { authService } from '@/services/auth'
+import { requireRouteAccess } from '@/lib/routeAccess'
 
 export const Route = createFileRoute('/_auth')({
   beforeLoad: async ({ location }) => {
@@ -36,6 +37,8 @@ export const Route = createFileRoute('/_auth')({
       })
     }
     
+    await requireRouteAccess(user, location.href)
+
     // Return user data to be available in child routes
     return { user }
   },
