@@ -249,6 +249,70 @@ export default function ConferenceUserRoleEditor({
     if (success) setSelectedArticleId('');
   };
 
+  const renderChairReplacementBox = () => {
+    if (!chairReplacement) return null;
+
+    return (
+      <div
+        role="alert"
+        className="rounded-lg border-2 border-amber-400 bg-amber-50 p-4 animate-in fade-in-0 slide-in-from-top-1 duration-200"
+      >
+        <div className="mb-3 flex items-start gap-2">
+          <UserRoundCheck className="mt-0.5 size-5 shrink-0 text-amber-800" />
+          <div>
+            <h4 className="font-semibold text-amber-950">Asigná un chair reemplazante</h4>
+            <p className="text-sm text-amber-900">
+              {chairReplacement.role === 'session_chair'
+                ? `No se puede quitar a ${user.full_name} porque es el único chair activo de “${chairReplacement.session.title}”. Elegí primero a quién asignar esa sesión.`
+                : `No se puede quitar a ${user.full_name} porque es el único chair activo de la conferencia. Elegí primero a quién asignar como chair.`}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Select
+            value={replacementUserId}
+            onValueChange={setReplacementUserId}
+            disabled={saving || activeReplacementCandidates.length === 0}
+          >
+            <SelectTrigger className="w-full bg-white">
+              <SelectValue placeholder="Seleccioná un reemplazante" />
+            </SelectTrigger>
+            <SelectContent>
+              {activeReplacementCandidates.map((candidate) => (
+                <SelectItem key={candidate.id} value={String(candidate.id)}>
+                  {candidate.full_name} ({candidate.email})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            type="button"
+            disabled={saving || !replacementUserId}
+            onClick={() => void handleReplaceChair()}
+          >
+            {saving && <Loader2 className="size-4 animate-spin" />}
+            Asignar y quitar anterior
+          </Button>
+        </div>
+        {activeReplacementCandidates.length === 0 && (
+          <p className="mt-2 text-sm text-amber-900">
+            No hay otros usuarios habilitados disponibles para asignar como chair.
+          </p>
+        )}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={saving}
+          onClick={() => setChairReplacement(null)}
+          className="mt-2"
+        >
+          Cancelar resolución
+        </Button>
+      </div>
+    );
+  };
+
   return (
     <>
       <Button
@@ -334,6 +398,9 @@ export default function ConferenceUserRoleEditor({
                       {isConferenceChair ? 'Quitar rol' : 'Asignar rol'}
                     </Button>
                   </div>
+                  {chairReplacement?.role === 'conference_chair' && (
+                    <div className="mt-4">{renderChairReplacementBox()}</div>
+                  )}
                 </section>
               )}
 
@@ -352,35 +419,42 @@ export default function ConferenceUserRoleEditor({
                   <div className="flex flex-col divide-y">
                     {sessions.map((session) => {
                       const assigned = userSessionChairIds.includes(session.id);
+                      const isReplacingThisSession =
+                        chairReplacement?.role === 'session_chair' &&
+                        chairReplacement.session.id === session.id;
                       return (
-                        <div
-                          key={session.id}
-                          className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium">{session.title}</p>
-                            <p
-                              className={`text-xs ${
-                                assigned ? 'text-emerald-700' : 'text-muted-foreground'
-                              }`}
+                        <div key={session.id} className="py-3 first:pt-0 last:pb-0">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium">{session.title}</p>
+                              <p
+                                className={`text-xs ${
+                                  assigned ? 'text-emerald-700' : 'text-muted-foreground'
+                                }`}
+                              >
+                                {assigned
+                                  ? 'Tiene rol de chair en esta sesión'
+                                  : 'No es chair de esta sesión'}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={assigned ? 'outline' : 'default'}
+                              disabled={saving}
+                              onClick={() =>
+                                void (assigned
+                                  ? removeSessionChair(session)
+                                  : addSessionChair(session))
+                              }
                             >
-                              {assigned ? 'Tiene rol de chair en esta sesión' : 'No es chair de esta sesión'}
-                            </p>
+                              {assigned ? <Trash2 size={15} /> : <Plus size={15} />}
+                              {assigned ? 'Quitar' : 'Asignar'}
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={assigned ? 'outline' : 'default'}
-                            disabled={saving}
-                            onClick={() =>
-                              void (assigned
-                                ? removeSessionChair(session)
-                                : addSessionChair(session))
-                            }
-                          >
-                            {assigned ? <Trash2 size={15} /> : <Plus size={15} />}
-                            {assigned ? 'Quitar' : 'Asignar'}
-                          </Button>
+                          {isReplacingThisSession && (
+                            <div className="mt-3">{renderChairReplacementBox()}</div>
+                          )}
                         </div>
                       );
                     })}
@@ -484,65 +558,6 @@ export default function ConferenceUserRoleEditor({
                   </div>
                 )}
               </section>
-
-              {chairReplacement && (
-                <section className="rounded-lg border-2 border-amber-400 bg-amber-50 p-4">
-                  <div className="mb-3 flex items-start gap-2">
-                    <UserRoundCheck className="mt-0.5 size-5 shrink-0 text-amber-800" />
-                    <div>
-                      <h3 className="font-semibold text-amber-950">
-                        Asigná un chair reemplazante
-                      </h3>
-                      <p className="text-sm text-amber-900">
-                        {chairReplacement.role === 'session_chair'
-                          ? `No se puede quitar a ${user.full_name} porque es el único chair activo de “${chairReplacement.session.title}”. Elegí primero a quién asignar esa sesión.`
-                          : `No se puede quitar a ${user.full_name} porque es el único chair activo de la conferencia. Elegí primero a quién asignar como chair.`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Select
-                      value={replacementUserId}
-                      onValueChange={setReplacementUserId}
-                      disabled={saving || activeReplacementCandidates.length === 0}
-                    >
-                      <SelectTrigger className="w-full bg-white">
-                        <SelectValue placeholder="Seleccioná un reemplazante" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activeReplacementCandidates.map((candidate) => (
-                          <SelectItem key={candidate.id} value={String(candidate.id)}>
-                            {candidate.full_name} ({candidate.email})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      type="button"
-                      disabled={saving || !replacementUserId}
-                      onClick={() => void handleReplaceChair()}
-                    >
-                      {saving && <Loader2 className="size-4 animate-spin" />}
-                      Asignar y quitar anterior
-                    </Button>
-                  </div>
-                  {activeReplacementCandidates.length === 0 && (
-                    <p className="mt-2 text-sm text-amber-900">
-                      No hay otros usuarios habilitados disponibles para asignar como chair.
-                    </p>
-                  )}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={saving}
-                    onClick={() => setChairReplacement(null)}
-                    className="mt-2"
-                  >
-                    Cancelar resolución
-                  </Button>
-                </section>
-              )}
             </div>
           )}
 
