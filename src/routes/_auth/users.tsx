@@ -13,14 +13,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ChevronLeft, ChevronRight, Search, TriangleAlert } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { ChevronLeft, ChevronRight, Loader2, Search, TriangleAlert, UserRoundCheck } from 'lucide-react'
 import {
   getAllUsers,
   getUserDisableCheck,
   requestChairReplacement,
+  updateConferenceUserRole,
   updateUserStatus,
   type DisableCheckResponse,
   type DisableConflict,
+  type UpdateConferenceUserRolePayload,
   type User,
 } from '@/services/userServices'
 import { useAuth } from '@/contexts/AuthContext'
@@ -290,6 +299,9 @@ function UsersPage() {
   const [isCheckingDisable, setIsCheckingDisable] = useState(false)
   const [updatingUserId, setUpdatingUserId] = useState<number | null>(null)
   const [requestingSessionId, setRequestingSessionId] = useState<number | null>(null)
+  const [resolvingConflictKey, setResolvingConflictKey] = useState<string | null>(null)
+  const [replacementUserId, setReplacementUserId] = useState('')
+  const [isSavingReplacement, setIsSavingReplacement] = useState(false)
   const { user: currentUser } = useAuth()
   const navigate = useNavigate()
   const { deshabilitar } = Route.useSearch()
@@ -323,6 +335,8 @@ function UsersPage() {
   ) => {
     setIsCheckingDisable(true)
     setDialogState(null)
+    setResolvingConflictKey(null)
+    setReplacementUserId('')
     try {
       const check = await getUserDisableCheck(targetUser.id)
       setDialogState({
@@ -456,13 +470,98 @@ function UsersPage() {
     }
   }
 
-  const resolveConflict = (conflict: DisableConflict) => {
-    if (!dialogState || conflict.type !== 'conference') return
-    const userId = String(dialogState.user.id)
-    void navigate({
-      to: `/conference/edit/${conflict.id}`,
-      search: { deshabilitar: userId },
-    })
+  const getConflictKey = (conflict: DisableConflict) => `${conflict.type}-${conflict.id}`
+
+  const replacementCandidates = useMemo(() => {
+    if (!dialogState) return []
+    return users
+      .filter(
+        (candidate) =>
+          candidate.role === 'user' &&
+          candidate.is_active !== false &&
+          candidate.id !== dialogState.user.id
+      )
+      .sort((a, b) => a.full_name.localeCompare(b.full_name, 'es'))
+  }, [users, dialogState])
+
+  const handleToggleResolveConflict = (conflict: DisableConflict) => {
+    const key = getConflictKey(conflict)
+    if (resolvingConflictKey === key) {
+      setResolvingConflictKey(null)
+      setReplacementUserId('')
+      return
+    }
+    setResolvingConflictKey(key)
+    setReplacementUserId('')
+  }
+
+  const handleReplaceConflictChair = async (conflict: DisableConflict) => {
+    if (!dialogState || !replacementUserId) return
+    const conferenceId =
+      conflict.type === 'conference' ? conflict.id : conflict.conference_id
+
+    if (!conferenceId) {
+      toast.error('No se encontró la conferencia asociada a este conflicto.')
+      return
+    }
+
+    const replacementId = Number(replacementUserId)
+    const addPayload: UpdateConferenceUserRolePayload = {
+      role: conflict.type === 'session' ? 'session_chair' : 'conference_chair',
+      action: 'add',
+      ...(conflict.type === 'session' ? { session_id: conflict.id } : {}),
+    }
+    const removePayload: UpdateConferenceUserRolePayload = {
+      ...addPayload,
+      action: 'remove',
+    }
+
+    setIsSavingReplacement(true)
+    try {
+      await updateConferenceUserRole(conferenceId, replacementId, addPayload)
+      try {
+        await updateConferenceUserRole(conferenceId, dialogState.user.id, removePayload)
+        toast.success('Se asignó el chair reemplazante y se quitó el anterior.')
+      } catch (removeErr) {
+        console.error('Replacement assigned, but removing previous chair failed:', removeErr)
+        toast.error(
+          `El nuevo chair quedó asignado, pero no se pudo quitar el anterior: ${getRequestErrorMessage(
+            removeErr,
+            'Ocurrió un error al quitar el rol anterior.'
+          )}`
+        )
+      }
+
+      setResolvingConflictKey(null)
+      setReplacementUserId('')
+
+      try {
+        const refreshedCheck = await getUserDisableCheck(dialogState.user.id)
+        setDialogState({
+          user: dialogState.user,
+          check: refreshedCheck,
+          view: refreshedCheck.can_disable ? 'confirm' : 'conflicts',
+        })
+        if (refreshedCheck.can_disable) {
+          toast.success('Conflicto resuelto. Ya podés deshabilitar a este usuario.')
+        }
+      } catch (refreshError) {
+        console.error('Error refreshing disable conflicts after replacement:', refreshError)
+        toast.error(
+          getRequestErrorMessage(
+            refreshError,
+            'Se asignó el nuevo chair, pero no se pudo actualizar el estado de los conflictos.'
+          )
+        )
+      }
+    } catch (err) {
+      console.error('Error assigning replacement chair:', err)
+      toast.error(
+        getRequestErrorMessage(err, 'No se pudo asignar el chair reemplazante.')
+      )
+    } finally {
+      setIsSavingReplacement(false)
+    }
   }
 
   // Apply search and status filters to the loaded admin user list.
@@ -691,10 +790,14 @@ function UsersPage() {
       <Dialog
         open={dialogState !== null || isCheckingDisable}
         onOpenChange={(open) => {
-          if (!open && updatingUserId === null) setDialogState(null)
+          if (!open && updatingUserId === null && !isSavingReplacement) {
+            setDialogState(null)
+            setResolvingConflictKey(null)
+            setReplacementUserId('')
+          }
         }}
       >
-        <DialogContent className="w-[calc(100vw-1.5rem)] max-h-[90dvh] overflow-y-auto p-4 sm:max-w-lg sm:p-6">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-h-[90dvh] overflow-y-auto p-4 sm:max-w-xl sm:p-6">
           <DialogHeader className="text-left">
             <DialogTitle className="flex items-start gap-2 text-base leading-snug sm:text-lg">
               {dialogState?.view === 'conflicts'
@@ -768,53 +871,126 @@ function UsersPage() {
           )}
 
           {dialogState?.view === 'conflicts' && (
-            <div className="max-h-[55dvh] space-y-3 overflow-y-auto overscroll-contain pr-1">
-              {dialogState.check.conflicts.map((conflict) => (
-                <div
-                  key={`${conflict.type}-${conflict.id}`}
-                  className="flex min-w-0 flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <p className="break-words text-sm leading-relaxed">{getConflictDescription(conflict)}</p>
-                  <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto">
-                    {conflict.type === 'session' ? (
-                      <>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => void handleRequestChairReplacement(conflict)}
-                          disabled={
-                            requestingSessionId !== null ||
-                            !conflict.can_request_conference_chair ||
-                            Boolean(conflict.pending_request)
-                          }
-                          className="w-full"
-                        >
-                          {requestingSessionId === conflict.id
-                            ? 'Enviando solicitud...'
-                            : conflict.pending_request
-                              ? 'Solicitud pendiente'
-                              : 'Solicitar reemplazo'}
-                        </Button>
-                        {!conflict.can_request_conference_chair && !conflict.pending_request && (
-                          <p className="text-xs text-muted-foreground">
-                            No hay chairs activos de la conferencia para recibir la solicitud.
+            <div className="max-h-[60dvh] space-y-3 overflow-y-auto overscroll-contain pr-1">
+              {dialogState.check.conflicts.map((conflict) => {
+                const conflictKey = getConflictKey(conflict)
+                const isResolvingThis =
+                  conflict.type === 'conference' && resolvingConflictKey === conflictKey
+                return (
+                  <div
+                    key={conflictKey}
+                    className="rounded-lg border p-3.5"
+                  >
+                    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="break-words text-sm leading-relaxed">
+                        {getConflictDescription(conflict)}
+                      </p>
+                      <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto">
+                        {conflict.type === 'session' ? (
+                          <>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => void handleRequestChairReplacement(conflict)}
+                              disabled={
+                                requestingSessionId !== null ||
+                                isSavingReplacement ||
+                                !conflict.can_request_conference_chair ||
+                                Boolean(conflict.pending_request)
+                              }
+                              className="w-full"
+                            >
+                              {requestingSessionId === conflict.id
+                                ? 'Enviando solicitud...'
+                                : conflict.pending_request
+                                  ? 'Solicitud pendiente'
+                                  : 'Solicitar reemplazo'}
+                            </Button>
+                            {!conflict.can_request_conference_chair && !conflict.pending_request && (
+                              <p className="text-xs text-muted-foreground">
+                                No hay chairs activos de la conferencia para recibir la solicitud.
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant={isResolvingThis ? 'secondary' : 'outline'}
+                            onClick={() => handleToggleResolveConflict(conflict)}
+                            disabled={requestingSessionId !== null || isSavingReplacement}
+                            className="w-full shrink-0 sm:w-auto"
+                          >
+                            Resolver
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {isResolvingThis && (
+                      <div
+                        role="alert"
+                        className="mt-3 rounded-lg border-2 border-amber-400 bg-amber-50 p-4 animate-in fade-in-0 slide-in-from-top-1 duration-200"
+                      >
+                        <div className="mb-3 flex items-start gap-2">
+                          <UserRoundCheck className="mt-0.5 size-5 shrink-0 text-amber-800" />
+                          <div>
+                            <h4 className="font-semibold text-amber-950">
+                              Asigná un chair reemplazante
+                            </h4>
+                            <p className="text-sm text-amber-900">
+                              No se puede deshabilitar a {dialogState.user.full_name} porque es el único chair activo de la conferencia “{conflict.title}”. Elegí primero a quién asignar como chair.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <Select
+                            value={replacementUserId}
+                            onValueChange={setReplacementUserId}
+                            disabled={isSavingReplacement || replacementCandidates.length === 0}
+                          >
+                            <SelectTrigger className="w-full bg-white">
+                              <SelectValue placeholder="Seleccioná un reemplazante" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {replacementCandidates.map((candidate) => (
+                                <SelectItem key={candidate.id} value={String(candidate.id)}>
+                                  {candidate.full_name} ({candidate.email})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            type="button"
+                            disabled={isSavingReplacement || !replacementUserId}
+                            onClick={() => void handleReplaceConflictChair(conflict)}
+                          >
+                            {isSavingReplacement && <Loader2 className="size-4 animate-spin" />}
+                            Asignar y quitar anterior
+                          </Button>
+                        </div>
+                        {replacementCandidates.length === 0 && (
+                          <p className="mt-2 text-sm text-amber-900">
+                            No hay otros usuarios habilitados disponibles para asignar como chair.
                           </p>
                         )}
-                      </>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => resolveConflict(conflict)}
-                        disabled={requestingSessionId !== null}
-                        className="w-full"
-                      >
-                        Resolver
-                      </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={isSavingReplacement}
+                          onClick={() => {
+                            setResolvingConflictKey(null)
+                            setReplacementUserId('')
+                          }}
+                          className="mt-2"
+                        >
+                          Cancelar resolución
+                        </Button>
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 

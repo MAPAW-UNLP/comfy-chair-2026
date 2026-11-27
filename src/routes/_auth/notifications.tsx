@@ -9,6 +9,7 @@ import { useState, useMemo } from 'react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertCircle, Info, Check } from 'lucide-react'
 import { InvitationNotificationActions } from '@/components/reviewer/invitations/InvitationNotificationActions'
+import ResolveSessionChairDialog from '@/components/conference/ResolveSessionChairDialog'
 import { toast } from 'sonner'
 
 export const Route = createFileRoute('/_auth/notifications')({
@@ -33,6 +34,11 @@ function RouteComponent() {
   const navigate = useNavigate()
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all')
   const [typeFilter, setTypeFilter] = useState<'all' | NotificationType>('all')
+  const [chairResolutionTarget, setChairResolutionTarget] = useState<{
+    notificationId: number
+    sessionId: number
+  } | null>(null)
+  const [resolvedNotificationIds, setResolvedNotificationIds] = useState<Record<number, boolean>>({})
 
   // Fetch notifications
   const { data: notifications = [], isLoading, error } = useQuery({
@@ -70,22 +76,36 @@ function RouteComponent() {
       }
     }
 
+    if (!reviewerResolutionTitles.has(notification.title)) {
+      setChairResolutionTarget({
+        notificationId: notification.id,
+        sessionId,
+      })
+      return
+    }
+
     void navigate({
       to: `/conference/session/${sessionId}`,
-      search: reviewerResolutionTitles.has(notification.title)
-        ? {
-            editar: undefined,
-            deshabilitar: undefined,
-            resolverRevisiones: 'true',
-            resolverNotificacion: String(notification.id),
-          }
-        : {
-            editar: 'true',
-            deshabilitar: undefined,
-            resolverRevisiones: undefined,
-            resolverNotificacion: undefined,
-          },
+      search: {
+        editar: undefined,
+        deshabilitar: undefined,
+        resolverRevisiones: 'true',
+        resolverNotificacion: String(notification.id),
+      },
     })
+  }
+
+  const handleChairResolutionComplete = (notificationId: number) => {
+    setResolvedNotificationIds((current) => ({ ...current, [notificationId]: true }))
+    try {
+      window.sessionStorage.setItem(
+        `resolved-session-notification-${notificationId}`,
+        'true',
+      )
+    } catch (storageError) {
+      console.error('Could not persist session notification completion:', storageError)
+    }
+    queryClient.invalidateQueries({ queryKey: ['notifications'] })
   }
 
   // Client-side filtering
@@ -186,11 +206,20 @@ function RouteComponent() {
                 isMarking={markAsReadMutation.isPending}
                 onResolveSession={() => void resolveSessionNotification(notification)}
                 onGoToUser={() => goToRelatedUser(notification)}
+                isExternallyResolved={Boolean(resolvedNotificationIds[notification.id])}
               />
             ))
           )}
         </div>
       </div>
+
+      {chairResolutionTarget && (
+        <ResolveSessionChairDialog
+          sessionId={chairResolutionTarget.sessionId}
+          onComplete={() => handleChairResolutionComplete(chairResolutionTarget.notificationId)}
+          onClose={() => setChairResolutionTarget(null)}
+        />
+      )}
     </div>
   )
 }
@@ -201,6 +230,7 @@ interface NotificationCardProps {
   isMarking: boolean
   onResolveSession: () => void
   onGoToUser: () => void
+  isExternallyResolved?: boolean
 }
 
 function NotificationCard({
@@ -209,8 +239,9 @@ function NotificationCard({
   isMarking,
   onResolveSession,
   onGoToUser,
+  isExternallyResolved = false,
 }: NotificationCardProps) {
-  const [isResolved] = useState(() => {
+  const [isStoredResolved] = useState(() => {
     if (typeof window === 'undefined') return false
     try {
       return window.sessionStorage.getItem(`resolved-session-notification-${notification.id}`) === 'true'
@@ -219,6 +250,7 @@ function NotificationCard({
       return false
     }
   })
+  const isResolved = isStoredResolved || isExternallyResolved
   const isCritical = notification.type === 'critical'
   const isRead = notification.read
   const formattedDate = new Date(notification.created_at).toLocaleString('es-ES', {
@@ -273,11 +305,15 @@ function NotificationCard({
               onClick={() => {
                 onResolveSession()
               }}
-              disabled={reviewerResolutionTitles.has(notification.title) && isResolved}
+              disabled={
+                (reviewerResolutionTitles.has(notification.title) ||
+                  notification.title === 'Sesión sin chair') &&
+                isResolved
+              }
             >
               {reviewerResolutionTitles.has(notification.title)
                 ? 'Reasignar revisiones'
-                : 'Ir a sesión'}
+                : 'Resolver'}
             </Button>
           </div>
         )}
